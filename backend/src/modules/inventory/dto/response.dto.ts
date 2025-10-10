@@ -24,6 +24,23 @@ export class InventoryIdempotentResponseDto {
   movement!: MovementDto;
 }
 
+export class InventoryTransferResponseDto {
+  @ApiProperty({ example: true })
+  success!: boolean;
+
+  @ApiProperty({ type: InventoryDto })
+  fromInventory!: InventoryDto;
+
+  @ApiProperty({ type: InventoryDto })
+  toInventory!: InventoryDto;
+
+  @ApiProperty({ type: MovementDto })
+  transferOutMovement!: MovementDto;
+
+  @ApiProperty({ type: MovementDto })
+  transferInMovement!: MovementDto;
+}
+
 export class ErrorResponseDto {
   @ApiProperty({ example: 400 })
   statusCode!: number;
