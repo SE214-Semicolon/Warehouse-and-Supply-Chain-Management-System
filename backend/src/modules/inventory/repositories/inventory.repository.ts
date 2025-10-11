@@ -435,14 +435,14 @@ export class InventoryRepository {
   async releaseReservationTx(
     productBatchId: string,
     locationId: string,
-    quantity: number,
+    quantity: number | undefined,
     orderId: string,
     createdById?: string,
     idempotencyKey?: string,
     note?: string,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      // Check if inventory exists and has enough reserved stock
+      // Check if inventory exists
       const existingInventory = await tx.inventory.findUnique({
         where: {
           productBatchId_locationId: {
@@ -452,7 +452,14 @@ export class InventoryRepository {
         },
       });
 
-      if (!existingInventory || existingInventory.reservedQty < quantity) {
+      if (!existingInventory) {
+        throw new Error('InventoryNotFound');
+      }
+
+      // If quantity is not specified, release all reserved stock
+      const releaseQuantity = quantity || existingInventory.reservedQty;
+
+      if (existingInventory.reservedQty < releaseQuantity) {
         throw new Error('NotEnoughReservedStock');
       }
 
@@ -465,8 +472,8 @@ export class InventoryRepository {
           },
         },
         data: {
-          availableQty: { increment: quantity },
-          reservedQty: { decrement: quantity },
+          availableQty: { increment: releaseQuantity },
+          reservedQty: { decrement: releaseQuantity },
         },
       });
 
@@ -475,7 +482,7 @@ export class InventoryRepository {
         data: {
           productBatchId,
           fromLocationId: locationId,
-          quantity,
+          quantity: releaseQuantity,
           movementType: StockMovementType.release,
           createdById,
           idempotencyKey,

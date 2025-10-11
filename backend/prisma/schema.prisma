@@ -48,6 +48,7 @@ enum StockMovementType {
   transfer_out
   returned
   reservation
+  release
   consumption
 }
 

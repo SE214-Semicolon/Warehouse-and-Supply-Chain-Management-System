@@ -350,7 +350,7 @@ export class InventoryService {
       const { inventory, movement } = await this.inventoryRepo.releaseReservationTx(
         dto.productBatchId,
         dto.locationId,
-        dto.quantity || undefined,
+        dto.quantity,
         dto.orderId,
         dto.createdById,
         dto.idempotencyKey,
@@ -361,6 +361,9 @@ export class InventoryService {
     } catch (err) {
       if (err instanceof Error && err.message === 'NotEnoughReservedStock') {
         throw new BadRequestException('Not enough reserved stock to release');
+      }
+      if (err instanceof Error && err.message === 'InventoryNotFound') {
+        throw new NotFoundException('Inventory not found');
       }
 
       // If unique constraint on idempotencyKey occurred concurrently, return existing movement
