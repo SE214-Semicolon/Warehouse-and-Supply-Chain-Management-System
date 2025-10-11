@@ -7,7 +7,9 @@ import {
   UseGuards,
   Get,
   Query,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { InventoryService } from '../services/inventory.service';
 import { ReceiveInventoryDto } from '../dto/receive-inventory.dto';
 import { DispatchInventoryDto } from '../dto/dispatch-inventory.dto';
@@ -168,7 +170,6 @@ export class InventoryController {
       },
     },
   })
-  @HttpCode(HttpStatus.CREATED)
   async adjust(@Body() dto: AdjustInventoryDto) {
     return this.inventoryService.adjustInventory(dto);
   }

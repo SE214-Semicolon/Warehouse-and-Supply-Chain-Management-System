@@ -348,7 +348,7 @@ export class InventoryRepository {
         },
       });
 
-      // Create transfer in movement
+      // Create transfer in movement (no idempotency key to avoid conflicts)
       const transferInMovement = await tx.stockMovement.create({
         data: {
           productBatchId,
@@ -356,7 +356,6 @@ export class InventoryRepository {
           quantity,
           movementType: StockMovementType.transfer_in,
           createdById,
-          idempotencyKey,
           note,
         },
       });

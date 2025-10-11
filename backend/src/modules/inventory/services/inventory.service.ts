@@ -37,7 +37,10 @@ export class InventoryService {
     if (dto.idempotencyKey) {
       const existing = await this.inventoryRepo.findMovementByKey(dto.idempotencyKey);
       if (existing) {
+        console.log('Found existing movement for idempotency key:', dto.idempotencyKey);
         return { success: true, idempotent: true, movement: existing };
+      } else {
+        console.log('No existing movement found for idempotency key:', dto.idempotencyKey);
       }
     }
 
