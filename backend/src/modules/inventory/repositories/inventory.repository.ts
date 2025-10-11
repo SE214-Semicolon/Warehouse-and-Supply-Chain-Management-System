@@ -369,4 +369,196 @@ export class InventoryRepository {
       };
     });
   }
+
+  /**
+   * Reserve inventory: decrease availableQty and increase reservedQty
+   */
+  async reserveInventoryTx(
+    productBatchId: string,
+    locationId: string,
+    quantity: number,
+    orderId: string,
+    createdById?: string,
+    idempotencyKey?: string,
+    note?: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      // Check if inventory exists and has enough available stock
+      const existingInventory = await tx.inventory.findUnique({
+        where: {
+          productBatchId_locationId: {
+            productBatchId,
+            locationId,
+          },
+        },
+      });
+
+      if (!existingInventory || existingInventory.availableQty < quantity) {
+        throw new Error('NotEnoughStock');
+      }
+
+      // Update inventory: decrease available, increase reserved
+      const updatedInventory = await tx.inventory.update({
+        where: {
+          productBatchId_locationId: {
+            productBatchId,
+            locationId,
+          },
+        },
+        data: {
+          availableQty: { decrement: quantity },
+          reservedQty: { increment: quantity },
+        },
+      });
+
+      // Create reservation movement
+      const movement = await tx.stockMovement.create({
+        data: {
+          productBatchId,
+          toLocationId: locationId,
+          quantity,
+          movementType: StockMovementType.reservation,
+          createdById,
+          idempotencyKey,
+          reference: orderId,
+          note,
+        },
+      });
+
+      return { inventory: updatedInventory, movement };
+    });
+  }
+
+  /**
+   * Release reservation: increase availableQty and decrease reservedQty
+   */
+  async releaseReservationTx(
+    productBatchId: string,
+    locationId: string,
+    quantity: number,
+    orderId: string,
+    createdById?: string,
+    idempotencyKey?: string,
+    note?: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      // Check if inventory exists and has enough reserved stock
+      const existingInventory = await tx.inventory.findUnique({
+        where: {
+          productBatchId_locationId: {
+            productBatchId,
+            locationId,
+          },
+        },
+      });
+
+      if (!existingInventory || existingInventory.reservedQty < quantity) {
+        throw new Error('NotEnoughReservedStock');
+      }
+
+      // Update inventory: increase available, decrease reserved
+      const updatedInventory = await tx.inventory.update({
+        where: {
+          productBatchId_locationId: {
+            productBatchId,
+            locationId,
+          },
+        },
+        data: {
+          availableQty: { increment: quantity },
+          reservedQty: { decrement: quantity },
+        },
+      });
+
+      // Create release movement
+      const movement = await tx.stockMovement.create({
+        data: {
+          productBatchId,
+          fromLocationId: locationId,
+          quantity,
+          movementType: StockMovementType.release,
+          createdById,
+          idempotencyKey,
+          reference: orderId,
+          note,
+        },
+      });
+
+      return { inventory: updatedInventory, movement };
+    });
+  }
+
+  /**
+   * Query inventory by location with pagination and sorting
+   */
+  async findInventoryByLocation(
+    locationId: string,
+    page: number = 1,
+    limit: number = 20,
+    sortBy: string = 'productBatchId',
+    sortOrder: 'asc' | 'desc' = 'asc',
+  ) {
+    const skip = (page - 1) * limit;
+
+    const [inventories, total] = await Promise.all([
+      this.prisma.inventory.findMany({
+        where: { locationId },
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          productBatch: true,
+          location: true,
+        },
+      }),
+      this.prisma.inventory.count({
+        where: { locationId },
+      }),
+    ]);
+
+    return {
+      inventories,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Query inventory by product batch with pagination and sorting
+   */
+  async findInventoryByProductBatch(
+    productBatchId: string,
+    page: number = 1,
+    limit: number = 20,
+    sortBy: string = 'locationId',
+    sortOrder: 'asc' | 'desc' = 'asc',
+  ) {
+    const skip = (page - 1) * limit;
+
+    const [inventories, total] = await Promise.all([
+      this.prisma.inventory.findMany({
+        where: { productBatchId },
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          productBatch: true,
+          location: true,
+        },
+      }),
+      this.prisma.inventory.count({
+        where: { productBatchId },
+      }),
+    ]);
+
+    return {
+      inventories,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
 }

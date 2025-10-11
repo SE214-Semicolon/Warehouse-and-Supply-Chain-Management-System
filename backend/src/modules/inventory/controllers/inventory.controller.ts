@@ -1,15 +1,30 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  Get,
+  Query,
+} from '@nestjs/common';
 import { InventoryService } from '../services/inventory.service';
 import { ReceiveInventoryDto } from '../dto/receive-inventory.dto';
 import { DispatchInventoryDto } from '../dto/dispatch-inventory.dto';
 import { AdjustInventoryDto } from '../dto/adjust-inventory.dto';
 import { TransferInventoryDto } from '../dto/transfer-inventory.dto';
+import { ReserveInventoryDto } from '../dto/reserve-inventory.dto';
+import { ReleaseReservationDto } from '../dto/release-reservation.dto';
+import { QueryByLocationDto } from '../dto/query-by-location.dto';
+import { QueryByProductBatchDto } from '../dto/query-by-product-batch.dto';
 import { JwtAuthGuard } from '../../../auth/jwt.guard';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
 import {
   InventorySuccessResponseDto,
   InventoryIdempotentResponseDto,
   InventoryTransferResponseDto,
+  InventoryReservationResponseDto,
+  InventoryQueryResponseDto,
   ErrorResponseDto,
 } from '../dto/response.dto';
 
@@ -204,5 +219,147 @@ export class InventoryController {
   @HttpCode(HttpStatus.CREATED)
   async transfer(@Body() dto: TransferInventoryDto) {
     return this.inventoryService.transferInventory(dto);
+  }
+
+  @Post('reserve')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reserve inventory for an order' })
+  @ApiResponse({
+    status: 201,
+    description: 'Inventory reserved',
+    type: InventoryReservationResponseDto,
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Idempotent response when a movement with the same idempotencyKey was already created',
+    type: InventoryIdempotentResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request (validation) or Not enough available stock',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'ProductBatch or Location or User not found',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict (concurrency or idempotency key issues)',
+    type: ErrorResponseDto,
+  })
+  @ApiBody({
+    schema: {
+      example: {
+        productBatchId: 'pb-uuid',
+        locationId: 'loc-uuid',
+        quantity: 10,
+        orderId: 'order-uuid',
+        createdById: 'user-uuid',
+        idempotencyKey: 'reserve-123',
+        note: 'Reserving stock for order #12345',
+      },
+    },
+  })
+  @HttpCode(HttpStatus.CREATED)
+  async reserve(@Body() dto: ReserveInventoryDto) {
+    return this.inventoryService.reserveInventory(dto);
+  }
+
+  @Post('release')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Release reserved inventory' })
+  @ApiResponse({
+    status: 201,
+    description: 'Reservation released',
+    type: InventoryReservationResponseDto,
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Idempotent response when a movement with the same idempotencyKey was already created',
+    type: InventoryIdempotentResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request (validation) or Not enough reserved stock',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'ProductBatch or Location or User not found',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict (concurrency or idempotency key issues)',
+    type: ErrorResponseDto,
+  })
+  @ApiBody({
+    schema: {
+      example: {
+        productBatchId: 'pb-uuid',
+        locationId: 'loc-uuid',
+        orderId: 'order-uuid',
+        quantity: 10,
+        createdById: 'user-uuid',
+        idempotencyKey: 'release-123',
+        note: 'Order cancelled, releasing reserved stock',
+      },
+    },
+  })
+  @HttpCode(HttpStatus.CREATED)
+  async release(@Body() dto: ReleaseReservationDto) {
+    return this.inventoryService.releaseReservation(dto);
+  }
+
+  @Get('location')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get inventory by location' })
+  @ApiResponse({
+    status: 200,
+    description: 'Inventory list by location',
+    type: InventoryQueryResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request (validation)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Location not found',
+    type: ErrorResponseDto,
+  })
+  async getByLocation(@Query() dto: QueryByLocationDto) {
+    return this.inventoryService.getInventoryByLocation(dto);
+  }
+
+  @Get('product-batch')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get inventory by product batch' })
+  @ApiResponse({
+    status: 200,
+    description: 'Inventory list by product batch',
+    type: InventoryQueryResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request (validation)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'ProductBatch not found',
+    type: ErrorResponseDto,
+  })
+  async getByProductBatch(@Query() dto: QueryByProductBatchDto) {
+    return this.inventoryService.getInventoryByProductBatch(dto);
   }
 }

@@ -5,6 +5,10 @@ import { ReceiveInventoryDto } from '../dto/receive-inventory.dto';
 import { DispatchInventoryDto } from '../dto/dispatch-inventory.dto';
 import { AdjustInventoryDto } from '../dto/adjust-inventory.dto';
 import { TransferInventoryDto } from '../dto/transfer-inventory.dto';
+import { ReserveInventoryDto } from '../dto/reserve-inventory.dto';
+import { ReleaseReservationDto } from '../dto/release-reservation.dto';
+import { QueryByLocationDto } from '../dto/query-by-location.dto';
+import { QueryByProductBatchDto } from '../dto/query-by-product-batch.dto';
 
 @Injectable()
 export class InventoryService {
@@ -250,5 +254,186 @@ export class InventoryService {
 
       throw err;
     }
+  }
+
+  async reserveInventory(dto: ReserveInventoryDto) {
+    // Basic existence validation
+    const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
+    if (!batch) {
+      throw new NotFoundException(`ProductBatch not found: ${dto.productBatchId}`);
+    }
+
+    const location = await this.inventoryRepo.findLocation(dto.locationId);
+    if (!location) {
+      throw new NotFoundException(`Location not found: ${dto.locationId}`);
+    }
+
+    if (dto.createdById) {
+      const user = await this.inventoryRepo.findUser(dto.createdById);
+      if (!user) {
+        throw new NotFoundException(`User not found: ${dto.createdById}`);
+      }
+    }
+
+    // Validate quantity
+    if (dto.quantity <= 0) {
+      throw new BadRequestException('Reservation quantity must be greater than zero');
+    }
+
+    // Idempotency short-circuit
+    if (dto.idempotencyKey) {
+      const existing = await this.inventoryRepo.findMovementByKey(dto.idempotencyKey);
+      if (existing) {
+        return { success: true, idempotent: true, movement: existing };
+      }
+    }
+
+    try {
+      const { inventory, movement } = await this.inventoryRepo.reserveInventoryTx(
+        dto.productBatchId,
+        dto.locationId,
+        dto.quantity,
+        dto.orderId,
+        dto.createdById,
+        dto.idempotencyKey,
+        dto.note,
+      );
+
+      return { success: true, inventory, movement };
+    } catch (err) {
+      if (err instanceof Error && err.message === 'NotEnoughStock') {
+        throw new BadRequestException('Not enough available stock to reserve');
+      }
+
+      // If unique constraint on idempotencyKey occurred concurrently, return existing movement
+      if (
+        dto.idempotencyKey &&
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const existing = await this.inventoryRepo.findMovementByKey(dto.idempotencyKey);
+        if (existing) return { success: true, idempotent: true, movement: existing };
+      }
+
+      throw err;
+    }
+  }
+
+  async releaseReservation(dto: ReleaseReservationDto) {
+    // Basic existence validation
+    const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
+    if (!batch) {
+      throw new NotFoundException(`ProductBatch not found: ${dto.productBatchId}`);
+    }
+
+    const location = await this.inventoryRepo.findLocation(dto.locationId);
+    if (!location) {
+      throw new NotFoundException(`Location not found: ${dto.locationId}`);
+    }
+
+    if (dto.createdById) {
+      const user = await this.inventoryRepo.findUser(dto.createdById);
+      if (!user) {
+        throw new NotFoundException(`User not found: ${dto.createdById}`);
+      }
+    }
+
+    // Idempotency short-circuit
+    if (dto.idempotencyKey) {
+      const existing = await this.inventoryRepo.findMovementByKey(dto.idempotencyKey);
+      if (existing) {
+        return { success: true, idempotent: true, movement: existing };
+      }
+    }
+
+    try {
+      const { inventory, movement } = await this.inventoryRepo.releaseReservationTx(
+        dto.productBatchId,
+        dto.locationId,
+        dto.quantity || undefined,
+        dto.orderId,
+        dto.createdById,
+        dto.idempotencyKey,
+        dto.note,
+      );
+
+      return { success: true, inventory, movement };
+    } catch (err) {
+      if (err instanceof Error && err.message === 'NotEnoughReservedStock') {
+        throw new BadRequestException('Not enough reserved stock to release');
+      }
+
+      // If unique constraint on idempotencyKey occurred concurrently, return existing movement
+      if (
+        dto.idempotencyKey &&
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const existing = await this.inventoryRepo.findMovementByKey(dto.idempotencyKey);
+        if (existing) return { success: true, idempotent: true, movement: existing };
+      }
+
+      throw err;
+    }
+  }
+
+  async getInventoryByLocation(dto: QueryByLocationDto) {
+    // Basic existence validation
+    const location = await this.inventoryRepo.findLocation(dto.locationId);
+    if (!location) {
+      throw new NotFoundException(`Location not found: ${dto.locationId}`);
+    }
+
+    // Validate pagination parameters
+    if (dto.page && dto.page < 1) {
+      throw new BadRequestException('Page must be greater than 0');
+    }
+
+    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+      throw new BadRequestException('Limit must be between 1 and 100');
+    }
+
+    const result = await this.inventoryRepo.findInventoryByLocation(
+      dto.locationId,
+      dto.page,
+      dto.limit,
+      dto.sortBy,
+      dto.sortOrder,
+    );
+
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  async getInventoryByProductBatch(dto: QueryByProductBatchDto) {
+    // Basic existence validation
+    const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
+    if (!batch) {
+      throw new NotFoundException(`ProductBatch not found: ${dto.productBatchId}`);
+    }
+
+    // Validate pagination parameters
+    if (dto.page && dto.page < 1) {
+      throw new BadRequestException('Page must be greater than 0');
+    }
+
+    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+      throw new BadRequestException('Limit must be between 1 and 100');
+    }
+
+    const result = await this.inventoryRepo.findInventoryByProductBatch(
+      dto.productBatchId,
+      dto.page,
+      dto.limit,
+      dto.sortBy,
+      dto.sortOrder,
+    );
+
+    return {
+      success: true,
+      ...result,
+    };
   }
 }
