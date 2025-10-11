@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/common/prisma/prisma.service';
+import { PrismaService } from '../../../common/prisma/prisma.service';
 import { StockMovementType } from '@prisma/client';
 
 @Injectable()
@@ -107,26 +107,31 @@ export class InventoryRepository {
     idempotencyKey?: string,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      // Attempt conditional decrement using updateMany to ensure availableQty >= quantity.
-      const updateResult = await tx.inventory.updateMany({
+      // First check if inventory exists and has enough stock
+      const existingInventory = await tx.inventory.findUnique({
         where: {
-          productBatchId,
-          locationId,
-          availableQty: { gte: quantity },
+          productBatchId_locationId: {
+            productBatchId,
+            locationId,
+          },
+        },
+      });
+
+      if (!existingInventory || existingInventory.availableQty < quantity) {
+        throw new Error('NotEnoughStock');
+      }
+
+      // Update inventory using direct update (more reliable than updateMany for this use case)
+      const updatedInventory = await tx.inventory.update({
+        where: {
+          productBatchId_locationId: {
+            productBatchId,
+            locationId,
+          },
         },
         data: {
           availableQty: { decrement: quantity },
         },
-      });
-
-      if (updateResult.count === 0) {
-        // No rows updated -> not enough stock or inventory missing
-        throw new Error('NotEnoughStock');
-      }
-
-      // Get the updated inventory row
-      const inv = await tx.inventory.findUnique({
-        where: { productBatchId_locationId: { productBatchId, locationId } },
       });
 
       const movement = await tx.stockMovement.create({
@@ -140,7 +145,7 @@ export class InventoryRepository {
         },
       });
 
-      return { inventory: inv, movement };
+      return { inventory: updatedInventory, movement };
     });
   }
 
