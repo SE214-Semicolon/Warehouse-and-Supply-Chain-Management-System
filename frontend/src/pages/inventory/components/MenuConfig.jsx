@@ -1,0 +1,98 @@
+import {
+  Warehouse,
+  LocationOn,
+  Inventory as InventoryIcon,
+  LocalShipping,
+  Moving,
+} from "@mui/icons-material";
+import BreakfastDiningIcon from '@mui/icons-material/BreakfastDining';
+
+export const menuItems = [
+  {
+    id: "warehouses",
+    label: "Warehouses",
+    icon: <Warehouse />,
+    columns: [
+      { id: "stt", label: "STT" },
+      { id: "code", label: "Mã kho" },
+      { id: "name", label: "Tên kho" },
+      { id: "address", label: "Địa chỉ" },
+      { id: "quantity", label: "Số lượng location" },
+      { id: "createdAt", label: "Ngày cập nhật" },
+    ],
+  },
+  {
+    id: "locations",
+    label: "Locations",
+    icon: <LocationOn />,
+    columns: [
+      { id: "stt", label: "STT" },
+      { id: "code", label: "Mã location" },
+      { id: "name", label: "Tên" },
+      { id: "type", label: "Loại" },
+      { id: "capacity", label: "Sức chứa" },
+      { id: "warehouse", label: "Thuộc kho" },
+      { id: "createdAt", label: "Ngày cập nhật" },
+    ],
+  },
+  {
+    id: "products",
+    label: "Products",
+    icon: <BreakfastDiningIcon />,
+    columns: [
+      { id: "stt", label: "STT" },
+      { id: "sku", label: "SKU" },
+      { id: "name", label: "Tên sản phẩm" },
+      { id: "category", label: "Category" },
+      { id: "unit", label: "Đơn vị" },
+      { id: "barcode", label: "Barcode" },
+      { id: "createdAt", label: "Ngày cập nhật" },
+    ],
+  },
+  {
+    id: "batches",
+    label: "Batches",
+    icon: <LocalShipping />,
+    columns: [
+      { id: "stt", label: "STT" },
+      { id: "batchNo", label: "Batch No" },
+      { id: "product", label: "Sản phẩm" },
+      { id: "quantity", label: "Số lượng" },
+      { id: "mfgDate", label: "Ngày SX" },
+      { id: "expDate", label: "HSD" },
+      { id: "createdAt", label: "Ngày cập nhật" },
+    ],
+  },
+  {
+    id: "inventory",
+    label: "Inventory",
+    icon: <InventoryIcon />,
+    columns: [
+      { id: "stt", label: "STT" },
+      { id: "sku", label: "SKU" },
+      { id: "product", label: "Sản phẩm" },
+      { id: "batch", label: "Batch" },
+      { id: "warehouse", label: "Kho" },
+      { id: "location", label: "Location" },
+      { id: "available", label: "Available Qty" },
+      { id: "reserved", label: "Reserved Qty" },
+      { id: "createdAt", label: "Ngày cập nhật" },
+    ],
+  },
+  {
+    id: "movements",
+    label: "Stock Movements",
+    icon: <Moving />,
+    columns: [
+      { id: "stt", label: "STT" },
+      { id: "date", label: "Ngày giờ" },
+      { id: "type", label: "Loại" },
+      { id: "product", label: "Sản phẩm" },
+      { id: "batch", label: "Batch" },
+      { id: "from", label: "From Location" },
+      { id: "to", label: "To Location" },
+      { id: "qty", label: "Qty" },
+      { id: "reference", label: "Reference" },
+    ],
+  },
+];

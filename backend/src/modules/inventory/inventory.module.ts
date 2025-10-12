@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { InventoryService } from './inventory.service';
-import { InventoryController } from './inventory.controller';
-import { InventoryRepository } from './inventory.repository';
-import { DatabaseModule } from '../../database/database.module';
+import { InventoryController } from './controllers/inventory.controller';
+import { InventoryService } from './services/inventory.service';
+import { InventoryRepository } from './repositories/inventory.repository';
+import { PrismaModule } from 'src/common/prisma/prisma.module';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [PrismaModule],
   controllers: [InventoryController],
   providers: [InventoryService, InventoryRepository],
   exports: [InventoryService],
