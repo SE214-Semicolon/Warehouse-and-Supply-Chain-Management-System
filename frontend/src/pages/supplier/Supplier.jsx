@@ -14,11 +14,11 @@ export default function Supplier() {
   const [dialogMode, setDialogMode] = useState(null);
   const [selectedRow, setSelectedRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState(selectedRow || {});
+  // const [formData, setFormData] = useState(selectedRow || {});
 
-  const handleChange = (fieldId, value) => {
-    setFormData({ ...formData, [fieldId]: value });
-  };
+  // const handleChange = (fieldId, value) => {
+  //   setFormData({ ...formData, [fieldId]: value });
+  // };
 
   const handleAdd = () => {
     setDialogMode('add');
