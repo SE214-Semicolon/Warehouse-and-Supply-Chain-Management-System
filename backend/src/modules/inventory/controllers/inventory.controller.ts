@@ -8,6 +8,8 @@ import {
   Get,
   Query,
   Res,
+  Param,
+  Delete,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { InventoryService } from '../services/inventory.service';
@@ -19,6 +21,9 @@ import { ReserveInventoryDto } from '../dto/reserve-inventory.dto';
 import { ReleaseReservationDto } from '../dto/release-reservation.dto';
 import { QueryByLocationDto } from '../dto/query-by-location.dto';
 import { QueryByProductBatchDto } from '../dto/query-by-product-batch.dto';
+import { UpdateQuantityDto } from '../dto/update-quantity.dto';
+import { AlertQueryDto } from '../dto/alert-query.dto';
+import { StockLevelReportDto, MovementReportDto, ValuationReportDto } from '../dto/report-query.dto';
 import { JwtAuthGuard } from '../../../auth/jwt.guard';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
 import {
@@ -362,5 +367,187 @@ export class InventoryController {
   })
   async getByProductBatch(@Query() dto: QueryByProductBatchDto) {
     return this.inventoryService.getInventoryByProductBatch(dto);
+  }
+
+  @Post(':productBatchId/location/:locationId/update-quantity')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update inventory quantities directly' })
+  @ApiResponse({
+    status: 200,
+    description: 'Inventory quantity updated successfully',
+    schema: {
+      example: {
+        success: true,
+        inventory: {
+          id: 'inv-uuid',
+          availableQty: 100,
+          reservedQty: 0,
+        },
+        message: 'Inventory quantity updated successfully',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request (validation)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'ProductBatch or Location not found',
+    type: ErrorResponseDto,
+  })
+  @HttpCode(HttpStatus.CREATED)
+  async updateQuantity(
+    @Param('productBatchId') productBatchId: string,
+    @Param('locationId') locationId: string,
+    @Body() dto: UpdateQuantityDto,
+  ) {
+    return this.inventoryService.updateInventoryQuantity(productBatchId, locationId, dto);
+  }
+
+  @Delete(':productBatchId/location/:locationId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Soft delete inventory record' })
+  @ApiResponse({
+    status: 201,
+    description: 'Inventory soft deleted successfully',
+    schema: {
+      example: {
+        success: true,
+        inventory: {
+          id: 'inv-uuid',
+          availableQty: 0,
+          reservedQty: 0,
+        },
+        message: 'Inventory soft deleted successfully',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'ProductBatch or Location not found',
+    type: ErrorResponseDto,
+  })
+  @HttpCode(HttpStatus.OK)
+  async softDelete(
+    @Param('productBatchId') productBatchId: string,
+    @Param('locationId') locationId: string,
+  ) {
+    return this.inventoryService.softDeleteInventory(productBatchId, locationId);
+  }
+
+  @Get('alerts/low-stock')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get low stock alerts' })
+  @ApiResponse({
+    status: 200,
+    description: 'Low stock inventory list',
+    schema: {
+      example: {
+        success: true,
+        inventories: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+      },
+    },
+  })
+  async getLowStockAlerts(@Query() dto: AlertQueryDto) {
+    return this.inventoryService.getLowStockAlerts(dto);
+  }
+
+  @Get('alerts/expiry')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get expiry alerts' })
+  @ApiResponse({
+    status: 200,
+    description: 'Expiring inventory list',
+    schema: {
+      example: {
+        success: true,
+        inventories: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+      },
+    },
+  })
+  async getExpiryAlerts(@Query() dto: AlertQueryDto) {
+    return this.inventoryService.getExpiryAlerts(dto);
+  }
+
+  @Get('reports/stock-levels')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Generate stock level report' })
+  @ApiResponse({
+    status: 200,
+    description: 'Stock level report data',
+    schema: {
+      example: {
+        success: true,
+        groupedData: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+      },
+    },
+  })
+  async getStockLevelReport(@Query() dto: StockLevelReportDto) {
+    return this.inventoryService.getStockLevelReport(dto);
+  }
+
+  @Get('reports/movements')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Generate movement report' })
+  @ApiResponse({
+    status: 200,
+    description: 'Movement report data',
+    schema: {
+      example: {
+        success: true,
+        movements: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+      },
+    },
+  })
+  async getMovementReport(@Query() dto: MovementReportDto) {
+    return this.inventoryService.getMovementReport(dto);
+  }
+
+  @Get('reports/valuation')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Generate inventory valuation report' })
+  @ApiResponse({
+    status: 200,
+    description: 'Valuation report data',
+    schema: {
+      example: {
+        success: true,
+        valuationData: [],
+        grandTotal: 0,
+        method: 'AVERAGE',
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+      },
+    },
+  })
+  async getValuationReport(@Query() dto: ValuationReportDto) {
+    return this.inventoryService.getValuationReport(dto);
   }
 }

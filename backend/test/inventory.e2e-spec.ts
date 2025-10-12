@@ -27,7 +27,9 @@ describe('Inventory Module (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   beforeEach(async () => {
@@ -396,6 +398,546 @@ describe('Inventory Module (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .send(transferPayload)
         .expect(400);
+    });
+  });
+
+  describe('POST /inventory/receive', () => {
+    it('should receive inventory successfully', async () => {
+      const warehouse = await prisma.warehouse.create({
+        data: { code: 'WH005', name: 'Test Warehouse 5' },
+      });
+
+      const location = await prisma.location.create({
+        data: {
+          warehouseId: warehouse.id,
+          code: 'LOC005',
+          name: 'Test Location 5',
+        },
+      });
+
+      const product = await prisma.product.create({
+        data: {
+          sku: 'PROD005',
+          name: 'Test Product 5',
+          unit: 'pcs',
+        },
+      });
+
+      const productBatch = await prisma.productBatch.create({
+        data: {
+          productId: product.id,
+          batchNo: 'BATCH005',
+          quantity: 100,
+        },
+      });
+
+      const receivePayload = {
+        productBatchId: productBatch.id,
+        locationId: location.id,
+        quantity: 50,
+        idempotencyKey: 'receive-001',
+      };
+
+      const response = await request(app.getHttpServer())
+        .post('/inventory/receive')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(receivePayload)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.inventory.availableQty).toBe(50);
+      expect(response.body.movement.movementType).toBe('purchase_receipt');
+      expect(response.body.movement.quantity).toBe(50);
+    });
+  });
+
+  describe('POST /inventory/dispatch', () => {
+    it('should dispatch inventory successfully', async () => {
+      const warehouse = await prisma.warehouse.create({
+        data: { code: 'WH006', name: 'Test Warehouse 6' },
+      });
+
+      const location = await prisma.location.create({
+        data: {
+          warehouseId: warehouse.id,
+          code: 'LOC006',
+          name: 'Test Location 6',
+        },
+      });
+
+      const product = await prisma.product.create({
+        data: {
+          sku: 'PROD006',
+          name: 'Test Product 6',
+          unit: 'pcs',
+        },
+      });
+
+      const productBatch = await prisma.productBatch.create({
+        data: {
+          productId: product.id,
+          batchNo: 'BATCH006',
+          quantity: 100,
+        },
+      });
+
+      // Create initial inventory
+      await prisma.inventory.create({
+        data: {
+          productBatchId: productBatch.id,
+          locationId: location.id,
+          availableQty: 30,
+          reservedQty: 0,
+        },
+      });
+
+      const dispatchPayload = {
+        productBatchId: productBatch.id,
+        locationId: location.id,
+        quantity: 10,
+        idempotencyKey: 'dispatch-001',
+      };
+
+      const response = await request(app.getHttpServer())
+        .post('/inventory/dispatch')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(dispatchPayload)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.inventory.availableQty).toBe(20);
+      expect(response.body.movement.movementType).toBe('sale_issue');
+      expect(response.body.movement.quantity).toBe(10);
+    });
+  });
+
+  describe('POST /inventory/reserve', () => {
+    it('should reserve inventory successfully', async () => {
+      const warehouse = await prisma.warehouse.create({
+        data: { code: 'WH007', name: 'Test Warehouse 7' },
+      });
+
+      const location = await prisma.location.create({
+        data: {
+          warehouseId: warehouse.id,
+          code: 'LOC007',
+          name: 'Test Location 7',
+        },
+      });
+
+      const product = await prisma.product.create({
+        data: {
+          sku: 'PROD007',
+          name: 'Test Product 7',
+          unit: 'pcs',
+        },
+      });
+
+      const productBatch = await prisma.productBatch.create({
+        data: {
+          productId: product.id,
+          batchNo: 'BATCH007',
+          quantity: 100,
+        },
+      });
+
+      // Create initial inventory
+      await prisma.inventory.create({
+        data: {
+          productBatchId: productBatch.id,
+          locationId: location.id,
+          availableQty: 20,
+          reservedQty: 0,
+        },
+      });
+
+      const reservePayload = {
+        productBatchId: productBatch.id,
+        locationId: location.id,
+        quantity: 5,
+        orderId: 'order-001',
+        idempotencyKey: 'reserve-001',
+      };
+
+      const response = await request(app.getHttpServer())
+        .post('/inventory/reserve')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(reservePayload)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.inventory.availableQty).toBe(15);
+      expect(response.body.inventory.reservedQty).toBe(5);
+      expect(response.body.movement.movementType).toBe('reservation');
+      expect(response.body.movement.quantity).toBe(5);
+    });
+  });
+
+  describe('POST /inventory/release', () => {
+    it('should release reservation successfully', async () => {
+      const warehouse = await prisma.warehouse.create({
+        data: { code: 'WH008', name: 'Test Warehouse 8' },
+      });
+
+      const location = await prisma.location.create({
+        data: {
+          warehouseId: warehouse.id,
+          code: 'LOC008',
+          name: 'Test Location 8',
+        },
+      });
+
+      const product = await prisma.product.create({
+        data: {
+          sku: 'PROD008',
+          name: 'Test Product 8',
+          unit: 'pcs',
+        },
+      });
+
+      const productBatch = await prisma.productBatch.create({
+        data: {
+          productId: product.id,
+          batchNo: 'BATCH008',
+          quantity: 100,
+        },
+      });
+
+      // Create initial inventory with reserved stock
+      await prisma.inventory.create({
+        data: {
+          productBatchId: productBatch.id,
+          locationId: location.id,
+          availableQty: 10,
+          reservedQty: 5,
+        },
+      });
+
+      const releasePayload = {
+        productBatchId: productBatch.id,
+        locationId: location.id,
+        orderId: 'order-001',
+        quantity: 3,
+        idempotencyKey: 'release-001',
+      };
+
+      const response = await request(app.getHttpServer())
+        .post('/inventory/release')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(releasePayload)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.inventory.availableQty).toBe(13);
+      expect(response.body.inventory.reservedQty).toBe(2);
+      expect(response.body.movement.movementType).toBe('sale_issue');
+      expect(response.body.movement.quantity).toBe(3);
+    });
+  });
+
+  describe('PUT /inventory/:productBatchId/location/:locationId/update-quantity', () => {
+    it('should update inventory quantities successfully', async () => {
+      const warehouse = await prisma.warehouse.create({
+        data: { code: 'WH009', name: 'Test Warehouse 9' },
+      });
+
+      const location = await prisma.location.create({
+        data: {
+          warehouseId: warehouse.id,
+          code: 'LOC009',
+          name: 'Test Location 9',
+        },
+      });
+
+      const product = await prisma.product.create({
+        data: {
+          sku: 'PROD009',
+          name: 'Test Product 9',
+          unit: 'pcs',
+        },
+      });
+
+      const productBatch = await prisma.productBatch.create({
+        data: {
+          productId: product.id,
+          batchNo: 'BATCH009',
+          quantity: 100,
+        },
+      });
+
+      // Create initial inventory
+      await prisma.inventory.create({
+        data: {
+          productBatchId: productBatch.id,
+          locationId: location.id,
+          availableQty: 10,
+          reservedQty: 2,
+        },
+      });
+
+      const updatePayload = {
+        availableQty: 25,
+        reservedQty: 5,
+        reason: 'manual_count',
+        note: 'Updated after physical count',
+      };
+
+      const response = await request(app.getHttpServer())
+        .post(`/${productBatch.id}/location/${location.id}/update-quantity`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(updatePayload)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.inventory.availableQty).toBe(25);
+      expect(response.body.inventory.reservedQty).toBe(5);
+      expect(response.body.message).toBe('Inventory quantity updated successfully');
+    });
+  });
+
+  describe('DELETE /inventory/:productBatchId/location/:locationId', () => {
+    it('should soft delete inventory successfully', async () => {
+      const warehouse = await prisma.warehouse.create({
+        data: { code: 'WH010', name: 'Test Warehouse 10' },
+      });
+
+      const location = await prisma.location.create({
+        data: {
+          warehouseId: warehouse.id,
+          code: 'LOC010',
+          name: 'Test Location 10',
+        },
+      });
+
+      const product = await prisma.product.create({
+        data: {
+          sku: 'PROD010',
+          name: 'Test Product 10',
+          unit: 'pcs',
+        },
+      });
+
+      const productBatch = await prisma.productBatch.create({
+        data: {
+          productId: product.id,
+          batchNo: 'BATCH010',
+          quantity: 100,
+        },
+      });
+
+      // Create initial inventory
+      await prisma.inventory.create({
+        data: {
+          productBatchId: productBatch.id,
+          locationId: location.id,
+          availableQty: 15,
+          reservedQty: 3,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .delete(`/${productBatch.id}/location/${location.id}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.inventory.availableQty).toBe(0);
+      expect(response.body.inventory.reservedQty).toBe(0);
+      expect(response.body.message).toBe('Inventory soft deleted successfully');
+    });
+  });
+
+  describe('GET /inventory/alerts/low-stock', () => {
+    it('should return low stock alerts', async () => {
+      const warehouse = await prisma.warehouse.create({
+        data: { code: 'WH011', name: 'Test Warehouse 11' },
+      });
+
+      const location = await prisma.location.create({
+        data: {
+          warehouseId: warehouse.id,
+          code: 'LOC011',
+          name: 'Test Location 11',
+        },
+      });
+
+      const product = await prisma.product.create({
+        data: {
+          sku: 'PROD011',
+          name: 'Test Product 11',
+          unit: 'pcs',
+        },
+      });
+
+      const productBatch = await prisma.productBatch.create({
+        data: {
+          productId: product.id,
+          batchNo: 'BATCH011',
+          quantity: 100,
+        },
+      });
+
+      // Create low stock inventory
+      await prisma.inventory.create({
+        data: {
+          productBatchId: productBatch.id,
+          locationId: location.id,
+          availableQty: 5, // Below default threshold of 10
+          reservedQty: 0,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/inventory/alerts/low-stock?threshold=10')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.inventories).toBeDefined();
+      expect(response.body.total).toBeGreaterThan(0);
+    });
+  });
+
+  describe('GET /inventory/alerts/expiry', () => {
+    it('should return expiry alerts', async () => {
+      const warehouse = await prisma.warehouse.create({
+        data: { code: 'WH012', name: 'Test Warehouse 12' },
+      });
+
+      const location = await prisma.location.create({
+        data: {
+          warehouseId: warehouse.id,
+          code: 'LOC012',
+          name: 'Test Location 12',
+        },
+      });
+
+      const product = await prisma.product.create({
+        data: {
+          sku: 'PROD012',
+          name: 'Test Product 12',
+          unit: 'pcs',
+        },
+      });
+
+      const productBatch = await prisma.productBatch.create({
+        data: {
+          productId: product.id,
+          batchNo: 'BATCH012',
+          quantity: 100,
+          expiryDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
+        },
+      });
+
+      await prisma.inventory.create({
+        data: {
+          productBatchId: productBatch.id,
+          locationId: location.id,
+          availableQty: 10,
+          reservedQty: 0,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/inventory/alerts/expiry?threshold=30')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.inventories).toBeDefined();
+    });
+  });
+
+  describe('GET /inventory/reports/stock-levels', () => {
+    it('should return stock level report', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/inventory/reports/stock-levels')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.groupedData).toBeDefined();
+      expect(response.body.total).toBeDefined();
+    });
+  });
+
+  describe('GET /inventory/reports/movements', () => {
+    it('should return movement report', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/inventory/reports/movements')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.movements).toBeDefined();
+      expect(response.body.total).toBeDefined();
+    });
+  });
+
+  describe('GET /inventory/reports/valuation', () => {
+    it('should return valuation report', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/inventory/reports/valuation')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.valuationData).toBeDefined();
+      expect(response.body.grandTotal).toBeDefined();
+    });
+  });
+
+  describe('GET /inventory/location', () => {
+    it('should return inventory by location', async () => {
+      const warehouse = await prisma.warehouse.create({
+        data: { code: 'WH013', name: 'Test Warehouse 13' },
+      });
+
+      const location = await prisma.location.create({
+        data: {
+          warehouseId: warehouse.id,
+          code: 'LOC013',
+          name: 'Test Location 13',
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get(`/inventory/location?locationId=${location.id}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.inventories).toBeDefined();
+      expect(response.body.total).toBeDefined();
+    });
+  });
+
+  describe('GET /inventory/product-batch', () => {
+    it('should return inventory by product batch', async () => {
+      const product = await prisma.product.create({
+        data: {
+          sku: 'PROD014',
+          name: 'Test Product 14',
+          unit: 'pcs',
+        },
+      });
+
+      const productBatch = await prisma.productBatch.create({
+        data: {
+          productId: product.id,
+          batchNo: 'BATCH014',
+          quantity: 100,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get(`/inventory/product-batch?productBatchId=${productBatch.id}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.inventories).toBeDefined();
+      expect(response.body.total).toBeDefined();
     });
   });
 });

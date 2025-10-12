@@ -442,4 +442,200 @@ export class InventoryService {
       ...result,
     };
   }
+
+  async updateInventoryQuantity(
+    productBatchId: string,
+    locationId: string,
+    dto: any, // UpdateQuantityDto will be imported
+  ) {
+    // Basic existence validation
+    const batch = await this.inventoryRepo.findProductBatch(productBatchId);
+    if (!batch) {
+      throw new NotFoundException(`ProductBatch not found: ${productBatchId}`);
+    }
+
+    const location = await this.inventoryRepo.findLocation(locationId);
+    if (!location) {
+      throw new NotFoundException(`Location not found: ${locationId}`);
+    }
+
+    if (dto.updatedById) {
+      const user = await this.inventoryRepo.findUser(dto.updatedById);
+      if (!user) {
+        throw new NotFoundException(`User not found: ${dto.updatedById}`);
+      }
+    }
+
+    // Validate quantities
+    if (dto.availableQty < 0) {
+      throw new BadRequestException('Available quantity cannot be negative');
+    }
+
+    if (dto.reservedQty !== undefined && dto.reservedQty < 0) {
+      throw new BadRequestException('Reserved quantity cannot be negative');
+    }
+
+    const updatedInventory = await this.inventoryRepo.updateInventoryQuantities(
+      productBatchId,
+      locationId,
+      dto.availableQty,
+      dto.reservedQty,
+      dto.updatedById,
+    );
+
+    return {
+      success: true,
+      inventory: updatedInventory,
+      message: 'Inventory quantity updated successfully',
+    };
+  }
+
+  async softDeleteInventory(productBatchId: string, locationId: string) {
+    // Basic existence validation
+    const batch = await this.inventoryRepo.findProductBatch(productBatchId);
+    if (!batch) {
+      throw new NotFoundException(`ProductBatch not found: ${productBatchId}`);
+    }
+
+    const location = await this.inventoryRepo.findLocation(locationId);
+    if (!location) {
+      throw new NotFoundException(`Location not found: ${locationId}`);
+    }
+
+    const deletedInventory = await this.inventoryRepo.softDeleteInventory(productBatchId, locationId);
+
+    return {
+      success: true,
+      inventory: deletedInventory,
+      message: 'Inventory soft deleted successfully',
+    };
+  }
+
+  async getLowStockAlerts(dto: any) { // AlertQueryDto
+    // Validate pagination parameters
+    if (dto.page && dto.page < 1) {
+      throw new BadRequestException('Page must be greater than 0');
+    }
+
+    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+      throw new BadRequestException('Limit must be between 1 and 100');
+    }
+
+    const result = await this.inventoryRepo.findLowStockInventory(
+      dto.threshold,
+      dto.locationId,
+      dto.productId,
+      dto.page,
+      dto.limit,
+      dto.sortBy,
+      dto.sortOrder,
+    );
+
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  async getExpiryAlerts(dto: any) { // AlertQueryDto
+    // Validate pagination parameters
+    if (dto.page && dto.page < 1) {
+      throw new BadRequestException('Page must be greater than 0');
+    }
+
+    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+      throw new BadRequestException('Limit must be between 1 and 100');
+    }
+
+    const result = await this.inventoryRepo.findExpiringInventory(
+      dto.threshold || 30, // Default to 30 days
+      dto.locationId,
+      dto.productId,
+      dto.page,
+      dto.limit,
+      dto.sortBy,
+      dto.sortOrder,
+    );
+
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  async getStockLevelReport(dto: any) { // StockLevelReportDto
+    // Validate pagination parameters
+    if (dto.page && dto.page < 1) {
+      throw new BadRequestException('Page must be greater than 0');
+    }
+
+    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+      throw new BadRequestException('Limit must be between 1 and 100');
+    }
+
+    const result = await this.inventoryRepo.generateStockLevelReport(
+      dto.locationId,
+      dto.productId,
+      dto.groupBy,
+      dto.page,
+      dto.limit,
+    );
+
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  async getMovementReport(dto: any) { // MovementReportDto
+    // Validate pagination parameters
+    if (dto.page && dto.page < 1) {
+      throw new BadRequestException('Page must be greater than 0');
+    }
+
+    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+      throw new BadRequestException('Limit must be between 1 and 100');
+    }
+
+    const result = await this.inventoryRepo.generateMovementReport(
+      dto.startDate,
+      dto.endDate,
+      dto.locationId,
+      dto.productId,
+      dto.movementType,
+      dto.page,
+      dto.limit,
+      dto.sortBy,
+      dto.sortOrder,
+    );
+
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  async getValuationReport(dto: any) { // ValuationReportDto
+    // Validate pagination parameters
+    if (dto.page && dto.page < 1) {
+      throw new BadRequestException('Page must be greater than 0');
+    }
+
+    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+      throw new BadRequestException('Limit must be between 1 and 100');
+    }
+
+    const result = await this.inventoryRepo.generateValuationReport(
+      dto.locationId,
+      dto.productId,
+      dto.method,
+      dto.page,
+      dto.limit,
+    );
+
+    return {
+      success: true,
+      ...result,
+    };
+  }
 }
