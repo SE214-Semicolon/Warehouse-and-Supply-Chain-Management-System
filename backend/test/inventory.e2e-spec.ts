@@ -683,7 +683,7 @@ describe('Inventory Module (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post(`/${productBatch.id}/location/${location.id}/update-quantity`)
+        .post(`/${productBatch.id}/${location.id}/update-quantity`)
         .set('Authorization', `Bearer ${accessToken}`)
         .send(updatePayload)
         .expect(200);
@@ -736,9 +736,9 @@ describe('Inventory Module (e2e)', () => {
       });
 
       const response = await request(app.getHttpServer())
-        .delete(`/${productBatch.id}/location/${location.id}`)
+        .delete(`/${productBatch.id}/${location.id}`)
         .set('Authorization', `Bearer ${accessToken}`)
-        .expect(201);
+        .expect(200);
 
       expect(response.body.success).toBe(true);
       expect(response.body.inventory.availableQty).toBe(0);

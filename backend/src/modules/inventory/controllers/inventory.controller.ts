@@ -369,7 +369,7 @@ export class InventoryController {
     return this.inventoryService.getInventoryByProductBatch(dto);
   }
 
-  @Post(':productBatchId/location/:locationId/update-quantity')
+  @Post(':productBatchId/:locationId/update-quantity')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update inventory quantities directly' })
@@ -407,12 +407,12 @@ export class InventoryController {
     return this.inventoryService.updateInventoryQuantity(productBatchId, locationId, dto);
   }
 
-  @Delete(':productBatchId/location/:locationId')
+  @Delete(':productBatchId/:locationId')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Soft delete inventory record' })
   @ApiResponse({
-    status: 201,
+    status: 200,
     description: 'Inventory soft deleted successfully',
     schema: {
       example: {

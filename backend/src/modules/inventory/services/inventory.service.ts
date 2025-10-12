@@ -522,13 +522,13 @@ export class InventoryService {
     }
 
     const result = await this.inventoryRepo.findLowStockInventory(
-      dto.threshold,
+      dto.threshold || 10,
       dto.locationId,
       dto.productId,
-      dto.page,
-      dto.limit,
-      dto.sortBy,
-      dto.sortOrder,
+      dto.page || 1,
+      dto.limit || 20,
+      dto.sortBy || 'availableQty',
+      dto.sortOrder || 'asc',
     );
 
     return {
@@ -551,10 +551,10 @@ export class InventoryService {
       dto.threshold || 30, // Default to 30 days
       dto.locationId,
       dto.productId,
-      dto.page,
-      dto.limit,
-      dto.sortBy,
-      dto.sortOrder,
+      dto.page || 1,
+      dto.limit || 20,
+      dto.sortBy || 'productBatch',
+      dto.sortOrder || 'asc',
     );
 
     return {
@@ -576,9 +576,9 @@ export class InventoryService {
     const result = await this.inventoryRepo.generateStockLevelReport(
       dto.locationId,
       dto.productId,
-      dto.groupBy,
-      dto.page,
-      dto.limit,
+      dto.groupBy || 'location',
+      dto.page || 1,
+      dto.limit || 20,
     );
 
     return {
@@ -603,10 +603,10 @@ export class InventoryService {
       dto.locationId,
       dto.productId,
       dto.movementType,
-      dto.page,
-      dto.limit,
-      dto.sortBy,
-      dto.sortOrder,
+      dto.page || 1,
+      dto.limit || 20,
+      dto.sortBy || 'createdAt',
+      dto.sortOrder || 'desc',
     );
 
     return {
@@ -628,9 +628,9 @@ export class InventoryService {
     const result = await this.inventoryRepo.generateValuationReport(
       dto.locationId,
       dto.productId,
-      dto.method,
-      dto.page,
-      dto.limit,
+      dto.method || 'AVERAGE',
+      dto.page || 1,
+      dto.limit || 20,
     );
 
     return {
