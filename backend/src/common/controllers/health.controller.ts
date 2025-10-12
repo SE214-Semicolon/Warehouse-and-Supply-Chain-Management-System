@@ -18,7 +18,7 @@ export class HealthController {
       },
     },
   })
-  async healthCheck() {
+  healthCheck() {
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
@@ -41,7 +41,7 @@ export class HealthController {
       },
     },
   })
-  async readinessCheck() {
+  readinessCheck() {
     // In a real implementation, you would check database connectivity, cache, etc.
     return {
       status: 'ready',
@@ -63,7 +63,7 @@ export class HealthController {
       },
     },
   })
-  async livenessCheck() {
+  livenessCheck() {
     return {
       status: 'alive',
       timestamp: new Date().toISOString(),

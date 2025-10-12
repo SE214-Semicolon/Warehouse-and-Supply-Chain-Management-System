@@ -480,7 +480,6 @@ export class InventoryService {
       locationId,
       dto.availableQty,
       dto.reservedQty,
-      dto.updatedById,
     );
 
     return {

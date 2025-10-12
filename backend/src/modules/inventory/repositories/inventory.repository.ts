@@ -1,6 +1,35 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
-import { StockMovementType } from '@prisma/client';
+import { StockMovementType, Prisma } from '@prisma/client';
+
+// Type definitions for inventory operations
+type InventoryWithRelations = Prisma.InventoryGetPayload<{
+  include: {
+    productBatch: {
+      include: {
+        product: {
+          include: {
+            category: true;
+          };
+        };
+      };
+    };
+    location: true;
+  };
+}>;
+
+type GroupedInventoryData = {
+  groupName: string;
+  totalAvailableQty: number;
+  totalReservedQty: number;
+  totalValue: number;
+  items: InventoryWithRelations[];
+};
+
+type ValuationData = InventoryWithRelations & {
+  unitValue: number;
+  totalValue: number;
+};
 
 @Injectable()
 export class InventoryRepository {
@@ -576,7 +605,6 @@ export class InventoryRepository {
     locationId: string,
     availableQty: number,
     reservedQty?: number,
-    updatedById?: string,
   ) {
     return this.prisma.inventory.update({
       where: {
@@ -620,7 +648,7 @@ export class InventoryRepository {
   ) {
     const skip = (page - 1) * limit;
 
-    const whereClause: any = {
+    const whereClause: Prisma.InventoryWhereInput = {
       availableQty: { lt: threshold },
     };
 
@@ -679,24 +707,23 @@ export class InventoryRepository {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + daysAhead);
 
-    const whereClause: any = {
-      productBatch: {
-        expiryDate: {
-          lte: futureDate,
-          gte: new Date(),
-        },
+    const productBatchWhere: Prisma.ProductBatchWhereInput = {
+      expiryDate: {
+        lte: futureDate,
+        gte: new Date(),
       },
+    };
+
+    if (productId) {
+      productBatchWhere.productId = productId;
+    }
+
+    const whereClause: Prisma.InventoryWhereInput = {
+      productBatch: productBatchWhere,
     };
 
     if (locationId) {
       whereClause.locationId = locationId;
-    }
-
-    if (productId) {
-      whereClause.productBatch = {
-        ...whereClause.productBatch,
-        productId,
-      };
     }
 
     const [inventories, total] = await Promise.all([
@@ -740,50 +767,23 @@ export class InventoryRepository {
   ) {
     const skip = (page - 1) * limit;
 
-    let groupByField: string;
-    let includeClause: any = {};
+    const includeClause: Prisma.InventoryInclude = {
+      productBatch: {
+        include: {
+          product:
+            groupBy === 'category'
+              ? {
+                  include: {
+                    category: true,
+                  },
+                }
+              : true,
+        },
+      },
+      location: true,
+    };
 
-    switch (groupBy) {
-      case 'category':
-        groupByField = 'productBatch.product.category.name';
-        includeClause = {
-          productBatch: {
-            include: {
-              product: {
-                include: {
-                  category: true,
-                },
-              },
-            },
-          },
-          location: true,
-        };
-        break;
-      case 'location':
-        groupByField = 'location.name';
-        includeClause = {
-          productBatch: {
-            include: {
-              product: true,
-            },
-          },
-          location: true,
-        };
-        break;
-      case 'product':
-        groupByField = 'productBatch.product.name';
-        includeClause = {
-          productBatch: {
-            include: {
-              product: true,
-            },
-          },
-          location: true,
-        };
-        break;
-    }
-
-    const whereClause: any = {};
+    const whereClause: Prisma.InventoryWhereInput = {};
     if (locationId) whereClause.locationId = locationId;
     if (productId) whereClause.productBatch = { productId };
 
@@ -800,7 +800,7 @@ export class InventoryRepository {
     ]);
 
     // Group and aggregate results
-    const groupedData = this.groupInventoryData(inventories, groupBy);
+    const groupedData = this.groupInventoryData(inventories as InventoryWithRelations[], groupBy);
 
     return {
       groupedData,
@@ -827,7 +827,7 @@ export class InventoryRepository {
   ) {
     const skip = (page - 1) * limit;
 
-    const whereClause: any = {};
+    const whereClause: Prisma.StockMovementWhereInput = {};
 
     if (startDate || endDate) {
       whereClause.createdAt = {};
@@ -844,7 +844,7 @@ export class InventoryRepository {
     }
 
     if (movementType) {
-      whereClause.movementType = movementType;
+      whereClause.movementType = movementType as StockMovementType;
     }
 
     const [movements, total] = await Promise.all([
@@ -891,7 +891,7 @@ export class InventoryRepository {
     // This is a simplified implementation
     // In a real scenario, you'd need purchase prices and more complex logic
 
-    const whereClause: any = {};
+    const whereClause: Prisma.InventoryWhereInput = {};
     if (locationId) whereClause.locationId = locationId;
     if (productId) whereClause.productBatch = { productId };
 
@@ -915,8 +915,8 @@ export class InventoryRepository {
     ]);
 
     // Calculate valuation (simplified - using quantity as value for demo)
-    const valuationData = inventories.map((inv) => {
-      const params = inv.productBatch.product.parameters as any;
+    const valuationData: ValuationData[] = inventories.map((inv: InventoryWithRelations) => {
+      const params = inv.productBatch.product.parameters as { unitCost?: number } | null;
       const unitCost = params?.unitCost || 1;
 
       return {
@@ -926,7 +926,10 @@ export class InventoryRepository {
       };
     });
 
-    const grandTotal = valuationData.reduce((sum, item) => sum + item.totalValue, 0);
+    const grandTotal = valuationData.reduce(
+      (sum: number, item: ValuationData) => sum + item.totalValue,
+      0,
+    );
 
     return {
       valuationData,
@@ -942,8 +945,13 @@ export class InventoryRepository {
   /**
    * Helper method to group inventory data
    */
-  private groupInventoryData(inventories: any[], groupBy: string) {
-    const grouped = inventories.reduce((acc, inv) => {
+  private groupInventoryData(
+    inventories: InventoryWithRelations[],
+    groupBy: string,
+  ): GroupedInventoryData[] {
+    const grouped: Record<string, GroupedInventoryData> = {};
+
+    for (const inv of inventories) {
       let key: string;
 
       switch (groupBy) {
@@ -960,8 +968,8 @@ export class InventoryRepository {
           key = 'Other';
       }
 
-      if (!acc[key]) {
-        acc[key] = {
+      if (!grouped[key]) {
+        grouped[key] = {
           groupName: key,
           totalAvailableQty: 0,
           totalReservedQty: 0,
@@ -970,12 +978,10 @@ export class InventoryRepository {
         };
       }
 
-      acc[key].totalAvailableQty += inv.availableQty;
-      acc[key].totalReservedQty += inv.reservedQty;
-      acc[key].items.push(inv);
-
-      return acc;
-    }, {});
+      grouped[key].totalAvailableQty += inv.availableQty || 0;
+      grouped[key].totalReservedQty += inv.reservedQty || 0;
+      grouped[key].items.push(inv);
+    }
 
     return Object.values(grouped);
   }
