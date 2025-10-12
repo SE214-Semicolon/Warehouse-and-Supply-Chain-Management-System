@@ -1,4 +1,4 @@
-import { ExecutionContext, ForbiddenException, ArgumentsHost } from '@nestjs/common';
+import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RolesGuard } from './roles.guard';
 import { UserRole } from '@prisma/client';
@@ -13,25 +13,34 @@ describe('RolesGuard', () => {
     class Dummy {}
 
     const httpHost = {
-      getRequest: <T = unknown>() => request as unknown as T,
-      getResponse: <T = unknown>() => ({}) as T,
-      getNext: <T = unknown>() => ({}) as T,
+      getRequest: () => request,
+      getResponse: () => ({}),
+      getNext: () => ({}),
     };
 
     const ctx: ExecutionContext = {
-      switchToHttp: () => httpHost as unknown as ArgumentsHost,
+      switchToHttp: () => httpHost as unknown as ReturnType<ExecutionContext['switchToHttp']>,
       getHandler: () => handler,
-      getClass: () => Dummy as unknown as any,
-      getArgs: () => [] as any,
-      getArgByIndex: () => undefined as any,
-      switchToRpc: () => {
-        throw new Error('switchToRpc not used');
-      },
-      switchToWs: () => {
-        throw new Error('switchToWs not used');
-      },
-      getType: () => 'http' as any,
-    } as unknown as ExecutionContext;
+      getClass: () => Dummy as unknown as ReturnType<ExecutionContext['getClass']>,
+      getArgs: (() => {
+        throw new Error('getArgs not used');
+      }) as unknown as ExecutionContext['getArgs'],
+      getArgByIndex: (() => {
+        throw new Error('getArgByIndex not used');
+      }) as unknown as ExecutionContext['getArgByIndex'],
+      switchToRpc: () =>
+        ({
+          getContext: () => ({}),
+          getData: () => ({}),
+        }) as unknown as ReturnType<ExecutionContext['switchToRpc']>,
+      switchToWs: () =>
+        ({
+          getClient: () => ({}),
+          getData: () => ({}),
+          getPattern: () => ({}),
+        }) as unknown as ReturnType<ExecutionContext['switchToWs']>,
+      getType: () => 'http' as unknown as ReturnType<ExecutionContext['getType']>,
+    };
 
     return ctx;
   };
