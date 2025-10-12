@@ -23,7 +23,11 @@ import { QueryByLocationDto } from '../dto/query-by-location.dto';
 import { QueryByProductBatchDto } from '../dto/query-by-product-batch.dto';
 import { UpdateQuantityDto } from '../dto/update-quantity.dto';
 import { AlertQueryDto } from '../dto/alert-query.dto';
-import { StockLevelReportDto, MovementReportDto, ValuationReportDto } from '../dto/report-query.dto';
+import {
+  StockLevelReportDto,
+  MovementReportDto,
+  ValuationReportDto,
+} from '../dto/report-query.dto';
 import { JwtAuthGuard } from '../../../auth/jwt.guard';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
 import {

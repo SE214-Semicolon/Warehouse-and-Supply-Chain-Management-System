@@ -15,12 +15,20 @@ export class DispatchInventoryDto {
   @Min(1)
   quantity!: number;
 
-  @ApiProperty({ example: 'user-uuid', description: 'User who created the dispatch', required: false })
+  @ApiProperty({
+    example: 'user-uuid',
+    description: 'User who created the dispatch',
+    required: false,
+  })
   @IsOptional()
   @IsUUID()
   createdById?: string;
 
-  @ApiProperty({ example: 'dispatch-123', description: 'Idempotency key for request deduplication', required: false })
+  @ApiProperty({
+    example: 'dispatch-123',
+    description: 'Idempotency key for request deduplication',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   idempotencyKey?: string;

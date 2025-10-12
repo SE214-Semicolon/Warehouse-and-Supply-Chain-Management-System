@@ -146,7 +146,7 @@ describe('Inventory Module (e2e)', () => {
 
       // Check if movement exists in database before second request
       const existingMovement = await prisma.stockMovement.findUnique({
-        where: { idempotencyKey: adjustPayload.idempotencyKey }
+        where: { idempotencyKey: adjustPayload.idempotencyKey },
       });
       console.log('Movement in DB before second request:', existingMovement?.id);
 

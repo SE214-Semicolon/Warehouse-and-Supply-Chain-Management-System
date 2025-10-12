@@ -836,10 +836,7 @@ export class InventoryRepository {
     }
 
     if (locationId) {
-      whereClause.OR = [
-        { fromLocationId: locationId },
-        { toLocationId: locationId },
-      ];
+      whereClause.OR = [{ fromLocationId: locationId }, { toLocationId: locationId }];
     }
 
     if (productId) {
@@ -918,7 +915,7 @@ export class InventoryRepository {
     ]);
 
     // Calculate valuation (simplified - using quantity as value for demo)
-    const valuationData = inventories.map(inv => {
+    const valuationData = inventories.map((inv) => {
       const params = inv.productBatch.product.parameters as any;
       const unitCost = params?.unitCost || 1;
 

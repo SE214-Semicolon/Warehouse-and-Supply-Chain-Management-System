@@ -502,7 +502,10 @@ export class InventoryService {
       throw new NotFoundException(`Location not found: ${locationId}`);
     }
 
-    const deletedInventory = await this.inventoryRepo.softDeleteInventory(productBatchId, locationId);
+    const deletedInventory = await this.inventoryRepo.softDeleteInventory(
+      productBatchId,
+      locationId,
+    );
 
     return {
       success: true,
@@ -511,7 +514,8 @@ export class InventoryService {
     };
   }
 
-  async getLowStockAlerts(dto: any) { // AlertQueryDto
+  async getLowStockAlerts(dto: any) {
+    // AlertQueryDto
     // Validate pagination parameters
     if (dto.page && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
@@ -537,7 +541,8 @@ export class InventoryService {
     };
   }
 
-  async getExpiryAlerts(dto: any) { // AlertQueryDto
+  async getExpiryAlerts(dto: any) {
+    // AlertQueryDto
     // Validate pagination parameters
     if (dto.page && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
@@ -563,7 +568,8 @@ export class InventoryService {
     };
   }
 
-  async getStockLevelReport(dto: any) { // StockLevelReportDto
+  async getStockLevelReport(dto: any) {
+    // StockLevelReportDto
     // Validate pagination parameters
     if (dto.page && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
@@ -587,7 +593,8 @@ export class InventoryService {
     };
   }
 
-  async getMovementReport(dto: any) { // MovementReportDto
+  async getMovementReport(dto: any) {
+    // MovementReportDto
     // Validate pagination parameters
     if (dto.page && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
@@ -615,7 +622,8 @@ export class InventoryService {
     };
   }
 
-  async getValuationReport(dto: any) { // ValuationReportDto
+  async getValuationReport(dto: any) {
+    // ValuationReportDto
     // Validate pagination parameters
     if (dto.page && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');

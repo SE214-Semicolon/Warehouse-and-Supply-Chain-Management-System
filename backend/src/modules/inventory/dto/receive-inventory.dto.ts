@@ -15,12 +15,20 @@ export class ReceiveInventoryDto {
   @Min(1)
   quantity!: number;
 
-  @ApiProperty({ example: 'user-uuid', description: 'User who created the receipt', required: false })
+  @ApiProperty({
+    example: 'user-uuid',
+    description: 'User who created the receipt',
+    required: false,
+  })
   @IsOptional()
   @IsUUID()
   createdById?: string;
 
-  @ApiProperty({ example: 'receive-123', description: 'Idempotency key for request deduplication', required: false })
+  @ApiProperty({
+    example: 'receive-123',
+    description: 'Idempotency key for request deduplication',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   idempotencyKey?: string;

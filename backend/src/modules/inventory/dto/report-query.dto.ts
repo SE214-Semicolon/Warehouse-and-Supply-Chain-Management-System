@@ -46,21 +46,33 @@ export class ReportQueryDto {
 }
 
 export class StockLevelReportDto extends ReportQueryDto {
-  @ApiProperty({ example: 'category', description: 'Group by field: category, location, product', required: false })
+  @ApiProperty({
+    example: 'category',
+    description: 'Group by field: category, location, product',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   groupBy?: 'category' | 'location' | 'product' = 'location';
 }
 
 export class MovementReportDto extends ReportQueryDto {
-  @ApiProperty({ example: 'purchase_receipt', description: 'Filter by movement type', required: false })
+  @ApiProperty({
+    example: 'purchase_receipt',
+    description: 'Filter by movement type',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   movementType?: string;
 }
 
 export class ValuationReportDto extends ReportQueryDto {
-  @ApiProperty({ example: 'FIFO', description: 'Valuation method: FIFO, LIFO, AVERAGE', required: false })
+  @ApiProperty({
+    example: 'FIFO',
+    description: 'Valuation method: FIFO, LIFO, AVERAGE',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   method?: 'FIFO' | 'LIFO' | 'AVERAGE' = 'AVERAGE';
