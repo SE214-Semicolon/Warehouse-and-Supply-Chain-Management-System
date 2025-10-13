@@ -9,6 +9,12 @@ import { ReserveInventoryDto } from '../dto/reserve-inventory.dto';
 import { ReleaseReservationDto } from '../dto/release-reservation.dto';
 import { QueryByLocationDto } from '../dto/query-by-location.dto';
 import { QueryByProductBatchDto } from '../dto/query-by-product-batch.dto';
+import { AlertQueryDto } from '../dto/alert-query.dto';
+import {
+  StockLevelReportDto,
+  MovementReportDto,
+  ValuationReportDto,
+} from '../dto/report-query.dto';
 
 @Injectable()
 export class InventoryService {
@@ -446,7 +452,7 @@ export class InventoryService {
   async updateInventoryQuantity(
     productBatchId: string,
     locationId: string,
-    dto: any, // UpdateQuantityDto will be imported
+    dto: { availableQty: number; reservedQty?: number; updatedById?: string },
   ) {
     // Basic existence validation
     const batch = await this.inventoryRepo.findProductBatch(productBatchId);
@@ -513,8 +519,7 @@ export class InventoryService {
     };
   }
 
-  async getLowStockAlerts(dto: any) {
-    // AlertQueryDto
+  async getLowStockAlerts(dto: AlertQueryDto) {
     // Validate pagination parameters
     if (dto.page && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
@@ -540,8 +545,7 @@ export class InventoryService {
     };
   }
 
-  async getExpiryAlerts(dto: any) {
-    // AlertQueryDto
+  async getExpiryAlerts(dto: AlertQueryDto) {
     // Validate pagination parameters
     if (dto.page && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
@@ -567,8 +571,7 @@ export class InventoryService {
     };
   }
 
-  async getStockLevelReport(dto: any) {
-    // StockLevelReportDto
+  async getStockLevelReport(dto: StockLevelReportDto) {
     // Validate pagination parameters
     if (dto.page && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
@@ -592,8 +595,7 @@ export class InventoryService {
     };
   }
 
-  async getMovementReport(dto: any) {
-    // MovementReportDto
+  async getMovementReport(dto: MovementReportDto) {
     // Validate pagination parameters
     if (dto.page && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
@@ -621,8 +623,7 @@ export class InventoryService {
     };
   }
 
-  async getValuationReport(dto: any) {
-    // ValuationReportDto
+  async getValuationReport(dto: ValuationReportDto) {
     // Validate pagination parameters
     if (dto.page && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');

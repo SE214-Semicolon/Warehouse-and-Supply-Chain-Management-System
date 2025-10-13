@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsInt, IsOptional, IsPositive, IsString, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class ReportQueryDto {
   @ApiProperty({ example: 'loc-uuid', description: 'Filter by location', required: false })
@@ -24,12 +25,14 @@ export class ReportQueryDto {
 
   @ApiProperty({ example: 1, description: 'Page number', required: false })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @IsPositive()
   page?: number = 1;
 
   @ApiProperty({ example: 20, description: 'Items per page', required: false })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @IsPositive()
   limit?: number = 20;

@@ -1,9 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsInt, IsOptional, IsPositive, IsString, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class AlertQueryDto {
   @ApiProperty({ example: 10, description: 'Low stock threshold', required: false })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @IsPositive()
   threshold?: number = 10;
@@ -20,12 +22,14 @@ export class AlertQueryDto {
 
   @ApiProperty({ example: 1, description: 'Page number', required: false })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @IsPositive()
   page?: number = 1;
 
   @ApiProperty({ example: 20, description: 'Items per page', required: false })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @IsPositive()
   limit?: number = 20;

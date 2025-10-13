@@ -533,31 +533,67 @@ export class InventoryRepository {
     sortBy: string = 'productBatchId',
     sortOrder: 'asc' | 'desc' = 'asc',
   ) {
+    // Input validation
+    if (page < 1) throw new Error('Page must be greater than 0');
+    if (limit < 1 || limit > 1000) throw new Error('Limit must be between 1 and 1000');
+
     const skip = (page - 1) * limit;
 
-    const [inventories, total] = await Promise.all([
-      this.prisma.inventory.findMany({
-        where: { locationId },
-        skip,
-        take: limit,
-        orderBy: { [sortBy]: sortOrder },
-        include: {
-          productBatch: true,
-          location: true,
-        },
-      }),
-      this.prisma.inventory.count({
-        where: { locationId },
-      }),
-    ]);
+    // Handle sorting by related fields
+    let orderBy: Prisma.InventoryOrderByWithRelationInput;
+    switch (sortBy) {
+      case 'productName':
+        orderBy = { productBatch: { product: { name: sortOrder } } };
+        break;
+      case 'productBatch':
+        orderBy = { productBatch: { batchNo: sortOrder } };
+        break;
+      case 'location':
+        orderBy = { location: { name: sortOrder } };
+        break;
+      default:
+        // Default sorting by inventory table fields
+        orderBy = { [sortBy]: sortOrder } as Prisma.InventoryOrderByWithRelationInput;
+    }
 
-    return {
-      inventories,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+    // Define include clause as a constant for reusability and clarity
+    const includeClause: Prisma.InventoryInclude = {
+      productBatch: {
+        include: {
+          product: true, // Consider using select if only specific fields are needed
+        },
+      },
+      location: true,
     };
+
+    try {
+      const [inventories, total] = await Promise.all([
+        this.prisma.inventory.findMany({
+          where: { locationId },
+          skip,
+          take: limit,
+          orderBy,
+          include: includeClause,
+        }),
+        this.prisma.inventory.count({
+          where: { locationId },
+        }),
+      ]);
+
+      const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
+
+      return {
+        inventories,
+        total,
+        page,
+        limit,
+        totalPages,
+      };
+    } catch (error) {
+      // Log error and throw a domain-specific exception
+      console.error('Error fetching inventory by location:', error);
+      throw new Error('Failed to retrieve inventory data');
+    }
   }
 
   /**
@@ -572,14 +608,35 @@ export class InventoryRepository {
   ) {
     const skip = (page - 1) * limit;
 
+    // Handle sorting by related fields
+    let orderBy: Prisma.InventoryOrderByWithRelationInput;
+    switch (sortBy) {
+      case 'location':
+        orderBy = { location: { name: sortOrder } };
+        break;
+      case 'productBatch':
+        orderBy = { productBatch: { batchNo: sortOrder } };
+        break;
+      case 'productName':
+        orderBy = { productBatch: { product: { name: sortOrder } } };
+        break;
+      default:
+        // Default sorting by inventory table fields
+        orderBy = { [sortBy]: sortOrder } as Prisma.InventoryOrderByWithRelationInput;
+    }
+
     const [inventories, total] = await Promise.all([
       this.prisma.inventory.findMany({
         where: { productBatchId },
         skip,
         take: limit,
-        orderBy: { [sortBy]: sortOrder },
+        orderBy,
         include: {
-          productBatch: true,
+          productBatch: {
+            include: {
+              product: true,
+            },
+          },
           location: true,
         },
       }),

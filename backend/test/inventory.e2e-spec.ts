@@ -75,7 +75,7 @@ describe('Inventory Module (e2e)', () => {
     it('should adjust inventory successfully', async () => {
       // Debug logging for type validation
       console.log('App type:', typeof app);
-      console.log('App constructor:', app.constructor.name);
+      console.log('App constructor:', (app as any).constructor.name);
       console.log('HttpServer type:', typeof app.getHttpServer());
       console.log('HttpServer constructor:', app.getHttpServer().constructor?.name || 'unknown');
 
