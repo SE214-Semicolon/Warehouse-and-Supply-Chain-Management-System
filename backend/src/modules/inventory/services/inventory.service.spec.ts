@@ -233,7 +233,7 @@ describe('InventoryService', () => {
 
       expect(result.success).toBe(true);
       expect(result.idempotent).toBe(true);
-      expect(result.movement.id).toBe('existing-transfer');
+      expect((result as any).movement.id).toBe('existing-transfer');
       expect(repo.transferInventoryTx).not.toHaveBeenCalled();
     });
 
@@ -251,8 +251,8 @@ describe('InventoryService', () => {
       expect(result.success).toBe(true);
       expect(result.fromInventory!.id).toBe('from-inv');
       expect(result.toInventory!.id).toBe('to-inv');
-      expect(result.transferOutMovement.id).toBe('out-move');
-      expect(result.transferInMovement.id).toBe('in-move');
+      expect((result as any).transferOutMovement.id).toBe('out-move');
+      expect((result as any).transferInMovement.id).toBe('in-move');
       expect(repo.transferInventoryTx).toHaveBeenCalledWith(
         'pb1',
         'loc1',
@@ -275,7 +275,7 @@ describe('InventoryService', () => {
 
       expect(result.success).toBe(true);
       expect(result.idempotent).toBe(true);
-      expect(result.movement.id).toBe('concurrent-transfer');
+      expect((result as any).movement.id).toBe('concurrent-transfer');
     });
   });
 });
