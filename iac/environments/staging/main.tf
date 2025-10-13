@@ -118,8 +118,8 @@ resource "azurerm_monitor_metric_alert" "app_service_cpu" {
 
   criteria {
     metric_namespace = "Microsoft.Web/sites"
-    metric_name      = "CpuPercentage"
-    aggregation      = "Average"
+    metric_name      = "CpuTime"
+    aggregation      = "Total"
     operator         = "GreaterThan"
     threshold        = 90  # Higher threshold for staging
   }

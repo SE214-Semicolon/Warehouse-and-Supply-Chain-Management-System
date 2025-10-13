@@ -29,11 +29,11 @@ on:
         - apply
         - destroy
 
-env:
-  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+# env:
+#   ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+#   ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+#   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+#   ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
 
 jobs:
   terraform-staging:
@@ -43,6 +43,12 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     runs-on: ubuntu-latest
     environment: staging
+    env:
+      TF_VAR_external_postgres_url: ${{ secrets.EXTERNAL_POSTGRES_URL }}
+      TF_VAR_external_mongodb_url: ${{ secrets.EXTERNAL_MONGODB_URL }}
+      TF_VAR_jwt_access_secret: ${{ secrets.JWT_ACCESS_SECRET_STAGING }}
+      TF_VAR_jwt_refresh_secret: ${{ secrets.JWT_REFRESH_SECRET_STAGING }}
+      TF_VAR_alert_email_1: ${{ secrets.ALERT_EMAIL_1 }}
     defaults:
       run:
         working-directory: ./iac/environments/staging
@@ -51,52 +57,15 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # - name: Login to Azure
-    #   uses: azure/login@v1
-    #   with:
-    #     creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
         terraform_version: ~1.5
-
-    - name: Configure Terraform Backend
-      run: |
-        cat > backend.tf << EOF
-        terraform {
-          backend "azurerm" {
-            resource_group_name  = "${{ secrets.TERRAFORM_STATE_RG }}"
-            storage_account_name = "${{ secrets.TERRAFORM_STATE_STORAGE }}"
-            container_name       = "tfstate"
-            key                  = "staging/terraform.tfstate"
-          }
-        }
-        EOF
-
-    - name: Create terraform.tfvars
-      run: |
-        cat > terraform.tfvars << EOF
-        project_name = "warehouse-mgmt"
-        environment  = "staging"
-        location     = "Southeast Asia"
-        
-        # External Database URLs (Neon PostgreSQL + MongoDB Atlas)
-        external_postgres_url = "${{ secrets.EXTERNAL_POSTGRES_URL }}"
-        external_mongodb_url  = "${{ secrets.EXTERNAL_MONGODB_URL }}"
-        
-        # JWT Configuration
-        jwt_access_secret  = "${{ secrets.JWT_ACCESS_SECRET_STAGING }}"
-        jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET_STAGING }}"
-        
-        # CORS Origin
-        cors_origin = "${{ secrets.CORS_ORIGIN_STAGING }}"
-        
-        # Monitoring
-        alert_email_addresses = [
-          "${{ secrets.ALERT_EMAIL_1 }}"
-        ]
-        EOF
 
     - name: Terraform Init
       run: terraform init
@@ -130,6 +99,13 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
     runs-on: ubuntu-latest
     environment: production
+    env:
+      TF_VAR_external_postgres_url: ${{ secrets.EXTERNAL_POSTGRES_URL_PROD }}
+      TF_VAR_external_mongodb_url: ${{ secrets.EXTERNAL_MONGODB_URL_PROD }}
+      TF_VAR_jwt_access_secret: ${{ secrets.JWT_ACCESS_SECRET_PRODUCTION }}
+      TF_VAR_jwt_refresh_secret: ${{ secrets.JWT_REFRESH_SECRET_PRODUCTION }}
+      TF_VAR_cors_origin: ${{ secrets.CORS_ORIGIN_PRODUCTION }}
+      TF_VAR_alert_email_1: ${{ secrets.ALERT_EMAIL_1 }}
     defaults:
       run:
         working-directory: ./iac/environments/production
@@ -138,52 +114,15 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # - name: Login to Azure
-    #   uses: azure/login@v1
-    #   with: 
-    #     creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Login to Azure
+      uses: azure/login@v1
+      with: 
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
         terraform_version: ~1.5
-
-    - name: Configure Terraform Backend
-      run: |
-        cat > backend.tf << EOF
-        terraform {
-          backend "azurerm" {
-            resource_group_name  = "${{ secrets.TERRAFORM_STATE_RG }}"
-            storage_account_name = "${{ secrets.TERRAFORM_STATE_STORAGE }}"
-            container_name       = "tfstate"
-            key                  = "production/terraform.tfstate"
-          }
-        }
-        EOF
-
-    - name: Create terraform.tfvars
-      run: |
-        cat > terraform.tfvars << EOF
-        project_name = "warehouse-mgmt"
-        environment  = "production"
-        location     = "Southeast Asia"
-        
-        # Azure Database Configuration for Production
-        postgres_admin_username = "${{ secrets.POSTGRES_ADMIN_USERNAME }}"
-        postgres_admin_password = "${{ secrets.POSTGRES_ADMIN_PASSWORD_PRODUCTION }}"
-        
-        # JWT Configuration
-        jwt_access_secret  = "${{ secrets.JWT_ACCESS_SECRET_PRODUCTION }}"
-        jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET_PRODUCTION }}"
-        
-        # CORS Origin (production frontend URL)
-        cors_origin = "https://warehouse-mgmt-production-frontend.azurewebsites.net"
-        
-        # Monitoring
-        alert_email_addresses = [
-          "${{ secrets.ALERT_EMAIL_1 }}"
-        ]
-        EOF
 
     - name: Terraform Init
       run: terraform init

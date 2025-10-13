@@ -192,31 +192,17 @@ resource "azurerm_monitor_metric_alert" "cosmos_ru_consumption" {
 
 # Application Insights Smart Detection Rules
 resource "azurerm_application_insights_smart_detection_rule" "failure_anomalies" {
-  name                    = "Failure Anomalies"
+  name                    = "Abnormal rise in exception volume"
   application_insights_id = azurerm_application_insights.main.id
   enabled                 = true
-  send_emails_to_subscription_owners = false
-  
-  dynamic "additional_email_recipients" {
-    for_each = var.alert_email_addresses
-    content {
-      additional_email_recipients = [additional_email_recipients.value]
-    }
-  }
+  send_emails_to_subscription_owners = var.send_emails_to_subscription_owners
 }
 
 resource "azurerm_application_insights_smart_detection_rule" "performance_anomalies" {
-  name                    = "Slow performing application"
+  name                    = "Slow server response time"
   application_insights_id = azurerm_application_insights.main.id
   enabled                 = true
-  send_emails_to_subscription_owners = false
-  
-  dynamic "additional_email_recipients" {
-    for_each = var.alert_email_addresses
-    content {
-      additional_email_recipients = [additional_email_recipients.value]
-    }
-  }
+  send_emails_to_subscription_owners = var.send_emails_to_subscription_owners
 }
 
 # Dashboard for monitoring

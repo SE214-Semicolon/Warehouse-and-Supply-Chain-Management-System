@@ -30,40 +30,15 @@ module "networking" {
 }
 
 # Azure Databases for Production (Professional Demo Setup)
-module "database" {
-  source = "../../modules/database"
+# Using external databases to save costs (~$35/month vs Azure databases)
+# module "database" {
+#   source = "../../modules/database"
+#   ... (removed to use external databases)
+# }
 
-  project_name        = var.project_name
-  environment         = var.environment
-  location            = var.location
-  resource_group_name = azurerm_resource_group.main.name
-
-  database_subnet_id            = module.networking.database_subnet_id
-  app_subnet_id                = module.networking.app_subnet_id
-  postgres_private_dns_zone_id = module.networking.postgres_private_dns_zone_id
-
-  # PostgreSQL Configuration (Budget-optimized B1ms)
-  postgres_admin_username      = var.postgres_admin_username
-  postgres_admin_password      = var.postgres_admin_password
-  postgres_sku_name           = "B_Standard_B1ms"     # Basic 1ms (cheapest)
-  postgres_storage_mb         = 32768                 # 32GB (minimum)
-  postgres_storage_tier       = "P4"
-  postgres_backup_retention_days = 7                 # Minimum for production
-  postgres_geo_redundant_backup_enabled = false
-  postgres_high_availability_mode = "Disabled"
-
-  # Cosmos DB Configuration (Auto-pause enabled)
-  cosmos_consistency_level           = "Session"
-  cosmos_enable_automatic_failover   = false
-  cosmos_enable_multiple_write_locations = false
-  cosmos_throughput                  = 400   # Minimum RU/s
-  cosmos_collection_throughput       = null  # Use database-level throughput
-  cosmos_audit_logs_ttl_seconds      = 1296000  # 15 days
-
-  tags = merge(var.tags, {
-    Environment = var.environment
-  })
-}
+# External Databases Configuration
+# Using Neon PostgreSQL + MongoDB Atlas (saves ~$35/month)
+# No Azure databases needed for production environment
 
 # Monitoring Module
 module "monitoring" {
@@ -82,8 +57,9 @@ module "monitoring" {
 
   # Resource IDs will be set after app service creation
   app_service_ids    = []
-  postgres_server_id = module.database.postgres_server_id
-  cosmos_db_id       = module.database.cosmos_db_id
+  # No Azure databases - using external services
+  # postgres_server_id = module.database.postgres_server_id
+  # cosmos_db_id       = module.database.cosmos_db_id
 
   tags = merge(var.tags, {
     Environment = var.environment
@@ -105,9 +81,9 @@ module "app_service" {
   app_service_plan_sku = "B1"   # Basic B1 for cost optimization
   app_service_always_on = false # Disable always on to save cost
 
-  # Database connections
-  postgres_connection_string         = module.database.postgres_connection_string
-  cosmos_mongodb_connection_string   = module.database.cosmos_mongodb_connection_string
+  # External Database connections (Neon PostgreSQL + MongoDB Atlas)
+  postgres_connection_string         = var.external_postgres_url
+  cosmos_mongodb_connection_string   = var.external_mongodb_url
 
   # JWT Configuration
   jwt_access_secret  = var.jwt_access_secret
@@ -212,8 +188,8 @@ resource "azurerm_monitor_metric_alert" "app_service_cpu" {
 
   criteria {
     metric_namespace = "Microsoft.Web/sites"
-    metric_name      = "CpuPercentage"
-    aggregation      = "Average"
+    metric_name      = "CpuTime"
+    aggregation      = "Total"
     operator         = "GreaterThan"
     threshold        = 70  # Lower threshold for production
   }

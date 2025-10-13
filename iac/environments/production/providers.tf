@@ -12,18 +12,13 @@ terraform {
     }
   }
 
-  # Backend configuration for remote state
-  backend "azurerm" {
-    # These values should be provided during terraform init
-    # storage_account_name = "your-terraform-storage"
-    # container_name      = "tfstate"
-    # key                = "production/terraform.tfstate"
-    # resource_group_name = "your-terraform-rg"
-  }
+  # Backend configuration is in backend.tf
 }
 
 # Configure the Microsoft Azure Provider
 provider "azurerm" {
+  skip_provider_registration = true
+  
   features {
     resource_group {
       prevent_deletion_if_contains_resources = true  # Prevent accidental deletion in production
