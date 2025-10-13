@@ -13,13 +13,13 @@ terraform {
   }
 
   # Backend configuration for remote state
-  backend "azurerm" {
+  #backend "azurerm" {
     # These values should be provided during terraform init
     # storage_account_name = "your-terraform-storage"
     # container_name      = "tfstate"
     # key                = "staging/terraform.tfstate"
     # resource_group_name = "your-terraform-rg"
-  }
+  #}
 }
 
 # Configure the Microsoft Azure Provider
