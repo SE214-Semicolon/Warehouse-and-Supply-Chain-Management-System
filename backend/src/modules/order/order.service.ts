@@ -115,7 +115,7 @@ export class OrderService {
     }
 
     // 3) Cập nhật qtyReceived và trạng thái PO trong transaction
-    let updatedPo;
+    let updatedPo: PurchaseOrder;
     try {
       updatedPo = await this.poRepo.receiveItems(poId, increments);
     } catch (e) {
@@ -147,12 +147,13 @@ export class OrderService {
     if (query.status) where.status = query.status;
     if (query.supplierId) where.supplierId = query.supplierId;
     if (query.dateFrom || query.dateTo) {
-      const placedAtFilter: any = {};
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (query.dateFrom) placedAtFilter.gte = new Date(query.dateFrom);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (query.dateTo) placedAtFilter.lte = new Date(query.dateTo);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const placedAtFilter: Prisma.DateTimeNullableFilter = {};
+      if (query.dateFrom) {
+        placedAtFilter.gte = new Date(query.dateFrom);
+      }
+      if (query.dateTo) {
+        placedAtFilter.lte = new Date(query.dateTo);
+      }
       where.placedAt = placedAtFilter;
     }
 

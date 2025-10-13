@@ -1,0 +1,37 @@
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Builds
+dist
+.out
+build
+coverage
+
+# Environment
+.env
+.env.*
+
+# VCS
+.git
+.gitignore
+
+# IDE / Editor
+.vscode
+.idea
+
+# Docker
+Dockerfile*
+docker-compose*
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Prisma
+prisma/migrations/
+
+# Database dumps or backups
+*.sql
+*.dump

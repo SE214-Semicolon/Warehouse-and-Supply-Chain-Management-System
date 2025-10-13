@@ -27,6 +27,9 @@ import {
   ValuationReportDto,
 } from '../dto/report-query.dto';
 import { JwtAuthGuard } from '../../../auth/jwt.guard';
+import { RolesGuard } from '../../../auth/roles.guard';
+import { Roles } from '../../../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
 import {
   InventorySuccessResponseDto,
@@ -39,12 +42,13 @@ import {
 
 @ApiTags('inventory')
 @Controller('inventory')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiBearerAuth()
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Post('receive')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @Roles(UserRole.admin, UserRole.manager, UserRole.warehouse_staff)
   @ApiOperation({ summary: 'Receive inventory (purchase_receipt)' })
   @ApiResponse({
     status: 201,
@@ -89,8 +93,7 @@ export class InventoryController {
   }
 
   @Post('dispatch')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @Roles(UserRole.admin, UserRole.manager, UserRole.warehouse_staff)
   @ApiOperation({ summary: 'Dispatch inventory (sale_issue)' })
   @ApiResponse({
     status: 201,
