@@ -164,7 +164,7 @@ model Inventory {
   locationId     String   @db.Uuid
   availableQty   Int      @default(0)
   reservedQty    Int      @default(0)
-  updatedAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   productBatch ProductBatch @relation(fields: [productBatchId], references: [id], onDelete: Cascade)
   location     Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
@@ -186,6 +186,7 @@ model StockMovement {
   note           String?
   createdById    String?           @db.Uuid
   createdAt      DateTime          @default(now())
+  idempotencyKey String?           @unique
 
   productBatch ProductBatch? @relation(fields: [productBatchId], references: [id])
   product      Product?      @relation(fields: [productId], references: [id])

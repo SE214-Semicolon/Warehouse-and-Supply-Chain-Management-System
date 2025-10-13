@@ -5,9 +5,9 @@ import { Reflector } from '@nestjs/core';
 export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  canActivate(_context: ExecutionContext): boolean {
+  canActivate(context: ExecutionContext): boolean {
     // Placeholder: allow all for now. Extend with metadata-based role checks later.
+    void context; // intentionally unused until role metadata is implemented
     return true;
   }
 }

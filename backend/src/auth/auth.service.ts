@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
@@ -35,7 +34,14 @@ export class AuthService {
     if (!token || token.userId !== userId || token.revokedAt) {
       throw new UnauthorizedException('Invalid refresh token');
     }
-    return this.issueTokens(userId, token.userEmail, token.userRole as UserRole);
+    return this.issueTokens(userId, token.userEmail, token.userRole);
+  }
+
+  async refreshWithToken(refreshToken: string) {
+    const payload = await this.jwtService.verifyAsync<{ sub: string; jti: string }>(refreshToken, {
+      secret: process.env.JWT_REFRESH_SECRET as string,
+    });
+    return this.refresh(payload.sub, payload.jti);
   }
 
   private async issueTokens(userId: string, email: string, role: UserRole) {
