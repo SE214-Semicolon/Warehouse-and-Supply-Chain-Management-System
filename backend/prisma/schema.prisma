@@ -48,6 +48,7 @@ enum StockMovementType {
   transfer_out
   returned
   reservation
+  release
   consumption
 }
 
@@ -235,6 +236,8 @@ model PurchaseOrder {
   items     PurchaseOrderItem[]
 
   @@index([status], name: "idx_po_status")
+  @@index([supplierId], name: "idx_po_supplier")
+  @@index([placedAt], name: "idx_po_placed_at")
 }
 
 model PurchaseOrderItem {
