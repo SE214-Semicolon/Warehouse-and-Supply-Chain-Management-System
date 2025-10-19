@@ -14,6 +14,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { HealthController } from './common/controllers/health.controller';
 import { ProductModule } from './modules/product/product.module';
+import { WarehouseModule } from './modules/warehouse/warehouse.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ProductModule } from './modules/product/product.module';
     UsersModule,
     AuthModule,
     ProductModule,
+    WarehouseModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],
