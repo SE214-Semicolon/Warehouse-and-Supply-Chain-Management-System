@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { LocationRepository } from '../repositories/location.repository';
 import { WarehouseRepository } from '../repositories/warehouse.repository';
 import { CreateLocationDto } from '../dto/create-location.dto';
@@ -148,16 +153,19 @@ export class LocationService {
     const locations = await this.locationRepo.findAvailableLocations(warehouseId, minCapacity);
 
     // Filter by utilization if needed (optional enhancement)
-    const availableLocations = locations.filter(async (location) => {
+    const availableLocations: typeof locations = [];
+    for (const location of locations) {
       const stats = await this.locationRepo.getLocationStats(location.id);
-      return stats.utilizationRate < 100; // Not fully utilized
-    });
+      if (stats.utilizationRate < 100) {
+        availableLocations.push(location);
+      }
+    }
 
     return {
       success: true,
       warehouseId,
       minCapacity,
-      locations: await Promise.all(availableLocations),
+      locations: availableLocations,
       total: locations.length,
     };
   }
@@ -205,10 +213,21 @@ export class LocationService {
     }
 
     // Check if location has inventory
-    if (location.inventory && location.inventory.length > 0) {
-      const hasStock = location.inventory.some(
-        (inv) => inv.availableQty > 0 || inv.reservedQty > 0,
-      );
+    const locationWithInventory = location as typeof location & {
+      inventory?: Array<{ availableQty: number; reservedQty: number }>;
+    };
+    if (
+      locationWithInventory.inventory &&
+      Array.isArray(locationWithInventory.inventory) &&
+      locationWithInventory.inventory.length > 0
+    ) {
+      let hasStock = false;
+      for (const inv of locationWithInventory.inventory) {
+        if (inv.availableQty > 0 || inv.reservedQty > 0) {
+          hasStock = true;
+          break;
+        }
+      }
       if (hasStock) {
         throw new BadRequestException(
           'Cannot delete a location with existing inventory. Please move or clear inventory first.',
@@ -231,13 +250,14 @@ export class LocationService {
     }
 
     const stats = await this.locationRepo.getLocationStats(id);
+    const locationWithWarehouse = location as typeof location & { warehouse?: { name: string } };
 
     return {
       success: true,
       locationId: id,
       locationCode: location.code,
       locationName: location.name,
-      warehouseName: location.warehouse.name,
+      warehouseName: locationWithWarehouse.warehouse?.name || 'Unknown',
       capacity: location.capacity,
       ...stats,
     };

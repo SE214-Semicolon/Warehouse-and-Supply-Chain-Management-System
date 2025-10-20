@@ -21,21 +21,28 @@ export class ProductCategoryService {
 
   async findAll() {
     const categories = await this.categoryRepo.findAll();
-    const categoryMap = new Map();
-    const categoryTree = [];
+    type CategoryWithChildren = (typeof categories)[0] & { children: CategoryWithChildren[] };
+    const categoryMap = new Map<string, CategoryWithChildren>();
+    const categoryTree: CategoryWithChildren[] = [];
 
-    categories.forEach(category => {
+    categories.forEach((category) => {
       categoryMap.set(category.id, { ...category, children: [] });
     });
 
-    categories.forEach(category => {
+    categories.forEach((category) => {
       if (category.parentId) {
         const parent = categoryMap.get(category.parentId);
         if (parent) {
-          parent.children.push(categoryMap.get(category.id));
+          const child = categoryMap.get(category.id);
+          if (child) {
+            parent.children.push(child);
+          }
         }
       } else {
-        categoryTree.push(categoryMap.get(category.id));
+        const rootCategory = categoryMap.get(category.id);
+        if (rootCategory) {
+          categoryTree.push(rootCategory);
+        }
       }
     });
 
@@ -77,7 +84,8 @@ export class ProductCategoryService {
       throw new NotFoundException(`Category with ID "${id}" not found`);
     }
 
-    if (category.children && category.children.length > 0) {
+    const categoryWithChildren = category as typeof category & { children?: Array<{ id: string }> };
+    if (categoryWithChildren.children && categoryWithChildren.children.length > 0) {
       throw new BadRequestException(
         'Cannot delete a category with children. Please delete or move children first.',
       );

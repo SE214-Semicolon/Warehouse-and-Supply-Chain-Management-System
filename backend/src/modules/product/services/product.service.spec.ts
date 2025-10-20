@@ -194,9 +194,7 @@ describe('ProductService', () => {
       productRepo.findOne.mockResolvedValue(mockProduct);
       productRepo.checkSkuExists.mockResolvedValue(true);
 
-      await expect(service.update('product-uuid-1', updateDto)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(service.update('product-uuid-1', updateDto)).rejects.toThrow(ConflictException);
     });
   });
 

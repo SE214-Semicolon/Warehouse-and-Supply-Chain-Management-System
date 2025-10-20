@@ -24,7 +24,7 @@ describe('Product Module (e2e)', () => {
     await app.init();
 
     // Create test user and login
-    const testUser = await prisma.user.upsert({
+    await prisma.user.upsert({
       where: { username: 'test-product-user' },
       update: {},
       create: {

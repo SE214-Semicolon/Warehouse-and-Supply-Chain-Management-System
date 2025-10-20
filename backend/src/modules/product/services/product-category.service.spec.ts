@@ -5,7 +5,6 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('ProductCategoryService', () => {
   let service: ProductCategoryService;
-  let repository: ProductCategoryRepository;
 
   const mockCategoryRepository = {
     create: jest.fn(),
@@ -27,7 +26,6 @@ describe('ProductCategoryService', () => {
     }).compile();
 
     service = module.get<ProductCategoryService>(ProductCategoryService);
-    repository = module.get<ProductCategoryRepository>(ProductCategoryRepository);
   });
 
   it('should be defined', () => {

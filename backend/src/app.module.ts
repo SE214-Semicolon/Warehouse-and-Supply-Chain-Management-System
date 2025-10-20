@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 
@@ -22,6 +23,14 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module';
       isGlobal: true,
       load: [configuration],
       validationSchema,
+    }),
+    MongooseModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        uri:
+          configService.get<string>('MONGO_URL') ||
+          'mongodb://mongo_user:mongo_pass@localhost:27017/warehouse_logs?authSource=admin',
+      }),
     }),
     PrismaModule,
     InventoryModule,

@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { ProductRepository } from '../repositories/product.repository';
 import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
@@ -23,9 +28,7 @@ export class ProductService {
     if (createProductDto.categoryId) {
       const category = await this.categoryRepo.findOne(createProductDto.categoryId);
       if (!category) {
-        throw new NotFoundException(
-          `Category with ID "${createProductDto.categoryId}" not found`,
-        );
+        throw new NotFoundException(`Category with ID "${createProductDto.categoryId}" not found`);
       }
     }
 
@@ -130,9 +133,7 @@ export class ProductService {
     if (updateProductDto.categoryId) {
       const category = await this.categoryRepo.findOne(updateProductDto.categoryId);
       if (!category) {
-        throw new NotFoundException(
-          `Category with ID "${updateProductDto.categoryId}" not found`,
-        );
+        throw new NotFoundException(`Category with ID "${updateProductDto.categoryId}" not found`);
       }
     }
 
@@ -164,7 +165,8 @@ export class ProductService {
     }
 
     // Check if product has batches
-    if (product.batches && product.batches.length > 0) {
+    const productWithBatches = product as typeof product & { batches?: Array<{ id: string }> };
+    if (productWithBatches.batches && productWithBatches.batches.length > 0) {
       throw new BadRequestException(
         'Cannot delete a product with existing batches. Please delete all batches first.',
       );

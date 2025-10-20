@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { ProductBatchRepository } from '../repositories/product-batch.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { CreateProductBatchDto } from '../dto/create-product-batch.dto';
@@ -225,10 +230,21 @@ export class ProductBatchService {
     }
 
     // Check if batch has inventory
-    if (batch.inventory && batch.inventory.length > 0) {
-      const hasStock = batch.inventory.some(
-        (inv) => inv.availableQty > 0 || inv.reservedQty > 0,
-      );
+    const batchWithInventory = batch as typeof batch & {
+      inventory?: Array<{ availableQty: number; reservedQty: number }>;
+    };
+    if (
+      batchWithInventory.inventory &&
+      Array.isArray(batchWithInventory.inventory) &&
+      batchWithInventory.inventory.length > 0
+    ) {
+      let hasStock = false;
+      for (const inv of batchWithInventory.inventory) {
+        if (inv.availableQty > 0 || inv.reservedQty > 0) {
+          hasStock = true;
+          break;
+        }
+      }
       if (hasStock) {
         throw new BadRequestException(
           'Cannot delete a batch with existing inventory. Please clear inventory first.',
