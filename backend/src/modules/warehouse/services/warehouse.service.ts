@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { WarehouseRepository } from '../repositories/warehouse.repository';
 import { CreateWarehouseDto } from '../dto/create-warehouse.dto';
 import { UpdateWarehouseDto } from '../dto/update-warehouse.dto';
@@ -130,7 +135,10 @@ export class WarehouseService {
     }
 
     // Check if warehouse has locations
-    if (warehouse.locations && warehouse.locations.length > 0) {
+    const warehouseWithLocations = warehouse as typeof warehouse & {
+      locations?: Array<{ id: string }>;
+    };
+    if (warehouseWithLocations.locations && warehouseWithLocations.locations.length > 0) {
       throw new BadRequestException(
         'Cannot delete a warehouse with existing locations. Please delete all locations first.',
       );

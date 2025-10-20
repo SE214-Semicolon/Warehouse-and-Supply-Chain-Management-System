@@ -10,12 +10,7 @@ import { LocationRepository } from './repositories/location.repository';
 @Module({
   imports: [PrismaModule],
   controllers: [WarehouseController, LocationController],
-  providers: [
-    WarehouseService,
-    LocationService,
-    WarehouseRepository,
-    LocationRepository,
-  ],
+  providers: [WarehouseService, LocationService, WarehouseRepository, LocationRepository],
   exports: [WarehouseService, LocationService, WarehouseRepository, LocationRepository],
 })
 export class WarehouseModule {}

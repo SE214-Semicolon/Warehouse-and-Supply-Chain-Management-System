@@ -79,7 +79,7 @@ export async function seedWarehouses() {
   console.log(`✅ Created ${warehouses.length} warehouses`);
 
   // Create locations for Main Warehouse (WH-MAIN-HCM)
-  const mainWarehouseLocations = [];
+  const mainWarehouseLocations: any[] = [];
   const aisles = ['A', 'B', 'C', 'D'];
   const racks = [1, 2, 3, 4, 5];
   const levels = [1, 2, 3];
@@ -118,9 +118,9 @@ export async function seedWarehouses() {
   console.log(`✅ Created ${mainWarehouseLocations.length} locations for Main Warehouse`);
 
   // Create locations for Cold Storage Warehouse (WH-COLD-HCM)
-  const coldWarehouseLocations = [];
+  const coldWarehouseLocations: any[] = [];
   const coldZones = ['FROZEN', 'CHILLED', 'COOL'];
-  
+
   for (const zone of coldZones) {
     for (let chamber = 1; chamber <= 5; chamber++) {
       for (let rack = 1; rack <= 4; rack++) {
@@ -161,7 +161,7 @@ export async function seedWarehouses() {
   console.log(`✅ Created ${coldWarehouseLocations.length} locations for Cold Storage`);
 
   // Create locations for Northern Warehouse (WH-NORTH-HN)
-  const northWarehouseLocations = [];
+  const northWarehouseLocations: any[] = [];
   for (const aisle of ['E', 'F', 'G']) {
     for (const rack of [1, 2, 3, 4]) {
       for (const level of [1, 2]) {
@@ -195,7 +195,7 @@ export async function seedWarehouses() {
   console.log(`✅ Created ${northWarehouseLocations.length} locations for Northern Warehouse`);
 
   // Create locations for Central Warehouse (WH-CENTRAL-DN)
-  const centralWarehouseLocations = [];
+  const centralWarehouseLocations: any[] = [];
   for (const aisle of ['H', 'I']) {
     for (const rack of [1, 2, 3]) {
       for (const level of [1, 2]) {

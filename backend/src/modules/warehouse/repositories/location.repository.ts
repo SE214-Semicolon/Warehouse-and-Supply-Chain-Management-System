@@ -154,10 +154,7 @@ export class LocationRepository {
       (sum, inv) => sum + inv.availableQty + inv.reservedQty,
       0,
     );
-    const totalReservedQuantity = location.inventory.reduce(
-      (sum, inv) => sum + inv.reservedQty,
-      0,
-    );
+    const totalReservedQuantity = location.inventory.reduce((sum, inv) => sum + inv.reservedQty, 0);
 
     const utilizationRate =
       location.capacity && location.capacity > 0

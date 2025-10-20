@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsUUID, IsOptional, IsNotEmpty, IsInt, IsDateString, Min } from 'class-validator';
+import {
+  IsString,
+  IsUUID,
+  IsOptional,
+  IsNotEmpty,
+  IsInt,
+  IsDateString,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateProductBatchDto {
