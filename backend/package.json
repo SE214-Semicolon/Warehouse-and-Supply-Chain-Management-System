@@ -19,10 +19,12 @@
     "test:cov": "jest --coverage --config jest.config.ts",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand --config jest.config.ts",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "tokens": "node scripts/generate-tokens.js",
+    "rbac:test": "powershell -ExecutionPolicy Bypass -File ./scripts/rbac-tests.ps1",
+    "rbac:full": "powershell -ExecutionPolicy Bypass -File ./scripts/rbac-comprehensive.ps1",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio",
-    "prisma:seed": "DATABASE_URL=postgresql://warehouse_user:warehouse_pass@localhost:5432/warehouse_db tsx prisma/seed.ts"
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

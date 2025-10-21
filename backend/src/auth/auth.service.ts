@@ -26,6 +26,7 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('Invalid credentials');
     const ok = await bcryptjs.compare(password, user.passwordHash ?? '');
     if (!ok) throw new UnauthorizedException('Invalid credentials');
+    if (!user.active) throw new UnauthorizedException('Account is disabled');
     return this.issueTokens(user.id, user.email!, user.role);
   }
 
@@ -34,7 +35,9 @@ export class AuthService {
     if (!token || token.userId !== userId || token.revokedAt) {
       throw new UnauthorizedException('Invalid refresh token');
     }
-    return this.issueTokens(userId, token.userEmail, token.userRole);
+    const user = await this.usersService.findById(userId);
+    if (!user?.active) throw new UnauthorizedException('Account is disabled');
+    return this.issueTokens(user.id, user.email!, user.role);
   }
 
   async refreshWithToken(refreshToken: string) {
