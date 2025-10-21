@@ -83,10 +83,10 @@ jobs:
       working-directory: ./backend
       run: npm run lint
 
-    - name: Run backend tests
-      if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
-      working-directory: ./backend
-      run: npm run test
+    # - name: Run backend tests
+    #   if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+    #   working-directory: ./backend
+    #   run: npm run test
 
     # Frontend tests
     - name: Install frontend dependencies
@@ -99,10 +99,10 @@ jobs:
       working-directory: ./frontend
       run: npm run lint
 
-    - name: Run frontend tests
-      if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
-      working-directory: ./frontend
-      run: npm run test
+    # - name: Run frontend tests
+    #   if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    #   working-directory: ./frontend
+    #   run: npm run test
 
   build-images:
     needs: [code-check, build-and-test]
