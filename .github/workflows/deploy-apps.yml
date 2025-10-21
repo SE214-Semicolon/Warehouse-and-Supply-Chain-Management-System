@@ -30,8 +30,10 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
-  FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
+  # BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
+  # FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
+  BACKEND_IMAGE_NAME: se214-semicolon/warehouse-and-supply-chain-management-system/backend
+  FRONTEND_IMAGE_NAME: se214-semicolon/warehouse-and-supply-chain-management-system/frontend
 
 jobs:
   # Code quality checks first
