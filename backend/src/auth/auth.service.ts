@@ -26,6 +26,7 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('Invalid credentials');
     const ok = await bcryptjs.compare(password, user.passwordHash ?? '');
     if (!ok) throw new UnauthorizedException('Invalid credentials');
+    if (!user.active) throw new UnauthorizedException('Account is disabled');
     return this.issueTokens(user.id, user.email!, user.role);
   }
 
@@ -34,7 +35,9 @@ export class AuthService {
     if (!token || token.userId !== userId || token.revokedAt) {
       throw new UnauthorizedException('Invalid refresh token');
     }
-    return this.issueTokens(userId, token.userEmail, token.userRole);
+    const user = await this.usersService.findById(userId);
+    if (!user?.active) throw new UnauthorizedException('Account is disabled');
+    return this.issueTokens(user.id, user.email!, user.role);
   }
 
   async refreshWithToken(refreshToken: string) {
@@ -66,6 +69,55 @@ export class AuthService {
       },
     );
     return { accessToken, refreshToken };
+  }
+
+  async logout(refreshToken: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync<{ sub: string; jti: string }>(
+        refreshToken,
+        {
+          secret: process.env.JWT_REFRESH_SECRET as string,
+        },
+      );
+
+      const token = await this.prisma.refreshToken.findUnique({ where: { id: payload.jti } });
+      if (!token) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      await this.prisma.refreshToken.update({
+        where: { id: payload.jti },
+        data: { revokedAt: new Date() },
+      });
+
+      return { message: 'Logged out successfully' };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new UnauthorizedException('User not found');
+
+    const isPasswordValid = await bcryptjs.compare(currentPassword, user.passwordHash ?? '');
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const newPasswordHash = await bcryptjs.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    // Revoke all existing refresh tokens to force re-login
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    return { message: 'Password changed successfully. Please login again.' };
   }
 
   private parseTtl(ttl: string): number {
