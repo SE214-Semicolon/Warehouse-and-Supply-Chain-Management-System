@@ -54,3 +54,8 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Analysis and documentation files (keep local only)
+BUSINESS_LOGIC_ANALYSIS.md
+PHASE1_PHASE3_SUMMARY.md
+SCHEMA_CHANGES_REVIEW.md
