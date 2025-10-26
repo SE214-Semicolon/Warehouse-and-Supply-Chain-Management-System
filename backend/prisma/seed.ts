@@ -240,7 +240,6 @@ async function main() {
       create: {
         productId: products[0].id,
         batchNo: 'L2024-001',
-        quantity: 50,
         manufactureDate: new Date('2024-01-15'),
         expiryDate: new Date('2026-01-15'),
       },
@@ -251,7 +250,6 @@ async function main() {
       create: {
         productId: products[1].id,
         batchNo: 'P2024-001',
-        quantity: 100,
         manufactureDate: new Date('2024-02-01'),
         expiryDate: new Date('2025-08-01'),
       },
@@ -263,7 +261,6 @@ async function main() {
       create: {
         productId: products[2].id,
         batchNo: 'T2024-001',
-        quantity: 5, // Low stock
         manufactureDate: new Date('2024-03-01'),
         expiryDate: new Date('2025-12-01'),
       },
@@ -275,7 +272,6 @@ async function main() {
       create: {
         productId: products[3].id,
         batchNo: 'M2024-001',
-        quantity: 200,
         manufactureDate: new Date('2024-09-01'),
         expiryDate: new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
       },
@@ -287,7 +283,6 @@ async function main() {
       create: {
         productId: products[4].id,
         batchNo: 'B2024-001',
-        quantity: 20,
         manufactureDate: new Date('2024-08-01'),
         expiryDate: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
       },
@@ -449,6 +444,123 @@ async function main() {
     }),
   ]);
 
+  // Create customers
+  console.log('Creating customers...');
+  const customers = await Promise.all([
+    prisma.customer.upsert({
+      where: { code: 'CUST-001' },
+      update: {},
+      create: {
+        code: 'CUST-001',
+        name: 'Cửa hàng ABC',
+        contactInfo: {
+          email: 'contact@abcstore.com',
+          phone: '+84901111111',
+          contactPerson: 'Nguyễn Văn B',
+        },
+        address: '123 Main Street, City',
+      },
+    }),
+    prisma.customer.upsert({
+      where: { code: 'CUST-002' },
+      update: {},
+      create: {
+        code: 'CUST-002',
+        name: 'Siêu thị XYZ',
+        contactInfo: {
+          email: 'sales@xyzmart.com',
+          phone: '+84902222222',
+          contactPerson: 'Trần Thị C',
+        },
+        address: '456 Commerce Ave, City',
+      },
+    }),
+  ]);
+
+  // Create suppliers
+  console.log('Creating suppliers...');
+  const suppliers = await Promise.all([
+    prisma.supplier.upsert({
+      where: { code: 'SUP-001' },
+      update: {},
+      create: {
+        code: 'SUP-001',
+        name: 'Nhà cung cấp Electronics Pro',
+        contactInfo: {
+          email: 'info@elecpro.com',
+          phone: '+84903333333',
+          contactPerson: 'Lê Văn D',
+        },
+        address: '789 Industrial Zone, City',
+      },
+    }),
+    prisma.supplier.upsert({
+      where: { code: 'SUP-002' },
+      update: {},
+      create: {
+        code: 'SUP-002',
+        name: 'Nhà cung cấp Food Fresh',
+        contactInfo: {
+          email: 'fresh@foodsupply.com',
+          phone: '+84904444444',
+          contactPerson: 'Phạm Văn E',
+        },
+        address: '321 Farm Road, City',
+      },
+    }),
+  ]);
+
+  // Create sales orders
+  console.log('Creating sales orders...');
+  const salesOrders = await Promise.all([
+    prisma.salesOrder.upsert({
+      where: { soNo: 'SO-202410-001' },
+      update: {},
+      create: {
+        soNo: 'SO-202410-001',
+        customerId: customers[0].id,
+        status: 'pending',
+        totalAmount: 2400000,
+        placedAt: now,
+        createdById: managerUser.id,
+        items: {
+          create: [
+            {
+              productId: products[0].id,
+              qty: 2,
+              qtyFulfilled: 0,
+              unitPrice: 1200000,
+              lineTotal: 2400000,
+            },
+          ],
+        },
+      },
+    }),
+    prisma.salesOrder.upsert({
+      where: { soNo: 'SO-202410-002' },
+      update: {},
+      create: {
+        soNo: 'SO-202410-002',
+        customerId: customers[1].id,
+        status: 'approved',
+        totalAmount: 45000,
+        placedAt: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000),
+        createdById: staffUser.id,
+        items: {
+          create: [
+            {
+              productId: products[2].id,
+              qty: 3,
+              qtyFulfilled: 0,
+              unitPrice: 15000,
+              lineTotal: 45000,
+            },
+          ],
+        },
+      },
+    }),
+  ]);
+
   console.log('✅ Seed completed successfully!');
   console.log('\n📊 Test Data Summary:');
   console.log(`   Users: ${[adminUser, managerUser, staffUser].length}`);
@@ -458,6 +570,9 @@ async function main() {
   console.log(`   Products: ${products.length}`);
   console.log(`   Batches: ${batches.length}`);
   console.log(`   Inventory Records: ${inventoryRecords.length}`);
+  console.log(`   Customers: ${customers.length}`);
+  console.log(`   Suppliers: ${suppliers.length}`);
+  console.log(`   Sales Orders: ${salesOrders.length}`);
 
   console.log('\n🔐 Test Accounts:');
   console.log('   Admin: admin / admin123');
