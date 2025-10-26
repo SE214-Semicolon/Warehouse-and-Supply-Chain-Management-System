@@ -70,7 +70,16 @@ export class SupplierService {
   async remove(id: string): Promise<void> {
     const existing = await this.repo.findById(id);
     if (!existing) throw new NotFoundException('Supplier not found');
-    // TODO: chặn xóa nếu còn Purchase Order đang hoạt động (để sau khi có repository Purchase Order)
+
+    // Check for active purchase orders
+    const activePOCount = await this.repo.countActivePurchaseOrders(id);
+    if (activePOCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete supplier. There are ${activePOCount} active purchase order(s) associated with this supplier.`,
+      );
+    }
+
+    // Soft delete
     await this.repo.remove(id);
   }
 }

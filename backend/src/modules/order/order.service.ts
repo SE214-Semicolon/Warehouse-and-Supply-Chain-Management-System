@@ -169,4 +169,125 @@ export class OrderService {
     const { data, total } = await this.poRepo.list({ skip, take: pageSize, where, orderBy });
     return { data, total, page, pageSize };
   }
+
+  async updatePurchaseOrder(
+    id: string,
+    dto: {
+      supplierId?: string;
+      placedAt?: string;
+      expectedArrival?: string;
+      notes?: string;
+      items?: {
+        id?: string;
+        productId?: string;
+        qtyOrdered?: number;
+        unitPrice?: number;
+        remark?: string;
+      }[];
+    },
+  ) {
+    const po = await this.poRepo.findById(id);
+    if (!po) throw new NotFoundException('PO not found');
+    if (po.status !== PoStatus.draft) {
+      throw new BadRequestException('Only draft PO can be updated');
+    }
+
+    const updateData: Prisma.PurchaseOrderUpdateInput = {};
+    if (dto.supplierId) updateData.supplier = { connect: { id: dto.supplierId } };
+    if (dto.placedAt) updateData.placedAt = new Date(dto.placedAt);
+    if (dto.expectedArrival) updateData.expectedArrival = new Date(dto.expectedArrival);
+    if (dto.notes !== undefined) updateData.notes = dto.notes;
+
+    await this.poRepo.update(id, updateData);
+
+    if (dto.items && dto.items.length > 0) {
+      for (const item of dto.items) {
+        if (item.id) {
+          const existingItem = await this.poRepo.getItemById(item.id);
+          if (!existingItem || existingItem.purchaseOrderId !== id) {
+            throw new BadRequestException(`Item ${item.id} not found in this PO`);
+          }
+
+          const itemUpdateData: Prisma.PurchaseOrderItemUpdateInput = {};
+          if (item.productId) itemUpdateData.product = { connect: { id: item.productId } };
+          if (item.qtyOrdered !== undefined) itemUpdateData.qtyOrdered = item.qtyOrdered;
+          if (item.unitPrice !== undefined) {
+            itemUpdateData.unitPrice = item.unitPrice;
+            itemUpdateData.lineTotal = item.unitPrice * (item.qtyOrdered ?? existingItem.qtyOrdered);
+          }
+          if (item.remark !== undefined) itemUpdateData.remark = item.remark;
+
+          await this.poRepo.updateItem(item.id, itemUpdateData);
+        }
+      }
+    }
+
+    await this.poRepo.updateTotals(id);
+    const updated = await this.poRepo.findById(id);
+    if (!updated) throw new NotFoundException('PO not found after update');
+    return updated;
+  }
+
+  async cancelPurchaseOrder(id: string) {
+    const po = await this.poRepo.findById(id);
+    if (!po) throw new NotFoundException('PO not found');
+    if (po.status === PoStatus.received || po.status === PoStatus.cancelled) {
+      throw new BadRequestException(`Cannot cancel PO with status: ${po.status}`);
+    }
+
+    await this.poRepo.cancel(id);
+    const updated = await this.poRepo.findById(id);
+    if (!updated) throw new NotFoundException('PO not found after cancel');
+    return updated;
+  }
+
+  async addPurchaseOrderItems(
+    id: string,
+    items: { productId: string; qtyOrdered: number; unitPrice?: number; remark?: string }[],
+  ) {
+    const po = await this.poRepo.findById(id);
+    if (!po) throw new NotFoundException('PO not found');
+    if (po.status !== PoStatus.draft) {
+      throw new BadRequestException('Can only add items to draft PO');
+    }
+
+    const itemsToAdd: Omit<Prisma.PurchaseOrderItemCreateManyInput, 'purchaseOrderId'>[] = items.map(
+      (it) => ({
+        productId: it.productId,
+        qtyOrdered: it.qtyOrdered,
+        unitPrice: it.unitPrice ?? null,
+        lineTotal: it.unitPrice ? it.unitPrice * it.qtyOrdered : null,
+        remark: it.remark ?? null,
+      }),
+    );
+
+    await this.poRepo.addItems(id, itemsToAdd);
+    await this.poRepo.updateTotals(id);
+
+    const updated = await this.poRepo.findById(id);
+    if (!updated) throw new NotFoundException('PO not found after adding items');
+    return updated;
+  }
+
+  async removePurchaseOrderItems(id: string, itemIds: string[]) {
+    const po = await this.poRepo.findById(id);
+    if (!po) throw new NotFoundException('PO not found');
+    if (po.status !== PoStatus.draft) {
+      throw new BadRequestException('Can only remove items from draft PO');
+    }
+
+    for (const itemId of itemIds) {
+      const item = await this.poRepo.getItemById(itemId);
+      if (!item || item.purchaseOrderId !== id) {
+        throw new BadRequestException(`Item ${itemId} not found in this PO`);
+      }
+    }
+
+    await this.poRepo.removeItems(itemIds);
+    await this.poRepo.updateTotals(id);
+
+    const updated = await this.poRepo.findById(id);
+    if (!updated) throw new NotFoundException('PO not found after removing items');
+    return updated;
+  }
 }

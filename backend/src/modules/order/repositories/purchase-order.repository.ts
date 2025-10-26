@@ -126,4 +126,51 @@ export class PurchaseOrderRepository {
     ]);
     return { data, total };
   }
+
+  async update(poId: string, data: Prisma.PurchaseOrderUpdateInput) {
+    return this.prisma.purchaseOrder.update({
+      where: { id: poId },
+      data,
+    });
+  }
+
+  async updateItem(itemId: string, data: Prisma.PurchaseOrderItemUpdateInput) {
+    return this.prisma.purchaseOrderItem.update({
+      where: { id: itemId },
+      data,
+    });
+  }
+
+  async cancel(poId: string) {
+    return this.prisma.purchaseOrder.update({
+      where: { id: poId },
+      data: { status: PoStatus.cancelled },
+    });
+  }
+
+  async addItems(poId: string, items: Omit<Prisma.PurchaseOrderItemCreateManyInput, 'purchaseOrderId'>[]) {
+    await this.prisma.purchaseOrderItem.createMany({
+      data: items.map((it) => ({
+        purchaseOrderId: poId,
+        productId: it.productId,
+        qtyOrdered: it.qtyOrdered,
+        unitPrice: it.unitPrice ?? null,
+        lineTotal: it.lineTotal ?? null,
+        remark: it.remark ?? null,
+        productBatchId: it.productBatchId ?? null,
+      })),
+    });
+  }
+
+  async removeItems(itemIds: string[]) {
+    await this.prisma.purchaseOrderItem.deleteMany({
+      where: { id: { in: itemIds } },
+    });
+  }
+
+  async getItemById(itemId: string) {
+    return this.prisma.purchaseOrderItem.findUnique({
+      where: { id: itemId },
+    });
+  }
 }
