@@ -20,6 +20,25 @@ model RefreshToken {
   revokedAt  DateTime?
 }
 
+model UserInvite {
+  id          String    @id @default(uuid()) @db.Uuid
+  email       String    @db.VarChar(255)
+  role        UserRole
+  token       String    @unique @db.VarChar(100)
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  usedAt      DateTime?
+  usedById    String?   @db.Uuid
+
+  createdBy User? @relation("InviteCreatedBy", fields: [createdById], references: [id])
+  usedBy    User? @relation("InviteUsedBy", fields: [usedById], references: [id])
+
+  @@index([email], name: "idx_invite_email")
+  @@index([token], name: "idx_invite_token")
+  @@index([expiresAt], name: "idx_invite_expires")
+}
+
 /**
  * ENUMS
  */
@@ -340,10 +359,12 @@ model User {
   metadata     Json?
   createdAt    DateTime @default(now())
 
-  purchaseOrders PurchaseOrder[] @relation("UserCreatedPO")
-  salesOrders    SalesOrder[]    @relation("UserCreatedSO")
-  stockMovements StockMovement[] @relation("UserStockMovements")
-  refreshTokens  RefreshToken[]
+  purchaseOrders   PurchaseOrder[] @relation("UserCreatedPO")
+  salesOrders      SalesOrder[]    @relation("UserCreatedSO")
+  stockMovements   StockMovement[] @relation("UserStockMovements")
+  refreshTokens    RefreshToken[]
+  invitesCreated   UserInvite[]    @relation("InviteCreatedBy")
+  invitesUsed      UserInvite[]    @relation("InviteUsedBy")
 }
 
 model AuditLog {

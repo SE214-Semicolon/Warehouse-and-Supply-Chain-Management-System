@@ -15,4 +15,13 @@ export class SignupDto {
   @IsOptional()
   @IsString()
   fullName?: string;
+
+  @ApiProperty({ 
+    required: false,
+    description: 'Invite token để signup với role đặc biệt',
+    example: 'inv-abc123xyz'
+  })
+  @IsOptional()
+  @IsString()
+  inviteToken?: string;
 }
