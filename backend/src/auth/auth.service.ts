@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import bcryptjs from 'bcryptjs';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { UserRole } from '@prisma/client';
+import { InviteService } from './invite.service';
 
 @Injectable()
 export class AuthService {
@@ -11,13 +12,49 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly inviteService: InviteService,
   ) {}
 
-  async signup(email: string, password: string, fullName?: string) {
+  async signup(email: string, password: string, fullName?: string, inviteToken?: string) {
     const existing = await this.usersService.findByEmail(email);
     if (existing) throw new UnauthorizedException('Email already registered');
+
     const passwordHash = await bcryptjs.hash(password, 10);
-    const user = await this.usersService.createUser({ email, passwordHash, fullName });
+
+    // Determine role based on invite token
+    let role: UserRole | undefined;
+    if (inviteToken) {
+      // Validate invite token (will throw if invalid/expired/used)
+      // Note: We'll mark as used after user creation succeeds
+      const invite = await this.inviteService.getInviteByToken(inviteToken);
+      if (!invite) {
+        throw new UnauthorizedException('Invalid invite token');
+      }
+      if (invite.usedAt) {
+        throw new UnauthorizedException('Invite token already used');
+      }
+      if (new Date() > invite.expiresAt) {
+        throw new UnauthorizedException('Invite token expired');
+      }
+      if (invite.email.toLowerCase() !== email.toLowerCase()) {
+        throw new UnauthorizedException('Invite token is for a different email');
+      }
+      role = invite.role;
+    }
+
+    // Create user with role from invite (or default warehouse_staff)
+    const user = await this.usersService.createUser({
+      email,
+      passwordHash,
+      fullName,
+      role,
+    });
+
+    // If invite was used, mark it as consumed
+    if (inviteToken) {
+      await this.inviteService.validateAndConsumeInvite(inviteToken, user.id);
+    }
+
     return this.issueTokens(user.id, user.email!, user.role);
   }
 

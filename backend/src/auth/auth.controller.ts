@@ -16,7 +16,7 @@ export class AuthController {
   @Post('signup')
   @ApiOperation({ summary: 'Đăng ký tài khoản' })
   async signup(@Body() dto: SignupDto) {
-    return this.auth.signup(dto.email, dto.password, dto.fullName);
+    return this.auth.signup(dto.email, dto.password, dto.fullName, dto.inviteToken);
   }
 
   @Post('login')

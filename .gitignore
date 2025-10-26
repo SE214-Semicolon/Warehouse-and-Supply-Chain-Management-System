@@ -76,3 +76,7 @@ docker-compose.override.yml
 # =========================
 /tmp
 backend/BRANCH_CHECK_REPORT.md
+backend/INVITE_SYSTEM_SUMMARY.md
+backend/COMPREHENSIVE_VALIDATION_REPORT.md
+backend/INVITE_SYSTEM_GUIDE.md
+backend/INVITE_SYSTEM_IMPLEMENTATION.md
