@@ -118,5 +118,25 @@ export class SalesOrderRepository {
       data: { status: OrderStatus.cancelled },
     });
   }
+
+  async updateItemFulfilled(itemId: string, qtyInc: number) {
+    const item = await this.prisma.salesOrderItem.findUnique({
+      where: { id: itemId },
+    });
+    if (!item) {
+      throw new Error('SOItemNotFound');
+    }
+    return this.prisma.salesOrderItem.update({
+      where: { id: itemId },
+      data: { qtyFulfilled: item.qtyFulfilled + qtyInc },
+    });
+  }
+
+  async updateStatus(soId: string, status: OrderStatus) {
+    return this.prisma.salesOrder.update({
+      where: { id: soId },
+      data: { status },
+    });
+  }
 }
 

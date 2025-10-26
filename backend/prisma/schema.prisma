@@ -139,7 +139,6 @@ model ProductBatch {
   id               String    @id @default(uuid()) @db.Uuid
   productId        String    @db.Uuid
   batchNo          String?
-  quantity         Int       @default(0)
   manufactureDate  DateTime?
   expiryDate       DateTime?
   barcodeOrQr      String?
@@ -147,7 +146,7 @@ model ProductBatch {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  product       Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product       Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
   inventory     Inventory[]
   stockMoves    StockMovement[]
   poItems       PurchaseOrderItem[]
@@ -230,7 +229,7 @@ model PurchaseOrder {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  supplier  Supplier?           @relation(fields: [supplierId], references: [id])
+  supplier  Supplier?           @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   createdBy User?               @relation("UserCreatedPO", fields: [createdById], references: [id])
   items     PurchaseOrderItem[]
 
@@ -280,6 +279,7 @@ model SalesOrderItem {
   productId      String   @db.Uuid
   productBatchId String?  @db.Uuid
   qty            Int
+  qtyFulfilled   Int      @default(0)
   unitPrice      Decimal? @db.Decimal(12, 2)
   lineTotal      Decimal? @db.Decimal(15, 2)
 

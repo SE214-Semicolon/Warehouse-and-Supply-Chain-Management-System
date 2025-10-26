@@ -121,7 +121,6 @@ export class SalesOrderService {
     const updateData: Prisma.SalesOrderUpdateInput = {};
     if (dto.customerId) updateData.customer = { connect: { id: dto.customerId } };
     if (dto.placedAt) updateData.placedAt = new Date(dto.placedAt);
-    if (dto.notes !== undefined) updateData.notes = dto.notes;
 
     await this.soRepo.update(id, updateData);
 
@@ -169,10 +168,14 @@ export class SalesOrderService {
       throw new BadRequestException('Some items not found in SO');
     }
 
+    // Validate qtyToFulfill không vượt quá qty còn lại chưa fulfill
     for (const r of dto.items) {
       const item = existing.find((e) => e.id === r.soItemId)!;
-      if (r.qtyToFulfill > item.qty) {
-        throw new BadRequestException('Fulfill quantity exceeds order quantity');
+      const remainingQty = item.qty - item.qtyFulfilled;
+      if (r.qtyToFulfill > remainingQty) {
+        throw new BadRequestException(
+          `Fulfill quantity ${r.qtyToFulfill} exceeds remaining quantity ${remainingQty} for item ${item.id}`,
+        );
       }
     }
 
@@ -186,10 +189,26 @@ export class SalesOrderService {
         idempotencyKey: r.idempotencyKey,
       };
       await this.inventorySvc.dispatchInventory(payload);
+
+      // Update qtyFulfilled for item
+      await this.soRepo.updateItemFulfilled(r.soItemId, r.qtyToFulfill);
     }
 
-    // Mark SO as shipped
-    await this.soRepo.markAsShipped(soId);
+    // Recalculate SO status based on fulfillment progress
+    const updatedItems = await this.soRepo.findItemsByIds(soId, targetIds);
+    const allItemsFullyFulfilled = updatedItems.every((item) => item.qtyFulfilled >= item.qty);
+    const anyItemsFulfilled = updatedItems.some((item) => item.qtyFulfilled > 0);
+
+    let newStatus: OrderStatus;
+    if (allItemsFullyFulfilled) {
+      newStatus = OrderStatus.shipped;
+    } else if (anyItemsFulfilled) {
+      newStatus = OrderStatus.processing;
+    } else {
+      newStatus = so.status; // Keep current status
+    }
+
+    await this.soRepo.updateStatus(soId, newStatus);
 
     const updated = await this.soRepo.findById(soId);
     if (!updated) throw new NotFoundException('SO not found after fulfillment');
