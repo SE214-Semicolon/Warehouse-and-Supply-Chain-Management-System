@@ -30,8 +30,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
-  FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
+  BACKEND_IMAGE_NAME: se214-semicolon/warehouse-and-supply-chain-management-system/backend
+  FRONTEND_IMAGE_NAME: se214-semicolon/warehouse-and-supply-chain-management-system/frontend
 
 jobs:
   # Code quality checks first
@@ -171,7 +171,7 @@ jobs:
       uses: azure/webapps-deploy@v2
       with:
         app-name: warehouse-mgmt-staging-backend
-        images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:dev
+        images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:develop
 
     - name: Deploy Frontend to Azure App Service
       if: |
@@ -180,7 +180,7 @@ jobs:
       uses: azure/webapps-deploy@v2
       with:
         app-name: warehouse-mgmt-staging-frontend
-        images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:dev
+        images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:develop
 
     - name: Run Database Migrations
       if: needs.build-and-test.outputs.backend-changed == 'true'
