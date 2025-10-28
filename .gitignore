@@ -80,3 +80,6 @@ backend/INVITE_SYSTEM_SUMMARY.md
 backend/COMPREHENSIVE_VALIDATION_REPORT.md
 backend/INVITE_SYSTEM_GUIDE.md
 backend/INVITE_SYSTEM_IMPLEMENTATION.md
+backend/test/inventory.e2e-spec.ts
+backend/API_MODULES_GUIDE.md
+backend/test/jest-e2e.json
