@@ -29,9 +29,5 @@ docker-compose*
 .DS_Store
 Thumbs.db
 
-# Prisma
-prisma/migrations/
-
 # Database dumps or backups
-*.sql
 *.dump
