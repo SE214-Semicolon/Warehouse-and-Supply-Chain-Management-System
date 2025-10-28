@@ -44,6 +44,12 @@ variable "alert_email_addresses" {
   default     = []
 }
 
+variable "send_emails_to_subscription_owners" {
+  description = "Send alert emails to subscription owners"
+  type        = bool
+  default     = false
+}
+
 # Resource IDs for monitoring
 variable "app_service_ids" {
   description = "List of App Service IDs to monitor"

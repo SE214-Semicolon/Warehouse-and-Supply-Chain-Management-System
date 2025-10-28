@@ -34,4 +34,7 @@ provider "azurerm" {
       recover_soft_deleted_key_vaults = true
     }
   }
+  
+  # Skip provider registration to avoid permission issues
+  skip_provider_registration = true
 }

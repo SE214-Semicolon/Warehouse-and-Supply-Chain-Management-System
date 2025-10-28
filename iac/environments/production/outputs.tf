@@ -25,20 +25,20 @@ output "database_subnet_id" {
   value       = module.networking.database_subnet_id
 }
 
-# Database outputs
+# Database outputs (External databases for production)
 output "postgres_server_fqdn" {
-  description = "Fully qualified domain name of the PostgreSQL server"
-  value       = module.database.postgres_server_fqdn
+  description = "External PostgreSQL server FQDN (Neon Database)"
+  value       = "external.neon.tech"  # Placeholder for external database
 }
 
 output "postgres_database_name" {
-  description = "Name of the PostgreSQL database"
-  value       = module.database.postgres_database_name
+  description = "External PostgreSQL database name"
+  value       = "warehouse_mgmt_production"  # Extract from connection string if needed
 }
 
 output "cosmos_db_endpoint" {
-  description = "Endpoint of the Cosmos DB account"
-  value       = module.database.cosmos_db_endpoint
+  description = "External MongoDB endpoint (MongoDB Atlas)"
+  value       = "external.mongodb.net"  # Placeholder for external database
   sensitive   = true
 }
 
@@ -106,15 +106,15 @@ output "log_analytics_workspace_name" {
   value       = module.monitoring.log_analytics_workspace_name
 }
 
-# Connection strings for deployment
+# Connection strings for deployment (External databases)
 output "postgres_connection_string" {
-  description = "PostgreSQL connection string"
-  value       = module.database.postgres_connection_string
+  description = "External PostgreSQL connection string"
+  value       = var.external_postgres_url
   sensitive   = true
 }
 
 output "cosmos_mongodb_connection_string" {
-  description = "Cosmos DB MongoDB connection string"
-  value       = module.database.cosmos_mongodb_connection_string
+  description = "External MongoDB connection string"
+  value       = var.external_mongodb_url
   sensitive   = true
 }

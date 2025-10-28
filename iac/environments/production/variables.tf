@@ -29,20 +29,35 @@ variable "tags" {
 }
 
 # Azure Database Configuration for Production
-variable "postgres_admin_username" {
-  description = "PostgreSQL administrator username"
-  type        = string
-  default     = "warehouse_admin"
-}
+# variable "postgres_admin_username" {
+#   description = "PostgreSQL administrator username"
+#   type        = string
+#   default     = "warehouse_admin"
+# }
 
-variable "postgres_admin_password" {
-  description = "PostgreSQL administrator password"
+# variable "postgres_admin_password" {
+#   description = "PostgreSQL administrator password"
+#   type        = string
+#   sensitive   = true
+#   validation {
+#     condition     = length(var.postgres_admin_password) >= 12
+#     error_message = "PostgreSQL password must be at least 12 characters long for production."
+#   }
+# }
+
+# External Database Configuration
+variable "external_postgres_url" {
+  description = "External PostgreSQL connection URL (Neon Database)"
   type        = string
   sensitive   = true
-  validation {
-    condition     = length(var.postgres_admin_password) >= 12
-    error_message = "PostgreSQL password must be at least 12 characters long for production."
-  }
+  default     = ""
+}
+
+variable "external_mongodb_url" {
+  description = "External MongoDB connection URL (MongoDB Atlas)"
+  type        = string
+  sensitive   = true
+  default     = ""
 }
 
 variable "cors_origin" {

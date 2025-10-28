@@ -3,31 +3,172 @@
 ## 📋 Tổng quan
 
 Deploy ứng dụng Warehouse Management System lên Microsoft Azure với:
-- ✅ Frontend: React + Vite  
+- ✅ Frontend: React + Vite
 - ✅ Backend: NestJS + TypeScript
 - ✅ Database: **External** (Neon PostgreSQL + MongoDB Atlas - FREE)
 - ✅ Infrastructure: Azure App Services
 - ✅ **Chi phí chỉ $70/tháng** cho cả 2 environments (tiết kiệm $60/tháng)
+
+## 💻 Local Development Setup
+
+### Prerequisites
+- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+- [Terraform](https://www.terraform.io/downloads) (>= 1.5)
+- Azure subscription with contributor access
+
+### Quick Start
+
+1. **Clone and setup:**
+   ```bash
+   git clone <repository-url>
+   cd warehouse-and-supply-chain-management-system/iac
+   ```
+
+2. **Run setup script:**
+   ```bash
+   chmod +x scripts/setup-local.sh
+   ./scripts/setup-local.sh
+   ```
+
+3. **Set environment variables:**
+   ```bash
+   # Option 1: Copy and edit .env file
+   cp .env.example .env
+   # Edit .env with your actual database URLs
+   # JWT secrets are already generated in .env.example
+   
+   # Option 2: Generate new JWT secrets automatically
+   ./scripts/generate-jwt-secrets.sh
+   
+   # Option 3: Generate manually
+   openssl rand -base64 32  # For access secret
+   openssl rand -base64 32  # For refresh secret
+   ```
+   # Option 3: Export manually
+   export TF_VAR_external_postgres_url="postgresql://user:pass@host:5432/db"
+   export TF_VAR_jwt_access_secret="$(openssl rand -base64 32)"
+   export TF_VAR_jwt_refresh_secret="$(openssl rand -base64 32)"
+   ```
+
+4. **Test Terraform locally:**
+   ```bash
+   cd environments/staging
+
+   # Make script executable (first time only)
+   chmod +x ../scripts/terraform-local.sh
+
+   # Initialize (loads .env automatically)
+   ../scripts/terraform-local.sh init
+
+   # Plan changes (loads .env automatically)
+   ../scripts/terraform-local.sh plan
+
+   # Apply (⚠️ creates real resources!)
+   ../scripts/terraform-local.sh apply
+
+   # Clean up when done
+   ../scripts/terraform-local.sh destroy
+   ```
+
+### Environment Variables Reference
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `TF_VAR_external_postgres_url` | Neon PostgreSQL connection string | `postgresql://user:pass@host:5432/db` |
+| `TF_VAR_external_mongodb_url` | MongoDB Atlas connection string | `mongodb://user:pass@host:27017/db` |
+| `TF_VAR_jwt_access_secret` | JWT access token secret | `your-secret-here` |
+| `TF_VAR_jwt_refresh_secret` | JWT refresh token secret | `your-refresh-secret` |
+| `TF_VAR_alert_email_1` | Email for monitoring alerts | `admin@example.com` |
+
+### Troubleshooting
+
+**Common Issues:**
+- **Backend access denied**: Ensure Azure CLI login and correct subscription
+- **Variable not found**: Check TF_VAR_* environment variables are set in .env file
+- **.env file missing**: Run `cp .env.example .env` and edit with your values
+- **Resource quota exceeded**: Check Azure subscription limits
+
+**Debug commands:**
+```bash
+# Check Azure login
+az account show
+
+# List resources
+az resource list --resource-group rg-warehouse-mgmt-staging
+
+# Check Terraform state
+terraform state list
+```
+
+## 🏭 Production Environment
+
+Production environment sử dụng cấu hình tương tự staging nhưng với tính năng production-grade:
+
+### 🚀 Production Features:
+- ✅ **External Databases**: Neon PostgreSQL + MongoDB Atlas (tiết kiệm $35/tháng)
+- ✅ **Azure Front Door CDN**: Global load balancing & caching
+- ✅ **Deployment Slots**: Blue-green deployment cho zero-downtime
+- ✅ **Auto-scaling**: Tự động scale từ 1-5 instances dựa trên CPU
+- ✅ **Advanced Monitoring**: 90-day log retention + comprehensive alerts
+
+### 🛠️ Deploy Production:
+
+1. **Setup environment:**
+   ```bash
+   cd environments/production
+   cp .env.example .env  # Edit with production database URLs
+   ```
+
+2. **Deploy production:**
+   ```bash
+   # Make script executable
+   chmod +x ../scripts/terraform-local.sh
+
+   # Initialize
+   ../scripts/terraform-local.sh init
+
+   # Plan (review changes)
+   ../scripts/terraform-local.sh plan
+
+   # Apply (⚠️ creates production resources!)
+   ../scripts/terraform-local.sh apply
+   ```
+
+### 📊 Production Resources:
+- **App Services**: Backend + Frontend với deployment slots
+- **Azure Front Door**: CDN với HTTPS enforcement
+- **Auto-scaling**: CPU-based scaling (1-5 instances)
+- **Monitoring**: Advanced alerts + 90-day retention
+- **External Databases**: Production-ready external DBs
+
+### 🌐 Production URLs:
+- **Frontend**: `https://warehouse-mgmt-production-frontend.azurewebsites.net`
+- **CDN**: `https://warehouse-mgmt-production-frontend-cdn.azureedge.net`
+- **Backend**: `https://warehouse-mgmt-production-backend.azurewebsites.net`
+
+---
+
+## 💰 Chi phí tối ưu
 
 ## 💰 Chi phí tối ưu
 
 ### Hybrid Database Strategy (Khuyến nghị):
 ```
 Staging Environment:    $35/month (App Service B1 + External DBs)
-Production Environment: $70/month (App Service B1 + Azure DBs)
+Production Environment: $35/month (App Service B1 + External DBs + CDN)
 External Databases:     $0/month (Neon + MongoDB Atlas Free Tier)
 Azure Databases:        $35/month (PostgreSQL B1ms + Cosmos DB 400RU)
 ──────────────────────────────────────────────────────
-Total: $105/month (Balanced cost vs professional demo)
+Total: $70/month (Maximum cost savings!)
 ```
 
 ### 3-Month Budget Plan:
 ```
 Tháng 1: $35 (chỉ staging với external DBs)
-Tháng 2: $105 (staging + production với Azure DBs)  
-Tháng 3: $70 (chỉ production cho demo)
+Tháng 2: $70 (staging + production với external DBs)  
+Tháng 3: $35 (chỉ production cho demo)
 ──────────────────────────────────
-Total: $210 < $300 budget ✅
+Total: $140 < $300 budget ✅ (Tiết kiệm $70/tháng!)
 ```
 
 ---
@@ -36,18 +177,19 @@ Total: $210 < $300 budget ✅
 
 ### Application Stack:
 ```
-Frontend (React) → Azure App Service
+Frontend (React) → Azure App Service → Azure Front Door CDN
 Backend (NestJS) → Azure App Service  
 
-Staging Environment:
+Both Environments (Staging + Production):
 ├── PostgreSQL → Neon Database (External, Free)
 └── MongoDB → MongoDB Atlas (External, Free)
 
-Production Environment:  
-├── PostgreSQL → Azure Database (B1ms, Budget-optimized)
-└── MongoDB → Azure Cosmos DB (400 RU/s, Auto-pause)
+Production Only:
+├── Azure Front Door → Global CDN & Load Balancing
+├── Deployment Slots → Blue-green deployment
+└── Auto-scaling → CPU-based scaling (1-5 instances)
 
-Monitoring → Application Insights
+Monitoring → Application Insights (Staging: 30 days, Production: 90 days)
 ```
 
 ### Infrastructure Components:
