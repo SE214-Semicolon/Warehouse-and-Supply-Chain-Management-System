@@ -67,6 +67,8 @@ RUN chmod +x docker-entrypoint.sh
 # Create uploads directory
 RUN mkdir -p uploads && chown nestjs:nodejs uploads
 
+RUN chown -R nestjs:nodejs .
+
 # Switch to non-root user
 USER nestjs
 
