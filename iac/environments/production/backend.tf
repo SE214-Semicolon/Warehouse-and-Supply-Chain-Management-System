@@ -4,5 +4,6 @@ terraform {
     storage_account_name = "warehouse1760289755"
     container_name       = "tfstate"
     key                  = "production/terraform.tfstate"
+    use_azuread_auth     = true
   }
 }

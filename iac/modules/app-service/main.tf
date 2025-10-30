@@ -17,11 +17,17 @@ resource "azurerm_linux_web_app" "backend" {
   service_plan_id     = azurerm_service_plan.main.id
 
   site_config {
-    always_on                         = var.app_service_always_on
-    container_registry_use_managed_identity = true
-    
+    always_on                               = var.app_service_always_on
+    container_registry_use_managed_identity = false
+
     application_stack {
-      node_version = "20-lts"
+      docker_image_name   = "ghcr.io/se214-semicolon/warehouse-and-supply-chain-management-system/backend:${var.environment == "production" ? "latest" : "develop"}"
+      docker_registry_url = "https://ghcr.io"
+    }
+
+    cors {
+      allowed_origins     = [var.cors_origin, "https://${var.project_name}-${var.environment}-frontend.azurewebsites.net"]
+      support_credentials = true
     }
 
     # Enable VNet integration
@@ -35,27 +41,31 @@ resource "azurerm_linux_web_app" "backend" {
     var.backend_app_settings,
     {
       # App Configuration matching team's .env file
-      NODE_ENV                          = var.environment == "production" ? "production" : "development"
-      PORT                             = "3000"
-      
+      NODE_ENV = var.environment == "production" ? "production" : "development"
+      PORT     = "3000"
+
       # External Database URLs (Neon PostgreSQL + MongoDB Atlas)
-      DATABASE_URL                     = var.postgres_connection_string
-      MONGODB_URI                      = var.cosmos_mongodb_connection_string
-      MONGO_URL                        = var.cosmos_mongodb_connection_string
-      
+      DATABASE_URL = var.postgres_connection_string
+      MONGODB_URI  = var.cosmos_mongodb_connection_string
+      MONGO_URL    = var.cosmos_mongodb_connection_string
+
       # JWT Configuration (same as team's .env)
-      JWT_ACCESS_SECRET                = var.jwt_access_secret
-      JWT_ACCESS_TTL                   = "15m"
-      JWT_REFRESH_SECRET               = var.jwt_refresh_secret
-      JWT_REFRESH_TTL                  = "7d"
-      
+      JWT_ACCESS_SECRET  = var.jwt_access_secret
+      JWT_ACCESS_TTL     = "15m"
+      JWT_REFRESH_SECRET = var.jwt_refresh_secret
+      JWT_REFRESH_TTL    = "7d"
+
       # CORS Configuration
-      CORS_ORIGIN                      = var.cors_origin
-      
+      CORS_ORIGIN = var.cors_origin
+
+      # Docker Configuration
+      DOCKER_ENABLE_CI   = "true"
+      MIGRATE_ON_STARTUP = "true"
+
       # Azure App Service Configuration
       APPLICATIONINSIGHTS_CONNECTION_STRING = var.application_insights_connection_string
-      WEBSITES_ENABLE_APP_SERVICE_STORAGE = "false"
-      WEBSITES_PORT                    = "3000"
+      WEBSITES_ENABLE_APP_SERVICE_STORAGE   = "false"
+      WEBSITES_PORT                         = "3000"
     }
   )
 
@@ -78,7 +88,7 @@ resource "azurerm_linux_web_app" "backend" {
   logs {
     detailed_error_messages = true
     failed_request_tracing  = true
-    
+
     application_logs {
       file_system_level = "Information"
     }
@@ -102,11 +112,12 @@ resource "azurerm_linux_web_app" "frontend" {
   service_plan_id     = azurerm_service_plan.main.id
 
   site_config {
-    always_on                         = var.app_service_always_on
-    container_registry_use_managed_identity = true
-    
+    always_on                               = var.app_service_always_on
+    container_registry_use_managed_identity = false
+
     application_stack {
-      node_version = "20-lts"
+      docker_image_name   = "ghcr.io/se214-semicolon/warehouse-and-supply-chain-management-system/frontend:${var.environment == "production" ? "latest" : "develop"}"
+      docker_registry_url = "https://ghcr.io"
     }
 
     # Enable VNet integration
@@ -119,12 +130,16 @@ resource "azurerm_linux_web_app" "frontend" {
   app_settings = merge(
     var.frontend_app_settings,
     {
-      NODE_ENV                           = var.environment == "production" ? "production" : "staging"
-      VITE_API_URL                       = "https://${var.project_name}-${var.environment}-backend.azurewebsites.net"
-      VITE_ENVIRONMENT                   = var.environment
+      NODE_ENV         = var.environment == "production" ? "production" : "staging"
+      VITE_API_URL     = "https://${var.project_name}-${var.environment}-backend.azurewebsites.net"
+      VITE_ENVIRONMENT = var.environment
+
+      # Docker Configuration
+      DOCKER_ENABLE_CI = "true"
+
       APPLICATIONINSIGHTS_CONNECTION_STRING = var.application_insights_connection_string
-      WEBSITES_ENABLE_APP_SERVICE_STORAGE = "false"
-      WEBSITES_PORT                     = "8080"
+      WEBSITES_ENABLE_APP_SERVICE_STORAGE   = "false"
+      WEBSITES_PORT                         = "8080"
     }
   )
 
@@ -135,7 +150,7 @@ resource "azurerm_linux_web_app" "frontend" {
   logs {
     detailed_error_messages = true
     failed_request_tracing  = true
-    
+
     application_logs {
       file_system_level = "Information"
     }
@@ -219,11 +234,17 @@ resource "azurerm_linux_web_app_slot" "backend_staging" {
   app_service_id = azurerm_linux_web_app.backend.id
 
   site_config {
-    always_on                         = var.app_service_always_on
-    container_registry_use_managed_identity = true
-    
+    always_on                               = var.app_service_always_on
+    container_registry_use_managed_identity = false
+
     application_stack {
-      node_version = "20-lts"
+      docker_image_name   = "ghcr.io/se214-semicolon/warehouse-and-supply-chain-management-system/backend:${var.environment == "production" ? "latest" : "develop"}"
+      docker_registry_url = "https://ghcr.io"
+    }
+
+    cors {
+      allowed_origins     = [var.cors_origin, "https://${var.project_name}-${var.environment}-frontend.azurewebsites.net"]
+      support_credentials = true
     }
 
     vnet_route_all_enabled = true
@@ -247,11 +268,12 @@ resource "azurerm_linux_web_app_slot" "frontend_staging" {
   app_service_id = azurerm_linux_web_app.frontend.id
 
   site_config {
-    always_on                         = var.app_service_always_on
-    container_registry_use_managed_identity = true
-    
+    always_on                               = var.app_service_always_on
+    container_registry_use_managed_identity = false
+
     application_stack {
-      node_version = "20-lts"
+      docker_image_name   = "ghcr.io/se214-semicolon/warehouse-and-supply-chain-management-system/frontend:${var.environment == "production" ? "latest" : "develop"}"
+      docker_registry_url = "https://ghcr.io"
     }
 
     vnet_route_all_enabled = true

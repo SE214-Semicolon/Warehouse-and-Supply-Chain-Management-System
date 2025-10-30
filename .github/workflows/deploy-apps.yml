@@ -70,33 +70,25 @@ jobs:
           backend/package-lock.json
           frontend/package-lock.json
 
-    # Backend tests
-    - name: Install backend dependencies
-      if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
-      working-directory: ./backend
-      run: npm ci
-
-    - name: Run backend linting
-      if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
-      working-directory: ./backend
-      run: npm run lint
-
+    # Note: Linting and type checking are already done in code-check job
+    # Tests are commented out until implemented by backend/frontend team
+    
+    # TODO: Uncomment when tests are ready
+    # - name: Install backend dependencies
+    #   if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+    #   working-directory: ./backend
+    #   run: npm ci
+    #
     # - name: Run backend tests
     #   if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
     #   working-directory: ./backend
     #   run: npm run test
-
-    # Frontend tests
-    - name: Install frontend dependencies
-      if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
-      working-directory: ./frontend
-      run: npm ci
-
-    - name: Run frontend linting
-      if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
-      working-directory: ./frontend
-      run: npm run lint
-
+    #
+    # - name: Install frontend dependencies
+    #   if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    #   working-directory: ./frontend
+    #   run: npm ci
+    #
     # - name: Run frontend tests
     #   if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
     #   working-directory: ./frontend
