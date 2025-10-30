@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import { Box, Typography } from "@mui/material";
 import DataTable from "@/components/DataTable";
 import SearchBar from "@/components/SearchBar";
@@ -14,7 +14,8 @@ import {
   batchesData,
   inventoryData,
   movementsData,
-} from "./components/mockdata";
+  fetchCategoriesData,
+} from "./components/data_service";
 
 const WarehouseManagement = () => {
   const [selectedMenu, setSelectedMenu] = useState("warehouses");
@@ -22,6 +23,20 @@ const WarehouseManagement = () => {
   const [dialogMode, setDialogMode] = useState(null);
   const [selectedRow, setSelectedRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [categoriesData, setCategoriesData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (selectedMenu === "categories") {
+      const loadCategories = async () => {
+        setLoading(true);
+        const data = await fetchCategoriesData();
+        setCategoriesData(data);
+        setLoading(false);
+      };
+      loadCategories();
+    }
+  }, [selectedMenu]);
 
   const handleAdd = () => {
     setDialogMode("add");
@@ -45,10 +60,7 @@ const WarehouseManagement = () => {
     alert(`Xóa: ${row.name || row.code || row.batchNo || row.sku || row.id}`);
   };
 
-  const handleSave = () => {
-    console.log("Đã lưu");
-  };
-
+  const handleSave = () => console.log("Đã lưu");
   const handleImport = () => console.log("Import clicked");
   const handleExport = () => console.log("Export clicked");
   const handlePrint = () => console.log("Print clicked");
@@ -59,6 +71,7 @@ const WarehouseManagement = () => {
     onDelete: handleDelete,
   };
 
+  // Các bảng dữ liệu
   const dataTables = {
     warehouses: (
       <DataTable
@@ -68,10 +81,19 @@ const WarehouseManagement = () => {
         {...commonProps}
       />
     ),
+    categories: (
+      <DataTable
+        title="Categories"
+        columns={menuItems[1].columns}
+        data={categoriesData}
+        loading={loading}
+        {...commonProps}
+      />
+    ),
     locations: (
       <DataTable
         title="Locations"
-        columns={menuItems[1].columns}
+        columns={menuItems[2].columns}
         data={locationsData}
         {...commonProps}
       />
@@ -79,7 +101,7 @@ const WarehouseManagement = () => {
     products: (
       <DataTable
         title="Products"
-        columns={menuItems[2].columns}
+        columns={menuItems[3].columns}
         data={productsData}
         {...commonProps}
       />
@@ -87,7 +109,7 @@ const WarehouseManagement = () => {
     batches: (
       <DataTable
         title="Batches"
-        columns={menuItems[3].columns}
+        columns={menuItems[4].columns}
         data={batchesData}
         {...commonProps}
       />
@@ -95,7 +117,7 @@ const WarehouseManagement = () => {
     inventory: (
       <DataTable
         title="Inventory"
-        columns={menuItems[4].columns}
+        columns={menuItems[5].columns}
         data={inventoryData}
         {...commonProps}
       />
@@ -103,7 +125,7 @@ const WarehouseManagement = () => {
     movements: (
       <DataTable
         title="Stock Movements"
-        columns={menuItems[5].columns}
+        columns={menuItems[6].columns}
         data={movementsData}
         {...commonProps}
       />

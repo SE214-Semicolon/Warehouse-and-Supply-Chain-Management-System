@@ -1,3 +1,5 @@
+import { getAllCategories } from "@/services/category.service";
+
 const buildExtraInfo = (row) =>
   `Người tạo: ${row.createdBy || "Không rõ"}
   Ngày tạo: ${row.createdAt || "N/A"}
@@ -192,3 +194,46 @@ export const movementsData = [
     reference: "SO-001",
   },
 ];
+
+// Call api
+
+export const fetchCategoriesData = async () => {
+  try {
+    const res = await getAllCategories();
+    console.log("Danh mục từ API:", res.data);
+  } catch (error) {
+    console.error("Lỗi khi fetch categories:", error);
+    return [];
+  }
+};
+
+// Data provider
+
+export const dataProvider = async (menu) => {
+  switch (menu) {
+    case "warehouses":
+      return warehousesData;
+
+    case "categories":
+      return await fetchCategoriesData();
+
+    case "locations":
+      return locationsData;
+
+    case "products":
+      return productsData;
+
+    case "batches":
+      return batchesData;
+
+    case "inventory":
+      return inventoryData;
+
+    case "movements":
+      return movementsData;
+
+    default:
+      console.warn("Chưa có dữ liệu cho menu:", menu);
+      return [];
+  }
+};
