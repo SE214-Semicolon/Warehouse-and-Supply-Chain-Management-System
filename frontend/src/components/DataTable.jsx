@@ -212,7 +212,12 @@ export default function DataTable({
                     <IconButton
                       size="small"
                       color="primary"
-                      onClick={() => onView(row)}
+                      onClick={() =>
+                        onView({
+                          ...row,
+                          stt: page * rowsPerPage + index + 1,
+                        })
+                      }
                     >
                       <Visibility />
                     </IconButton>

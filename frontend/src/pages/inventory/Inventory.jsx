@@ -45,6 +45,10 @@ const WarehouseManagement = () => {
     alert(`Xóa: ${row.name || row.code || row.batchNo || row.sku || row.id}`);
   };
 
+  const handleSave = () => {
+    console.log("Đã lưu");
+  };
+
   const handleImport = () => console.log("Import clicked");
   const handleExport = () => console.log("Export clicked");
   const handlePrint = () => console.log("Print clicked");
@@ -107,7 +111,7 @@ const WarehouseManagement = () => {
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2}}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <InventoryToolbar
         menuItems={menuItems}
         selectedMenu={selectedMenu}
@@ -142,6 +146,7 @@ const WarehouseManagement = () => {
         <FormDialog
           open={openDialog}
           onClose={() => setOpenDialog(false)}
+          onAction={handleSave}
           mode={dialogMode}
           selectedMenu={selectedMenu}
           selectedRow={dialogMode === "edit" ? selectedRow : null}

@@ -1,3 +1,9 @@
+const buildExtraInfo = (row) =>
+  `Người tạo: ${row.createdBy || "Không rõ"}
+  Ngày tạo: ${row.createdAt || "N/A"}
+  Ghi chú: ${row.note || "Không có ghi chú"}
+`;
+
 export const warehousesData = [
   {
     id: 1,
@@ -23,7 +29,7 @@ export const warehousesData = [
     quantity: 80,
     createdAt: "2024-03-10",
   },
-];
+].map((item) => ({ ...item, extraInfo: buildExtraInfo(item) }));
 
 export const locationsData = [
   {
