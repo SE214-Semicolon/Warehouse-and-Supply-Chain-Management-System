@@ -3,6 +3,7 @@
 ## 📋 Tổng Quan
 
 Hệ thống hiện tại sử dụng:
+
 - **PostgreSQL**: Neon (Cloud) - Cho main data
 - **MongoDB**: MongoDB Atlas (Cloud) - Cho analytics
 - **Backend**: NestJS - Port 3000
@@ -10,19 +11,24 @@ Hệ thống hiện tại sử dụng:
 ## 🔧 Hướng dẫn Setup Online Database
 
 ### Bước 1: Setup Backend
+
 ```bash
 cd backend
 npm install
 ```
 
 ### Bước 2: Cấu hình Environment
-Copy vào `.env` trong thư mục `backend/`:
+
+Copy `.env.online.example` thành `.env` trong thư mục `backend/` và điền các giá trị connection string từ team storage:
 
 ```env
+# Xem .env.online.example để biết định dạng và các biến cần thiết
+# KHÔNG commit các thông tin nhạy cảm vào git
+
 PORT=3000
-DATABASE_URL=postgresql://neondb_owner:npg_Kirg6TH2xhtD@ep-shy-sun-a1gihjly-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
-MONGODB_URI=mongodb+srv://quocpro12334_db_user:N16obV0JlC2uuy5L@warehouse-mongodb-clust.szotwar.mongodb.net/?retryWrites=true&w=majority&appName=warehouse-mongodb-cluster
-MONGO_URL=mongodb+srv://quocpro12334_db_user:N16obV0JlC2uuy5L@warehouse-mongodb-clust.szotwar.mongodb.net/?retryWrites=true&w=majority&appName=warehouse-mongodb-cluster
+DATABASE_URL=<neon_connection_string>  # Lấy từ team storage
+MONGODB_URI=<atlas_connection_string>  # Lấy từ team storage
+MONGO_URL=${MONGODB_URI}
 JWT_ACCESS_SECRET=dev-access-secret
 JWT_ACCESS_TTL=15m
 JWT_REFRESH_SECRET=dev-refresh-secret
@@ -31,35 +37,45 @@ CORS_ORIGIN=http://localhost:5173
 ```
 
 ### Bước 3: Chạy Migrations
+
 ```bash
 npx prisma migrate deploy
 ```
 
 ### Bước 4: Khởi động Backend
+
 ```bash
 npm run start:dev
 ```
 
 ### Bước 5: Kiểm tra kết nối
+
 - **Backend**: http://localhost:3000
 - **API Docs**: http://localhost:3000/api
-- **Health Check**: http://localhost:3000/reporting/health
+- **Health Check**: http://localhost:3000/health
 
 ## ⚠️ Lưu ý quan trọng
 
-**KHÔNG chạy `docker-compose up`** vì sẽ khởi động local databases và gây conflict với online databases.
+**KHÔNG chạy `docker-compose up`** khi làm việc với online databases vì sẽ gây conflict port với local databases.
 
-**Chỉ sử dụng:**
-- `npm run start:dev` - Chạy trực tiếp với online databases
+Thay vào đó:
+
+1. Copy `.env.online.example` thành `.env`
+2. Điền connection strings từ team storage
+3. Chạy `npm run start:dev`
+
+Chi tiết xem thêm tại `backend/DEVELOPMENT_FLOWS.md`
 
 ## 🔍 Database Access
 
 ### PostgreSQL (Neon)
+
 - **URL**: https://console.neon.tech
 - **Database**: neondb
 - **Connection**: Đã cấu hình trong .env
 
 ### MongoDB (Atlas)
+
 - **URL**: https://cloud.mongodb.com
 - **Cluster**: warehouse-mongodb-clust
 - **Database**: warehouse_analytics
@@ -67,6 +83,7 @@ npm run start:dev
 ## 🛠️ Development Workflow
 
 ### 1. Database Schema Changes
+
 ```bash
 # Khi có thay đổi trong schema, tạo migration mới
 npx prisma migrate dev --name [migration-name]
@@ -79,6 +96,7 @@ npx prisma migrate reset
 ```
 
 ### 2. MongoDB Collections
+
 ```typescript
 // Sử dụng MongoDBService trong code
 constructor(private mongoService: MongoDBService) {}
@@ -96,11 +114,13 @@ await collection.deleteOne(filter);
 ## 🚨 Troubleshooting
 
 ### Lỗi Connection
+
 1. **PostgreSQL**: Kiểm tra Neon project không bị pause
 2. **MongoDB**: Kiểm tra IP whitelist trong Atlas
 3. **Network**: Kiểm tra firewall/proxy
 
 ### Lỗi Docker Conflicts
+
 ```bash
 # Nếu đã chạy docker-compose up (local databases)
 docker-compose down
@@ -115,6 +135,7 @@ taskkill /f /im node.exe
 ```
 
 ### Lỗi Migrations
+
 ```bash
 # Reset và chạy lại
 npx prisma migrate reset
@@ -122,6 +143,7 @@ npx prisma migrate deploy
 ```
 
 ### Lỗi Environment
+
 - Đảm bảo file `.env` có đúng format
 - Không có spaces thừa trong connection strings
 - Kiểm tra quotes và special characters
@@ -129,11 +151,13 @@ npx prisma migrate deploy
 ## 📊 Monitoring
 
 ### Health Checks
+
 - **Backend**: http://localhost:3000
 - **PostgreSQL**: `GET /reporting/health`
 - **MongoDB**: `GET /reporting/health`
 
 ### Logs
+
 ```bash
 # Xem logs
 npm run start:dev
@@ -148,6 +172,3 @@ docker logs [container-name]
 - **Database Passwords**: Không commit vào git
 - **CORS**: Cấu hình đúng origins
 - **Rate Limiting**: Implement nếu cần
-
-
-
