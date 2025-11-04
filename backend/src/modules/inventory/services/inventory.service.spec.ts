@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { InventoryService } from './inventory.service';
 import { InventoryRepository } from '../repositories/inventory.repository';
+import { CacheService } from '../../../cache/cache.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AdjustInventoryDto, AdjustmentReason } from '../dto/adjust-inventory.dto';
 import { TransferInventoryDto } from '../dto/transfer-inventory.dto';
@@ -8,6 +9,7 @@ import { TransferInventoryDto } from '../dto/transfer-inventory.dto';
 describe('InventoryService', () => {
   let service: InventoryService;
   let repo: Partial<InventoryRepository>;
+  let cacheService: jest.Mocked<CacheService>;
 
   beforeEach(async () => {
     repo = {
@@ -22,11 +24,25 @@ describe('InventoryService', () => {
       findUser: jest.fn().mockResolvedValue({ id: 'user1' }),
     };
 
+    const mockCacheService = {
+      get: jest.fn(),
+      set: jest.fn(),
+      getOrSet: jest.fn(),
+      delete: jest.fn(),
+      deleteByPrefix: jest.fn(),
+      reset: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [InventoryService, { provide: InventoryRepository, useValue: repo }],
+      providers: [
+        InventoryService,
+        { provide: InventoryRepository, useValue: repo },
+        { provide: CacheService, useValue: mockCacheService },
+      ],
     }).compile();
 
     service = module.get<InventoryService>(InventoryService);
+    cacheService = module.get(CacheService);
   });
 
   describe('receiveInventory', () => {
@@ -51,6 +67,7 @@ describe('InventoryService', () => {
         inventory: { id: 'inv1' },
         movement: { id: 'move1' },
       });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
 
       const result = await service.receiveInventory({
         productBatchId: 'pb1',
@@ -61,6 +78,7 @@ describe('InventoryService', () => {
 
       expect(result.inventory!.id).toBe('inv1');
       expect(result.movement.id).toBe('move1');
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
   });
 

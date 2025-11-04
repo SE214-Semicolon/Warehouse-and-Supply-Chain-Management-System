@@ -35,8 +35,9 @@ describe('ProductCategoryService', () => {
   describe('create', () => {
     it('should create a root category successfully', async () => {
       const createDto = { name: 'Electronics' };
-      const expectedResult = { id: '1', ...createDto, parentId: null };
-      mockCategoryRepository.create.mockResolvedValue(expectedResult);
+      const categoryData = { id: '1', ...createDto, parentId: null };
+      const expectedResult = { success: true, data: categoryData, message: 'Category created successfully' };
+      mockCategoryRepository.create.mockResolvedValue(categoryData);
 
       const result = await service.create(createDto);
       expect(result).toEqual(expectedResult);
@@ -46,10 +47,11 @@ describe('ProductCategoryService', () => {
     it('should create a child category successfully', async () => {
       const createDto = { name: 'Laptops', parentId: '1' };
       const parentCategory = { id: '1', name: 'Electronics', parentId: null };
-      const expectedResult = { id: '2', ...createDto };
+      const categoryData = { id: '2', ...createDto };
+      const expectedResult = { success: true, data: categoryData, message: 'Category created successfully' };
 
       mockCategoryRepository.findOne.mockResolvedValue(parentCategory);
-      mockCategoryRepository.create.mockResolvedValue(expectedResult);
+      mockCategoryRepository.create.mockResolvedValue(categoryData);
 
       const result = await service.create(createDto);
       expect(result).toEqual(expectedResult);
@@ -105,7 +107,7 @@ describe('ProductCategoryService', () => {
       ];
 
       const result = await service.findAll();
-      expect(result).toEqual(expectedTree);
+      expect(result).toEqual({ success: true, data: expectedTree, total: expectedTree.length });
     });
   });
 

@@ -1,11 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { WarehouseService } from './warehouse.service';
 import { WarehouseRepository } from '../repositories/warehouse.repository';
+import { CacheService } from '../../../cache/cache.service';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
 describe('WarehouseService', () => {
   let service: WarehouseService;
   let repository: jest.Mocked<WarehouseRepository>;
+  let cacheService: jest.Mocked<CacheService>;
 
   const mockWarehouse = {
     id: 'warehouse-uuid-1',
@@ -30,6 +32,15 @@ describe('WarehouseService', () => {
       getWarehouseStats: jest.fn(),
     };
 
+    const mockCacheService = {
+      get: jest.fn(),
+      set: jest.fn(),
+      getOrSet: jest.fn(),
+      delete: jest.fn(),
+      deleteByPrefix: jest.fn(),
+      reset: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WarehouseService,
@@ -37,11 +48,16 @@ describe('WarehouseService', () => {
           provide: WarehouseRepository,
           useValue: mockRepository,
         },
+        {
+          provide: CacheService,
+          useValue: mockCacheService,
+        },
       ],
     }).compile();
 
     service = module.get<WarehouseService>(WarehouseService);
     repository = module.get(WarehouseRepository);
+    cacheService = module.get(CacheService);
   });
 
   it('should be defined', () => {
@@ -59,6 +75,7 @@ describe('WarehouseService', () => {
 
       repository.checkCodeExists.mockResolvedValue(false);
       repository.create.mockResolvedValue(mockWarehouse);
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
 
       const result = await service.create(createDto);
 
@@ -66,6 +83,7 @@ describe('WarehouseService', () => {
       expect(result.warehouse).toEqual(mockWarehouse);
       expect(repository.checkCodeExists).toHaveBeenCalledWith(createDto.code);
       expect(repository.create).toHaveBeenCalled();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     it('should throw ConflictException if code already exists', async () => {
@@ -104,6 +122,9 @@ describe('WarehouseService', () => {
 
   describe('findOne', () => {
     it('should return a warehouse by ID', async () => {
+      cacheService.getOrSet.mockImplementation(async (_key, factory) => {
+        return await factory();
+      });
       repository.findOne.mockResolvedValue(mockWarehouse);
       repository.getWarehouseStats.mockResolvedValue({
         totalLocations: 10,
@@ -116,9 +137,13 @@ describe('WarehouseService', () => {
       expect(result.success).toBe(true);
       expect(result.warehouse).toEqual(mockWarehouse);
       expect(result.stats).toBeDefined();
+      expect(cacheService.getOrSet).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if warehouse not found', async () => {
+      cacheService.getOrSet.mockImplementation(async (_key, factory) => {
+        return await factory();
+      });
       repository.findOne.mockResolvedValue(null);
 
       await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
@@ -133,11 +158,13 @@ describe('WarehouseService', () => {
 
       repository.findOne.mockResolvedValue(mockWarehouse);
       repository.update.mockResolvedValue({ ...mockWarehouse, name: 'Updated Warehouse' });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
 
       const result = await service.update('warehouse-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
       expect(result.warehouse.name).toBe('Updated Warehouse');
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if warehouse not found', async () => {

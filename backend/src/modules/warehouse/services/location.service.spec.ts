@@ -2,12 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LocationService } from './location.service';
 import { LocationRepository } from '../repositories/location.repository';
 import { WarehouseRepository } from '../repositories/warehouse.repository';
+import { CacheService } from '../../../cache/cache.service';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
 describe('LocationService', () => {
   let service: LocationService;
   let locationRepo: jest.Mocked<LocationRepository>;
   let warehouseRepo: jest.Mocked<WarehouseRepository>;
+  let cacheService: jest.Mocked<CacheService>;
 
   const mockWarehouse = {
     id: 'warehouse-uuid-1',
@@ -52,6 +54,15 @@ describe('LocationService', () => {
       findOne: jest.fn(),
     };
 
+    const mockCacheService = {
+      get: jest.fn(),
+      set: jest.fn(),
+      getOrSet: jest.fn(),
+      delete: jest.fn(),
+      deleteByPrefix: jest.fn(),
+      reset: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LocationService,
@@ -63,12 +74,17 @@ describe('LocationService', () => {
           provide: WarehouseRepository,
           useValue: mockWarehouseRepo,
         },
+        {
+          provide: CacheService,
+          useValue: mockCacheService,
+        },
       ],
     }).compile();
 
     service = module.get<LocationService>(LocationService);
     locationRepo = module.get(LocationRepository);
     warehouseRepo = module.get(WarehouseRepository);
+    cacheService = module.get(CacheService);
   });
 
   it('should be defined', () => {
@@ -89,6 +105,7 @@ describe('LocationService', () => {
       warehouseRepo.findOne.mockResolvedValue(mockWarehouse);
       locationRepo.checkCodeExistsInWarehouse.mockResolvedValue(false);
       locationRepo.create.mockResolvedValue(mockLocation);
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
 
       const result = await service.create(createDto);
 
@@ -96,6 +113,7 @@ describe('LocationService', () => {
       expect(result.location).toEqual(mockLocation);
       expect(warehouseRepo.findOne).toHaveBeenCalledWith(createDto.warehouseId);
       expect(locationRepo.create).toHaveBeenCalled();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if warehouse does not exist', async () => {
@@ -145,6 +163,9 @@ describe('LocationService', () => {
 
   describe('findOne', () => {
     it('should return a location by ID', async () => {
+      cacheService.getOrSet.mockImplementation(async (_key, factory) => {
+        return await factory();
+      });
       locationRepo.findOne.mockResolvedValue(mockLocation);
       locationRepo.getLocationStats.mockResolvedValue({
         totalInventoryItems: 5,
@@ -158,9 +179,13 @@ describe('LocationService', () => {
       expect(result.success).toBe(true);
       expect(result.location).toEqual(mockLocation);
       expect(result.stats).toBeDefined();
+      expect(cacheService.getOrSet).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if location not found', async () => {
+      cacheService.getOrSet.mockImplementation(async (_key, factory) => {
+        return await factory();
+      });
       locationRepo.findOne.mockResolvedValue(null);
 
       await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);

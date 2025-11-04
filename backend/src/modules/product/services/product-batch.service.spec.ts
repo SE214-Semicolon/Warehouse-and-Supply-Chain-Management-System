@@ -93,7 +93,7 @@ describe('ProductBatchService', () => {
       const result = await service.create(createDto);
 
       expect(result.success).toBe(true);
-      expect(result.batch).toEqual(mockBatch);
+      expect(result.data).toEqual(mockBatch);
       expect(productRepo.findOne).toHaveBeenCalledWith(createDto.productId);
       expect(batchRepo.create).toHaveBeenCalled();
     });
@@ -155,7 +155,7 @@ describe('ProductBatchService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.batches).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
     });
   });
@@ -167,7 +167,7 @@ describe('ProductBatchService', () => {
       const result = await service.findOne('batch-uuid-1');
 
       expect(result.success).toBe(true);
-      expect(result.batch).toEqual(mockBatch);
+      expect(result.data).toEqual(mockBatch);
     });
 
     it('should throw NotFoundException if batch not found', async () => {
@@ -189,7 +189,7 @@ describe('ProductBatchService', () => {
       const result = await service.update('batch-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.batch.quantity).toBe(150);
+      expect(result.data.quantity).toBe(150);
     });
 
     it('should throw NotFoundException if batch not found', async () => {
@@ -238,7 +238,7 @@ describe('ProductBatchService', () => {
       const result = await service.findExpiring(30, 1, 20);
 
       expect(result.success).toBe(true);
-      expect(result.batches).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
       expect(result.message).toContain('30 days');
     });
   });

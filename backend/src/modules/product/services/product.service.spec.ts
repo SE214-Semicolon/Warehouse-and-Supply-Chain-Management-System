@@ -2,12 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductService } from './product.service';
 import { ProductRepository } from '../repositories/product.repository';
 import { ProductCategoryRepository } from '../repositories/product-category.repository';
+import { CacheService } from '../../../cache/cache.service';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
 describe('ProductService', () => {
   let service: ProductService;
   let productRepo: jest.Mocked<ProductRepository>;
   let categoryRepo: jest.Mocked<ProductCategoryRepository>;
+  let cacheService: jest.Mocked<CacheService>;
 
   const mockProduct = {
     id: 'product-uuid-1',
@@ -51,6 +53,15 @@ describe('ProductService', () => {
       findOne: jest.fn(),
     };
 
+    const mockCacheService = {
+      get: jest.fn(),
+      set: jest.fn(),
+      getOrSet: jest.fn(),
+      delete: jest.fn(),
+      deleteByPrefix: jest.fn(),
+      reset: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductService,
@@ -62,12 +73,17 @@ describe('ProductService', () => {
           provide: ProductCategoryRepository,
           useValue: mockCategoryRepo,
         },
+        {
+          provide: CacheService,
+          useValue: mockCacheService,
+        },
       ],
     }).compile();
 
     service = module.get<ProductService>(ProductService);
     productRepo = module.get(ProductRepository);
     categoryRepo = module.get(ProductCategoryRepository);
+    cacheService = module.get(CacheService);
   });
 
   it('should be defined', () => {
@@ -88,13 +104,17 @@ describe('ProductService', () => {
       productRepo.checkSkuExists.mockResolvedValue(false);
       categoryRepo.findOne.mockResolvedValue(mockCategory);
       productRepo.create.mockResolvedValue(mockProduct);
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
 
       const result = await service.create(createDto);
 
-      expect(result).toEqual(mockProduct);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockProduct);
+      expect(result.message).toBe('Product created successfully');
       expect(productRepo.checkSkuExists).toHaveBeenCalledWith(createDto.sku);
       expect(categoryRepo.findOne).toHaveBeenCalledWith(createDto.categoryId);
       expect(productRepo.create).toHaveBeenCalled();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     it('should throw ConflictException if SKU already exists', async () => {
@@ -140,7 +160,7 @@ describe('ProductService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.products).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
       expect(result.totalPages).toBe(1);
     });
@@ -148,15 +168,22 @@ describe('ProductService', () => {
 
   describe('findOne', () => {
     it('should return a product by ID', async () => {
+      cacheService.getOrSet.mockImplementation(async (_key, factory) => {
+        return await factory();
+      });
       productRepo.findOne.mockResolvedValue(mockProduct);
 
       const result = await service.findOne('product-uuid-1');
 
       expect(result.success).toBe(true);
-      expect(result.product).toEqual(mockProduct);
+      expect(result.data).toEqual(mockProduct);
+      expect(cacheService.getOrSet).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if product not found', async () => {
+      cacheService.getOrSet.mockImplementation(async (_key, factory) => {
+        return await factory();
+      });
       productRepo.findOne.mockResolvedValue(null);
 
       await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
@@ -171,11 +198,14 @@ describe('ProductService', () => {
 
       productRepo.findOne.mockResolvedValue(mockProduct);
       productRepo.update.mockResolvedValue({ ...mockProduct, name: 'Updated Product' });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
 
       const result = await service.update('product-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.product.name).toBe('Updated Product');
+      expect(result.data.name).toBe('Updated Product');
+      expect(result.message).toBe('Product updated successfully');
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if product not found', async () => {
@@ -202,11 +232,13 @@ describe('ProductService', () => {
     it('should delete a product successfully', async () => {
       productRepo.findOne.mockResolvedValue({ ...mockProduct, batches: [] });
       productRepo.delete.mockResolvedValue(mockProduct);
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
 
       const result = await service.remove('product-uuid-1');
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('Product deleted successfully');
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if product not found', async () => {

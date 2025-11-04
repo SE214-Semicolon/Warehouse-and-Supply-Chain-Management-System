@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
-import { PrismaService } from '../src/common/prisma/prisma.service';
+import { PrismaService } from '../src/database/prisma/prisma.service';
 import bcryptjs from 'bcryptjs';
 
 describe('ProductCategoryController (e2e)', () => {
