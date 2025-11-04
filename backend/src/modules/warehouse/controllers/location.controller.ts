@@ -10,6 +10,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { LocationService } from '../services/location.service';
 import { CreateLocationDto } from '../dto/create-location.dto';
@@ -26,6 +27,8 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@ne
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class LocationController {
+  private readonly logger = new Logger(LocationController.name);
+
   constructor(private readonly locationService: LocationService) {}
 
   @Post()
@@ -37,6 +40,7 @@ export class LocationController {
   @ApiResponse({ status: 409, description: 'Location code already exists in this warehouse.' })
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createLocationDto: CreateLocationDto) {
+    this.logger.log(`POST /locations - Creating location with code: ${createLocationDto.code}`);
     return this.locationService.create(createLocationDto);
   }
 
@@ -45,6 +49,7 @@ export class LocationController {
   @ApiOperation({ summary: 'Get all locations with filters and pagination' })
   @ApiResponse({ status: 200, description: 'Return all locations.' })
   findAll(@Query() query: QueryLocationDto) {
+    this.logger.log(`GET /locations - Fetching locations with query: ${JSON.stringify(query)}`);
     return this.locationService.findAll(query);
   }
 
@@ -54,6 +59,7 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'Return locations by warehouse.' })
   @ApiResponse({ status: 404, description: 'Warehouse not found.' })
   findByWarehouse(@Param('warehouseId') warehouseId: string) {
+    this.logger.log(`GET /locations/warehouse/${warehouseId} - Fetching locations by warehouse`);
     return this.locationService.findByWarehouse(warehouseId);
   }
 
@@ -67,6 +73,9 @@ export class LocationController {
     @Param('warehouseId') warehouseId: string,
     @Query('minCapacity') minCapacity?: number,
   ) {
+    this.logger.log(
+      `GET /locations/warehouse/${warehouseId}/available - Fetching available locations`,
+    );
     return this.locationService.findAvailableLocations(
       warehouseId,
       minCapacity ? Number(minCapacity) : undefined,
@@ -79,6 +88,7 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'Return the location.' })
   @ApiResponse({ status: 404, description: 'Location not found.' })
   findByCode(@Param('warehouseId') warehouseId: string, @Param('code') code: string) {
+    this.logger.log(`GET /locations/code/${warehouseId}/${code} - Fetching location by code`);
     return this.locationService.findByCode(warehouseId, code);
   }
 
@@ -88,6 +98,7 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'Return the location.' })
   @ApiResponse({ status: 404, description: 'Location not found.' })
   findOne(@Param('id') id: string) {
+    this.logger.log(`GET /locations/${id} - Fetching location by ID`);
     return this.locationService.findOne(id);
   }
 
@@ -97,6 +108,7 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'Return location statistics.' })
   @ApiResponse({ status: 404, description: 'Location not found.' })
   getStats(@Param('id') id: string) {
+    this.logger.log(`GET /locations/${id}/stats - Fetching location stats`);
     return this.locationService.getLocationStats(id);
   }
 
@@ -107,6 +119,7 @@ export class LocationController {
   @ApiResponse({ status: 404, description: 'Location not found.' })
   @ApiResponse({ status: 409, description: 'Location code already exists.' })
   update(@Param('id') id: string, @Body() updateLocationDto: UpdateLocationDto) {
+    this.logger.log(`PATCH /locations/${id} - Updating location`);
     return this.locationService.update(id, updateLocationDto);
   }
 
@@ -117,6 +130,7 @@ export class LocationController {
   @ApiResponse({ status: 404, description: 'Location not found.' })
   @ApiResponse({ status: 400, description: 'Cannot delete location with existing inventory.' })
   remove(@Param('id') id: string) {
+    this.logger.log(`DELETE /locations/${id} - Deleting location`);
     return this.locationService.remove(id);
   }
 }

@@ -9,6 +9,7 @@ import {
   Query,
   Param,
   Delete,
+  Logger,
 } from '@nestjs/common';
 import { InventoryService } from '../services/inventory.service';
 import { ReceiveInventoryDto } from '../dto/receive-inventory.dto';
@@ -45,6 +46,8 @@ import {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class InventoryController {
+  private readonly logger = new Logger(InventoryController.name);
+
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Post('receive')
@@ -89,6 +92,9 @@ export class InventoryController {
   })
   @HttpCode(HttpStatus.CREATED)
   async receive(@Body() dto: ReceiveInventoryDto) {
+    this.logger.log(
+      `POST /inventory/receive - Batch: ${dto.productBatchId}, Location: ${dto.locationId}`,
+    );
     return this.inventoryService.receiveInventory(dto);
   }
 

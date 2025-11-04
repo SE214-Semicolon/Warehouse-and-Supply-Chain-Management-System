@@ -1,54 +1,99 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Logger,
+} from '@nestjs/common';
 import { ProductCategoryService } from '../services/product-category.service';
 import { CreateCategoryDto } from '../dto/create-category.dto';
 import { UpdateCategoryDto } from '../dto/update-category.dto';
 import { JwtAuthGuard } from '../../../auth/jwt.guard';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ProductCategoryResponseDto,
+  ProductCategoryListResponseDto,
+  ProductCategoryDeleteResponseDto,
+} from '../dto/product-category-response.dto';
 
 @ApiTags('product-categories')
 @Controller('product-categories')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ProductCategoryController {
+  private readonly logger = new Logger(ProductCategoryController.name);
+
   constructor(private readonly productCategoryService: ProductCategoryService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new product category' })
-  @ApiResponse({ status: 201, description: 'The category has been successfully created.' })
+  @ApiResponse({
+    status: 201,
+    description: 'The category has been successfully created.',
+    type: ProductCategoryResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
-  create(@Body() createCategoryDto: CreateCategoryDto) {
+  async create(@Body() createCategoryDto: CreateCategoryDto): Promise<ProductCategoryResponseDto> {
+    this.logger.log(`POST /product-categories - Creating category: ${createCategoryDto.name}`);
     return this.productCategoryService.create(createCategoryDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all product categories' })
-  @ApiResponse({ status: 200, description: 'Return all categories.' })
-  findAll() {
+  @ApiResponse({
+    status: 200,
+    description: 'Return all categories.',
+    type: ProductCategoryListResponseDto,
+  })
+  async findAll(): Promise<ProductCategoryListResponseDto> {
+    this.logger.log('GET /product-categories - Fetching all');
     return this.productCategoryService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a product category by ID' })
-  @ApiResponse({ status: 200, description: 'Return the category.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return the category.',
+    type: ProductCategoryResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Category not found.' })
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string): Promise<ProductCategoryResponseDto> {
+    this.logger.log(`GET /product-categories/${id}`);
     return this.productCategoryService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a product category' })
-  @ApiResponse({ status: 200, description: 'The category has been successfully updated.' })
+  @ApiResponse({
+    status: 200,
+    description: 'The category has been successfully updated.',
+    type: ProductCategoryResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Category not found.' })
-  update(@Param('id') id: string, @Body() updateCategoryDto: UpdateCategoryDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateCategoryDto: UpdateCategoryDto,
+  ): Promise<ProductCategoryResponseDto> {
+    this.logger.log(`PATCH /product-categories/${id}`);
     return this.productCategoryService.update(id, updateCategoryDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a product category' })
-  @ApiResponse({ status: 200, description: 'The category has been successfully deleted.' })
+  @ApiResponse({
+    status: 200,
+    description: 'The category has been successfully deleted.',
+    type: ProductCategoryDeleteResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Category not found.' })
   @ApiResponse({ status: 400, description: 'Cannot delete a category with children.' })
-  remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string): Promise<ProductCategoryDeleteResponseDto> {
+    this.logger.log(`DELETE /product-categories/${id}`);
     return this.productCategoryService.remove(id);
   }
 }

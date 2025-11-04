@@ -10,6 +10,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { WarehouseService } from '../services/warehouse.service';
 import { CreateWarehouseDto } from '../dto/create-warehouse.dto';
@@ -26,6 +27,8 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class WarehouseController {
+  private readonly logger = new Logger(WarehouseController.name);
+
   constructor(private readonly warehouseService: WarehouseService) {}
 
   @Post()
@@ -36,6 +39,7 @@ export class WarehouseController {
   @ApiResponse({ status: 409, description: 'Warehouse code already exists.' })
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createWarehouseDto: CreateWarehouseDto) {
+    this.logger.log(`POST /warehouses - Creating warehouse with code: ${createWarehouseDto.code}`);
     return this.warehouseService.create(createWarehouseDto);
   }
 
@@ -44,6 +48,7 @@ export class WarehouseController {
   @ApiOperation({ summary: 'Get all warehouses with filters and pagination' })
   @ApiResponse({ status: 200, description: 'Return all warehouses.' })
   findAll(@Query() query: QueryWarehouseDto) {
+    this.logger.log(`GET /warehouses - Fetching warehouses with query: ${JSON.stringify(query)}`);
     return this.warehouseService.findAll(query);
   }
 
@@ -53,6 +58,7 @@ export class WarehouseController {
   @ApiResponse({ status: 200, description: 'Return the warehouse.' })
   @ApiResponse({ status: 404, description: 'Warehouse not found.' })
   findByCode(@Param('code') code: string) {
+    this.logger.log(`GET /warehouses/code/${code} - Fetching warehouse by code`);
     return this.warehouseService.findByCode(code);
   }
 
@@ -62,6 +68,7 @@ export class WarehouseController {
   @ApiResponse({ status: 200, description: 'Return the warehouse.' })
   @ApiResponse({ status: 404, description: 'Warehouse not found.' })
   findOne(@Param('id') id: string) {
+    this.logger.log(`GET /warehouses/${id} - Fetching warehouse by ID`);
     return this.warehouseService.findOne(id);
   }
 
@@ -71,6 +78,7 @@ export class WarehouseController {
   @ApiResponse({ status: 200, description: 'Return warehouse statistics.' })
   @ApiResponse({ status: 404, description: 'Warehouse not found.' })
   getStats(@Param('id') id: string) {
+    this.logger.log(`GET /warehouses/${id}/stats - Fetching warehouse stats`);
     return this.warehouseService.getWarehouseStats(id);
   }
 
@@ -81,6 +89,7 @@ export class WarehouseController {
   @ApiResponse({ status: 404, description: 'Warehouse not found.' })
   @ApiResponse({ status: 409, description: 'Warehouse code already exists.' })
   update(@Param('id') id: string, @Body() updateWarehouseDto: UpdateWarehouseDto) {
+    this.logger.log(`PATCH /warehouses/${id} - Updating warehouse`);
     return this.warehouseService.update(id, updateWarehouseDto);
   }
 
@@ -91,6 +100,7 @@ export class WarehouseController {
   @ApiResponse({ status: 404, description: 'Warehouse not found.' })
   @ApiResponse({ status: 400, description: 'Cannot delete warehouse with existing locations.' })
   remove(@Param('id') id: string) {
+    this.logger.log(`DELETE /warehouses/${id} - Deleting warehouse`);
     return this.warehouseService.remove(id);
   }
 }

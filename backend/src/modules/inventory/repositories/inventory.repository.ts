@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../common/prisma/prisma.service';
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from 'src/database/prisma/prisma.service';
 import { StockMovementType, Prisma } from '@prisma/client';
+import { IInventoryRepository } from '../interfaces/inventory-repository.interface';
 
 // Type definitions for inventory operations
 type InventoryWithRelations = Prisma.InventoryGetPayload<{
@@ -32,13 +33,21 @@ type ValuationData = InventoryWithRelations & {
 };
 
 @Injectable()
-export class InventoryRepository {
+export class InventoryRepository implements IInventoryRepository {
+  private readonly logger = new Logger(InventoryRepository.name);
+
   constructor(public readonly prisma: PrismaService) {}
 
   async findMovementByKey(idempotencyKey: string) {
-    return this.prisma.stockMovement.findUnique({
-      where: { idempotencyKey },
-    });
+    try {
+      this.logger.debug(`Finding movement by idempotency key: ${idempotencyKey}`);
+      return this.prisma.stockMovement.findUnique({
+        where: { idempotencyKey },
+      });
+    } catch (error) {
+      this.logger.error(`Error finding movement by key ${idempotencyKey}:`, error);
+      throw error;
+    }
   }
 
   async upsertInventory(productBatchId: string, locationId: string, quantity: number) {
@@ -90,27 +99,39 @@ export class InventoryRepository {
     createdById?: string,
     idempotencyKey?: string,
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      // upsert inventory using transaction client
-      const inv = await tx.inventory.upsert({
-        where: { productBatchId_locationId: { productBatchId, locationId } },
-        update: { availableQty: { increment: quantity } },
-        create: { productBatchId, locationId, availableQty: quantity, reservedQty: 0 },
-      });
+    try {
+      this.logger.log(
+        `Receiving inventory - Batch: ${productBatchId}, Location: ${locationId}, Qty: ${quantity}`,
+      );
+      return this.prisma.$transaction(async (tx) => {
+        // upsert inventory using transaction client
+        const inv = await tx.inventory.upsert({
+          where: { productBatchId_locationId: { productBatchId, locationId } },
+          update: { availableQty: { increment: quantity } },
+          create: { productBatchId, locationId, availableQty: quantity, reservedQty: 0 },
+        });
 
-      const movement = await tx.stockMovement.create({
-        data: {
-          productBatchId,
-          toLocationId: locationId,
-          quantity,
-          movementType: StockMovementType.purchase_receipt,
-          createdById,
-          idempotencyKey,
-        },
-      });
+        const movement = await tx.stockMovement.create({
+          data: {
+            productBatchId,
+            toLocationId: locationId,
+            quantity,
+            movementType: StockMovementType.purchase_receipt,
+            createdById,
+            idempotencyKey,
+          },
+        });
 
-      return { inventory: inv, movement };
-    });
+        this.logger.log(`Inventory received successfully - Movement ID: ${movement.id}`);
+        return { inventory: inv, movement };
+      });
+    } catch (error) {
+      this.logger.error(
+        `Error receiving inventory - Batch: ${productBatchId}, Location: ${locationId}:`,
+        error,
+      );
+      throw error;
+    }
   }
 
   async decreaseInventory(productBatchId: string, locationId: string, quantity: number) {
@@ -135,47 +156,62 @@ export class InventoryRepository {
     createdById?: string,
     idempotencyKey?: string,
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      // First check if inventory exists and has enough stock
-      const existingInventory = await tx.inventory.findUnique({
-        where: {
-          productBatchId_locationId: {
-            productBatchId,
-            locationId,
+    try {
+      this.logger.log(
+        `Dispatching inventory - Batch: ${productBatchId}, Location: ${locationId}, Qty: ${quantity}`,
+      );
+      return this.prisma.$transaction(async (tx) => {
+        // First check if inventory exists and has enough stock
+        const existingInventory = await tx.inventory.findUnique({
+          where: {
+            productBatchId_locationId: {
+              productBatchId,
+              locationId,
+            },
           },
-        },
-      });
+        });
 
-      if (!existingInventory || existingInventory.availableQty < quantity) {
-        throw new Error('NotEnoughStock');
-      }
+        if (!existingInventory || existingInventory.availableQty < quantity) {
+          this.logger.warn(
+            `Not enough stock - Batch: ${productBatchId}, Location: ${locationId}, Available: ${existingInventory?.availableQty || 0}, Requested: ${quantity}`,
+          );
+          throw new Error('NotEnoughStock');
+        }
 
-      // Update inventory using direct update (more reliable than updateMany for this use case)
-      const updatedInventory = await tx.inventory.update({
-        where: {
-          productBatchId_locationId: {
-            productBatchId,
-            locationId,
+        // Update inventory using direct update (more reliable than updateMany for this use case)
+        const updatedInventory = await tx.inventory.update({
+          where: {
+            productBatchId_locationId: {
+              productBatchId,
+              locationId,
+            },
           },
-        },
-        data: {
-          availableQty: { decrement: quantity },
-        },
-      });
+          data: {
+            availableQty: { decrement: quantity },
+          },
+        });
 
-      const movement = await tx.stockMovement.create({
-        data: {
-          productBatchId,
-          fromLocationId: locationId,
-          quantity,
-          movementType: StockMovementType.sale_issue,
-          createdById,
-          idempotencyKey,
-        },
-      });
+        const movement = await tx.stockMovement.create({
+          data: {
+            productBatchId,
+            fromLocationId: locationId,
+            quantity,
+            movementType: StockMovementType.sale_issue,
+            createdById,
+            idempotencyKey,
+          },
+        });
 
-      return { inventory: updatedInventory, movement };
-    });
+        this.logger.log(`Inventory dispatched successfully - Movement ID: ${movement.id}`);
+        return { inventory: updatedInventory, movement };
+      });
+    } catch (error) {
+      this.logger.error(
+        `Error dispatching inventory - Batch: ${productBatchId}, Location: ${locationId}:`,
+        error,
+      );
+      throw error;
+    }
   }
 
   async createDispatchMovement(
@@ -206,18 +242,36 @@ export class InventoryRepository {
   }
 
   async findProductBatch(productBatchId: string) {
-    if (!productBatchId) return null;
-    return this.prisma.productBatch.findUnique({ where: { id: productBatchId } });
+    try {
+      if (!productBatchId) return null;
+      this.logger.debug(`Finding product batch: ${productBatchId}`);
+      return this.prisma.productBatch.findUnique({ where: { id: productBatchId } });
+    } catch (error) {
+      this.logger.error(`Error finding product batch ${productBatchId}:`, error);
+      throw error;
+    }
   }
 
   async findLocation(locationId: string) {
-    if (!locationId) return null;
-    return this.prisma.location.findUnique({ where: { id: locationId } });
+    try {
+      if (!locationId) return null;
+      this.logger.debug(`Finding location: ${locationId}`);
+      return this.prisma.location.findUnique({ where: { id: locationId } });
+    } catch (error) {
+      this.logger.error(`Error finding location ${locationId}:`, error);
+      throw error;
+    }
   }
 
   async findUser(userId: string) {
-    if (!userId) return null;
-    return this.prisma.user.findUnique({ where: { id: userId } });
+    try {
+      if (!userId) return null;
+      this.logger.debug(`Finding user: ${userId}`);
+      return this.prisma.user.findUnique({ where: { id: userId } });
+    } catch (error) {
+      this.logger.error(`Error finding user ${userId}:`, error);
+      throw error;
+    }
   }
 
   /**

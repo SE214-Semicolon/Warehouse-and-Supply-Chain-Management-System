@@ -3,17 +3,26 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { WarehouseRepository } from '../repositories/warehouse.repository';
 import { CreateWarehouseDto } from '../dto/create-warehouse.dto';
 import { UpdateWarehouseDto } from '../dto/update-warehouse.dto';
 import { QueryWarehouseDto } from '../dto/query-warehouse.dto';
+import { CacheService } from '../../../cache/cache.service';
+import { CACHE_TTL, CACHE_PREFIX } from '../../../cache/cache.constants';
 
 @Injectable()
 export class WarehouseService {
-  constructor(private readonly warehouseRepo: WarehouseRepository) {}
+  private readonly logger = new Logger(WarehouseService.name);
+
+  constructor(
+    private readonly warehouseRepo: WarehouseRepository,
+    private readonly cacheService: CacheService,
+  ) {}
 
   async create(createDto: CreateWarehouseDto) {
+    this.logger.log(`Creating warehouse with code: ${createDto.code}`);
     // Check if code already exists
     const existingCode = await this.warehouseRepo.checkCodeExists(createDto.code);
     if (existingCode) {
@@ -27,6 +36,10 @@ export class WarehouseService {
       metadata: createDto.metadata || {},
     });
 
+    // Invalidate warehouse cache
+    await this.cacheService.deleteByPrefix(CACHE_PREFIX.WAREHOUSE);
+    this.logger.log(`Warehouse created successfully: ${warehouse.id}`);
+
     return {
       success: true,
       warehouse,
@@ -35,6 +48,7 @@ export class WarehouseService {
   }
 
   async findAll(query: QueryWarehouseDto) {
+    this.logger.log(`Finding all warehouses with query: ${JSON.stringify(query)}`);
     const { search, code, limit = 20, page = 1 } = query;
     const skip = (page - 1) * limit;
 
@@ -69,37 +83,56 @@ export class WarehouseService {
   }
 
   async findOne(id: string) {
-    const warehouse = await this.warehouseRepo.findOne(id);
-    if (!warehouse) {
-      throw new NotFoundException(`Warehouse with ID "${id}" not found`);
-    }
+    this.logger.debug(`Finding warehouse by ID: ${id}`);
+    const cacheKey = `${CACHE_PREFIX.WAREHOUSE}:id:${id}`;
 
-    // Get warehouse statistics
-    const stats = await this.warehouseRepo.getWarehouseStats(id);
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const warehouse = await this.warehouseRepo.findOne(id);
+        if (!warehouse) {
+          throw new NotFoundException(`Warehouse with ID "${id}" not found`);
+        }
 
-    return {
-      success: true,
-      warehouse,
-      stats,
-    };
+        // Get warehouse statistics
+        const stats = await this.warehouseRepo.getWarehouseStats(id);
+
+        return {
+          success: true,
+          warehouse,
+          stats,
+        };
+      },
+      { ttl: CACHE_TTL.MEDIUM },
+    );
   }
 
   async findByCode(code: string) {
-    const warehouse = await this.warehouseRepo.findByCode(code);
-    if (!warehouse) {
-      throw new NotFoundException(`Warehouse with code "${code}" not found`);
-    }
+    this.logger.debug(`Finding warehouse by code: ${code}`);
+    const cacheKey = `${CACHE_PREFIX.WAREHOUSE}:code:${code}`;
 
-    const stats = await this.warehouseRepo.getWarehouseStats(warehouse.id);
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const warehouse = await this.warehouseRepo.findByCode(code);
+        if (!warehouse) {
+          throw new NotFoundException(`Warehouse with code "${code}" not found`);
+        }
 
-    return {
-      success: true,
-      warehouse,
-      stats,
-    };
+        const stats = await this.warehouseRepo.getWarehouseStats(warehouse.id);
+
+        return {
+          success: true,
+          warehouse,
+          stats,
+        };
+      },
+      { ttl: CACHE_TTL.MEDIUM },
+    );
   }
 
   async update(id: string, updateDto: UpdateWarehouseDto) {
+    this.logger.log(`Updating warehouse: ${id}`);
     const warehouse = await this.warehouseRepo.findOne(id);
     if (!warehouse) {
       throw new NotFoundException(`Warehouse with ID "${id}" not found`);
@@ -121,6 +154,10 @@ export class WarehouseService {
 
     const updatedWarehouse = await this.warehouseRepo.update(id, updateData);
 
+    // Invalidate warehouse cache
+    await this.cacheService.deleteByPrefix(CACHE_PREFIX.WAREHOUSE);
+    this.logger.log(`Warehouse updated successfully: ${id}`);
+
     return {
       success: true,
       warehouse: updatedWarehouse,
@@ -129,6 +166,7 @@ export class WarehouseService {
   }
 
   async remove(id: string) {
+    this.logger.log(`Removing warehouse: ${id}`);
     const warehouse = await this.warehouseRepo.findOne(id);
     if (!warehouse) {
       throw new NotFoundException(`Warehouse with ID "${id}" not found`);
@@ -146,6 +184,10 @@ export class WarehouseService {
 
     await this.warehouseRepo.delete(id);
 
+    // Invalidate warehouse cache
+    await this.cacheService.deleteByPrefix(CACHE_PREFIX.WAREHOUSE);
+    this.logger.log(`Warehouse deleted successfully: ${id}`);
+
     return {
       success: true,
       message: 'Warehouse deleted successfully',
@@ -153,6 +195,7 @@ export class WarehouseService {
   }
 
   async getWarehouseStats(id: string) {
+    this.logger.debug(`Getting stats for warehouse: ${id}`);
     const warehouse = await this.warehouseRepo.findOne(id);
     if (!warehouse) {
       throw new NotFoundException(`Warehouse with ID "${id}" not found`);

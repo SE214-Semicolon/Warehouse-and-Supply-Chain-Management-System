@@ -24,7 +24,9 @@
     "rbac:full": "powershell -ExecutionPolicy Bypass -File ./scripts/rbac-comprehensive.ps1",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "db:migrate": "./scripts/run-migrations.sh",
+    "db:migrate:prod": "NODE_ENV=production ./scripts/run-migrations.sh"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

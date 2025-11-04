@@ -10,11 +10,17 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { ProductService } from '../services/product.service';
 import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { QueryProductDto } from '../dto/query-product.dto';
+import {
+  ProductResponseDto,
+  ProductListResponseDto,
+  ProductDeleteResponseDto,
+} from '../dto/product-response.dto';
 import { JwtAuthGuard } from '../../../auth/jwt.guard';
 import { RolesGuard } from '../../../auth/roles.guard';
 import { Roles } from '../../../auth/decorators/roles.decorator';
@@ -26,71 +32,119 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class ProductController {
+  private readonly logger = new Logger(ProductController.name);
+
   constructor(private readonly productService: ProductService) {}
 
   @Post()
   @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
   @ApiOperation({ summary: 'Create a new product' })
-  @ApiResponse({ status: 201, description: 'Product created successfully.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Product created successfully.',
+    type: ProductResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
   @ApiResponse({ status: 409, description: 'SKU already exists.' })
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createProductDto: CreateProductDto) {
-    return this.productService.create(createProductDto);
+  async create(@Body() createProductDto: CreateProductDto): Promise<ProductResponseDto> {
+    this.logger.log(`POST /products - Creating product with SKU: ${createProductDto.sku}`);
+    const result = await this.productService.create(createProductDto);
+    this.logger.log(`Product created successfully: ${result.data.id}`);
+    return result;
   }
 
   @Get()
   @Roles(UserRole.admin, UserRole.manager, UserRole.procurement, UserRole.warehouse_staff)
   @ApiOperation({ summary: 'Get all products with filters and pagination' })
-  @ApiResponse({ status: 200, description: 'Return all products.' })
-  findAll(@Query() query: QueryProductDto) {
-    return this.productService.findAll(query);
+  @ApiResponse({ status: 200, description: 'Return all products.', type: ProductListResponseDto })
+  async findAll(@Query() query: QueryProductDto): Promise<ProductListResponseDto> {
+    this.logger.log(`GET /products - Query: ${JSON.stringify(query)}`);
+    const result = await this.productService.findAll(query);
+    this.logger.log(`Found ${result.total} products`);
+    return result;
+  }
+
+  @Get('autocomplete')
+  @Roles(UserRole.admin, UserRole.manager, UserRole.procurement, UserRole.warehouse_staff)
+  @ApiOperation({ summary: 'Autocomplete products by name or SKU' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return top matching products (id, sku, name, barcode).',
+  })
+  async autocomplete(@Query('search') search: string, @Query('limit') limit?: number) {
+    const l = Math.min(Math.max(Number(limit ?? 10), 1), 50);
+    this.logger.log(`GET /products/autocomplete - search: ${search}, limit: ${l}`);
+    return this.productService.autocomplete(search, l);
   }
 
   @Get('sku/:sku')
   @Roles(UserRole.admin, UserRole.manager, UserRole.procurement, UserRole.warehouse_staff)
   @ApiOperation({ summary: 'Get a product by SKU' })
-  @ApiResponse({ status: 200, description: 'Return the product.' })
+  @ApiResponse({ status: 200, description: 'Return the product.', type: ProductResponseDto })
   @ApiResponse({ status: 404, description: 'Product not found.' })
-  findBySku(@Param('sku') sku: string) {
-    return this.productService.findBySku(sku);
+  async findBySku(@Param('sku') sku: string): Promise<ProductResponseDto> {
+    this.logger.log(`GET /products/sku/${sku}`);
+    const result = await this.productService.findBySku(sku);
+    return result;
   }
 
   @Get('barcode/:barcode')
   @Roles(UserRole.admin, UserRole.manager, UserRole.procurement, UserRole.warehouse_staff)
   @ApiOperation({ summary: 'Get a product by barcode' })
-  @ApiResponse({ status: 200, description: 'Return the product.' })
+  @ApiResponse({ status: 200, description: 'Return the product.', type: ProductResponseDto })
   @ApiResponse({ status: 404, description: 'Product not found.' })
-  findByBarcode(@Param('barcode') barcode: string) {
-    return this.productService.findByBarcode(barcode);
+  async findByBarcode(@Param('barcode') barcode: string): Promise<ProductResponseDto> {
+    this.logger.log(`GET /products/barcode/${barcode}`);
+    const result = await this.productService.findByBarcode(barcode);
+    return result;
   }
 
   @Get(':id')
   @Roles(UserRole.admin, UserRole.manager, UserRole.procurement, UserRole.warehouse_staff)
   @ApiOperation({ summary: 'Get a product by ID' })
-  @ApiResponse({ status: 200, description: 'Return the product.' })
+  @ApiResponse({ status: 200, description: 'Return the product.', type: ProductResponseDto })
   @ApiResponse({ status: 404, description: 'Product not found.' })
-  findOne(@Param('id') id: string) {
-    return this.productService.findOne(id);
+  async findOne(@Param('id') id: string): Promise<ProductResponseDto> {
+    this.logger.log(`GET /products/${id}`);
+    const result = await this.productService.findOne(id);
+    return result;
   }
 
   @Patch(':id')
   @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
   @ApiOperation({ summary: 'Update a product' })
-  @ApiResponse({ status: 200, description: 'Product updated successfully.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Product updated successfully.',
+    type: ProductResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Product not found.' })
   @ApiResponse({ status: 409, description: 'SKU already exists.' })
-  update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
-    return this.productService.update(id, updateProductDto);
+  async update(
+    @Param('id') id: string,
+    @Body() updateProductDto: UpdateProductDto,
+  ): Promise<ProductResponseDto> {
+    this.logger.log(`PATCH /products/${id}`);
+    const result = await this.productService.update(id, updateProductDto);
+    this.logger.log(`Product updated successfully: ${id}`);
+    return result;
   }
 
   @Delete(':id')
   @Roles(UserRole.admin, UserRole.manager)
   @ApiOperation({ summary: 'Delete a product' })
-  @ApiResponse({ status: 200, description: 'Product deleted successfully.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Product deleted successfully.',
+    type: ProductDeleteResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Product not found.' })
   @ApiResponse({ status: 400, description: 'Cannot delete product with existing batches.' })
-  remove(@Param('id') id: string) {
-    return this.productService.remove(id);
+  async remove(@Param('id') id: string): Promise<ProductDeleteResponseDto> {
+    this.logger.log(`DELETE /products/${id}`);
+    const result = await this.productService.remove(id);
+    this.logger.log(`Product deleted successfully: ${id}`);
+    return result;
   }
 }

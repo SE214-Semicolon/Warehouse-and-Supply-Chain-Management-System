@@ -1,11 +1,5 @@
-export default () => ({
-  app: {
-    port: parseInt(process.env.PORT ?? '3000', 10) || 3000,
-  },
-  database: {
-    url: process.env.DATABASE_URL,
-  },
-  mongo: {
-    url: process.env.MONGODB_URI,
-  },
-});
+import appConfig from './schemas/app.config';
+import databaseConfig from './schemas/database.config';
+import jwtConfig from './schemas/jwt.config';
+
+export default [appConfig, databaseConfig, jwtConfig];

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { InventoryRepository } from '../repositories/inventory.repository';
 import { ReceiveInventoryDto } from '../dto/receive-inventory.dto';
@@ -15,15 +15,27 @@ import {
   MovementReportDto,
   ValuationReportDto,
 } from '../dto/report-query.dto';
+import { CacheService } from 'src/cache/cache.service';
+import { CACHE_PREFIX, CACHE_TTL } from 'src/cache/cache.constants';
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly inventoryRepo: InventoryRepository) {}
+  private readonly logger = new Logger(InventoryService.name);
+
+  constructor(
+    private readonly inventoryRepo: InventoryRepository,
+    private readonly cacheService: CacheService,
+  ) {}
 
   async receiveInventory(dto: ReceiveInventoryDto) {
+    this.logger.log(
+      `Receiving inventory - Batch: ${dto.productBatchId}, Location: ${dto.locationId}, Qty: ${dto.quantity}`,
+    );
+
     // Basic existence validation (before making DB state changes)
     const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
     if (!batch) {
+      this.logger.warn(`ProductBatch not found: ${dto.productBatchId}`);
       throw new NotFoundException(`ProductBatch not found: ${dto.productBatchId}`);
     }
 
@@ -43,10 +55,7 @@ export class InventoryService {
     if (dto.idempotencyKey) {
       const existing = await this.inventoryRepo.findMovementByKey(dto.idempotencyKey);
       if (existing) {
-        console.log('Found existing movement for idempotency key:', dto.idempotencyKey);
         return { success: true, idempotent: true, movement: existing };
-      } else {
-        console.log('No existing movement found for idempotency key:', dto.idempotencyKey);
       }
     }
 
@@ -59,6 +68,9 @@ export class InventoryService {
         dto.createdById,
         dto.idempotencyKey,
       );
+
+      // Invalidate inventory caches after receive
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
       return { success: true, inventory, movement };
     } catch (err) {
@@ -405,12 +417,24 @@ export class InventoryService {
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
-    const result = await this.inventoryRepo.findInventoryByLocation(
-      dto.locationId,
-      dto.page,
-      dto.limit,
-      dto.sortBy,
-      dto.sortOrder,
+    // Cache key based on query params
+    const cacheKey = {
+      prefix: CACHE_PREFIX.INVENTORY,
+      key: `location:${dto.locationId}:${dto.page || 1}:${dto.limit || 20}:${dto.sortBy || 'productBatchId'}:${dto.sortOrder || 'asc'}`,
+    };
+
+    const result = await this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        return this.inventoryRepo.findInventoryByLocation(
+          dto.locationId,
+          dto.page,
+          dto.limit,
+          dto.sortBy,
+          dto.sortOrder,
+        );
+      },
+      { ttl: CACHE_TTL.SHORT },
     );
 
     return {
@@ -435,12 +459,24 @@ export class InventoryService {
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
-    const result = await this.inventoryRepo.findInventoryByProductBatch(
-      dto.productBatchId,
-      dto.page,
-      dto.limit,
-      dto.sortBy,
-      dto.sortOrder,
+    // Cache key based on query params
+    const cacheKey = {
+      prefix: CACHE_PREFIX.INVENTORY,
+      key: `batch:${dto.productBatchId}:${dto.page || 1}:${dto.limit || 20}:${dto.sortBy || 'locationId'}:${dto.sortOrder || 'asc'}`,
+    };
+
+    const result = await this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        return this.inventoryRepo.findInventoryByProductBatch(
+          dto.productBatchId,
+          dto.page,
+          dto.limit,
+          dto.sortBy,
+          dto.sortOrder,
+        );
+      },
+      { ttl: CACHE_TTL.SHORT },
     );
 
     return {
