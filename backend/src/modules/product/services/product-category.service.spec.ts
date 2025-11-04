@@ -36,7 +36,11 @@ describe('ProductCategoryService', () => {
     it('should create a root category successfully', async () => {
       const createDto = { name: 'Electronics' };
       const categoryData = { id: '1', ...createDto, parentId: null };
-      const expectedResult = { success: true, data: categoryData, message: 'Category created successfully' };
+      const expectedResult = {
+        success: true,
+        data: categoryData,
+        message: 'Category created successfully',
+      };
       mockCategoryRepository.create.mockResolvedValue(categoryData);
 
       const result = await service.create(createDto);
@@ -48,7 +52,11 @@ describe('ProductCategoryService', () => {
       const createDto = { name: 'Laptops', parentId: '1' };
       const parentCategory = { id: '1', name: 'Electronics', parentId: null };
       const categoryData = { id: '2', ...createDto };
-      const expectedResult = { success: true, data: categoryData, message: 'Category created successfully' };
+      const expectedResult = {
+        success: true,
+        data: categoryData,
+        message: 'Category created successfully',
+      };
 
       mockCategoryRepository.findOne.mockResolvedValue(parentCategory);
       mockCategoryRepository.create.mockResolvedValue(categoryData);
