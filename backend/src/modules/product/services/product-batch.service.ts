@@ -3,24 +3,35 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { ProductBatchRepository } from '../repositories/product-batch.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { CreateProductBatchDto } from '../dto/create-product-batch.dto';
 import { UpdateProductBatchDto } from '../dto/update-product-batch.dto';
 import { QueryProductBatchDto } from '../dto/query-product-batch.dto';
+import {
+  ProductBatchResponseDto,
+  ProductBatchListResponseDto,
+  ProductBatchDeleteResponseDto,
+} from '../dto/product-batch-response.dto';
 
 @Injectable()
 export class ProductBatchService {
+  private readonly logger = new Logger(ProductBatchService.name);
+
   constructor(
     private readonly batchRepo: ProductBatchRepository,
     private readonly productRepo: ProductRepository,
   ) {}
 
-  async create(createBatchDto: CreateProductBatchDto) {
+  async create(createBatchDto: CreateProductBatchDto): Promise<ProductBatchResponseDto> {
+    this.logger.log(`Creating batch for product: ${createBatchDto.productId}`);
+
     // Validate product exists
     const product = await this.productRepo.findOne(createBatchDto.productId);
     if (!product) {
+      this.logger.warn(`Product not found: ${createBatchDto.productId}`);
       throw new NotFoundException(`Product with ID "${createBatchDto.productId}" not found`);
     }
 
@@ -31,6 +42,7 @@ export class ProductBatchService {
         createBatchDto.batchNo,
       );
       if (existingBatch) {
+        this.logger.warn(`Duplicate batch number: ${createBatchDto.batchNo}`);
         throw new ConflictException(
           `Batch with number "${createBatchDto.batchNo}" already exists for this product`,
         );
@@ -42,6 +54,7 @@ export class ProductBatchService {
       const mfgDate = new Date(createBatchDto.manufactureDate);
       const expDate = new Date(createBatchDto.expiryDate);
       if (expDate <= mfgDate) {
+        this.logger.warn('Invalid dates: expiry date before manufacture date');
         throw new BadRequestException('Expiry date must be after manufacture date');
       }
     }
@@ -58,14 +71,18 @@ export class ProductBatchService {
       inboundReceiptId: createBatchDto.inboundReceiptId,
     });
 
+    this.logger.log(`Product batch created successfully: ${batch.id}`);
+
     return {
       success: true,
-      batch,
+      data: batch,
       message: 'Product batch created successfully',
     };
   }
 
-  async findAll(query: QueryProductBatchDto) {
+  async findAll(query: QueryProductBatchDto): Promise<ProductBatchListResponseDto> {
+    this.logger.log(`Finding all product batches with filters: ${JSON.stringify(query)}`);
+
     const {
       productId,
       batchNo,
@@ -108,9 +125,11 @@ export class ProductBatchService {
       orderBy: { createdAt: 'desc' },
     });
 
+    this.logger.log(`Found ${total} product batches`);
+
     return {
       success: true,
-      batches,
+      data: batches,
       total,
       page,
       limit,
@@ -118,33 +137,51 @@ export class ProductBatchService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<ProductBatchResponseDto> {
+    this.logger.log(`Finding product batch by ID: ${id}`);
+
     const batch = await this.batchRepo.findOne(id);
     if (!batch) {
+      this.logger.warn(`Product batch not found: ${id}`);
       throw new NotFoundException(`Product batch with ID "${id}" not found`);
     }
+
     return {
       success: true,
-      batch,
+      data: batch,
     };
   }
 
-  async findByProduct(productId: string) {
+  async findByProduct(productId: string): Promise<ProductBatchListResponseDto> {
+    this.logger.log(`Finding batches for product: ${productId}`);
+
     const product = await this.productRepo.findOne(productId);
     if (!product) {
+      this.logger.warn(`Product not found: ${productId}`);
       throw new NotFoundException(`Product with ID "${productId}" not found`);
     }
 
     const batches = await this.batchRepo.findByProduct(productId);
 
+    this.logger.log(`Found ${batches.length} batches for product ${productId}`);
+
     return {
       success: true,
-      batches,
+      data: batches,
       total: batches.length,
+      page: 1,
+      limit: batches.length,
+      totalPages: 1,
     };
   }
 
-  async findExpiring(daysAhead: number = 30, page: number = 1, limit: number = 20) {
+  async findExpiring(
+    daysAhead: number = 30,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<ProductBatchListResponseDto> {
+    this.logger.log(`Finding batches expiring within ${daysAhead} days`);
+
     const now = new Date();
     const futureDate = new Date();
     futureDate.setDate(now.getDate() + daysAhead);
@@ -158,9 +195,11 @@ export class ProductBatchService {
       take: limit,
     });
 
+    this.logger.log(`Found ${total} expiring batches`);
+
     return {
       success: true,
-      batches,
+      data: batches,
       total,
       page,
       limit,
@@ -169,9 +208,15 @@ export class ProductBatchService {
     };
   }
 
-  async update(id: string, updateBatchDto: UpdateProductBatchDto) {
+  async update(
+    id: string,
+    updateBatchDto: UpdateProductBatchDto,
+  ): Promise<ProductBatchResponseDto> {
+    this.logger.log(`Updating product batch: ${id}`);
+
     const batch = await this.batchRepo.findOne(id);
     if (!batch) {
+      this.logger.warn(`Product batch not found for update: ${id}`);
       throw new NotFoundException(`Product batch with ID "${id}" not found`);
     }
 
@@ -182,6 +227,7 @@ export class ProductBatchService {
         updateBatchDto.batchNo,
       );
       if (existingBatch) {
+        this.logger.warn(`Duplicate batch number: ${updateBatchDto.batchNo}`);
         throw new ConflictException(
           `Batch with number "${updateBatchDto.batchNo}" already exists for this product`,
         );
@@ -199,6 +245,7 @@ export class ProductBatchService {
         : batch.expiryDate;
 
     if (mfgDate && expDate && expDate <= mfgDate) {
+      this.logger.warn('Invalid dates: expiry date before manufacture date');
       throw new BadRequestException('Expiry date must be after manufacture date');
     }
 
@@ -216,16 +263,21 @@ export class ProductBatchService {
 
     const updatedBatch = await this.batchRepo.update(id, updateData);
 
+    this.logger.log(`Product batch updated successfully: ${id}`);
+
     return {
       success: true,
-      batch: updatedBatch,
+      data: updatedBatch,
       message: 'Product batch updated successfully',
     };
   }
 
-  async remove(id: string) {
+  async remove(id: string): Promise<ProductBatchDeleteResponseDto> {
+    this.logger.log(`Deleting product batch: ${id}`);
+
     const batch = await this.batchRepo.findOne(id);
     if (!batch) {
+      this.logger.warn(`Product batch not found for deletion: ${id}`);
       throw new NotFoundException(`Product batch with ID "${id}" not found`);
     }
 
@@ -246,6 +298,7 @@ export class ProductBatchService {
         }
       }
       if (hasStock) {
+        this.logger.warn(`Cannot delete batch with inventory: ${id}`);
         throw new BadRequestException(
           'Cannot delete a batch with existing inventory. Please clear inventory first.',
         );
@@ -253,6 +306,8 @@ export class ProductBatchService {
     }
 
     await this.batchRepo.delete(id);
+
+    this.logger.log(`Product batch deleted successfully: ${id}`);
 
     return {
       success: true,

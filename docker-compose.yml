@@ -54,10 +54,20 @@ services:
       - "3000:3000"
     env_file:
       - ./backend/.env
+    environment:
+      - NODE_ENV=development
+      - RUN_MIGRATIONS=false # Migrations optional in dev
     volumes:
       - ./backend:/app
       - /app/node_modules
+    user: "1000:1000"
     command: npm run start:dev
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     depends_on:
       - db
       - mongodb

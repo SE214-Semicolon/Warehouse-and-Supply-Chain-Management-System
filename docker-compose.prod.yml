@@ -13,10 +13,11 @@ services:
       - ./backend/.env.production
     environment:
       - NODE_ENV=production
+      - RUN_MIGRATIONS=true # Always run migrations in prod
     volumes:
       - ./backend/uploads:/app/uploads
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "node", "healthcheck.js"]
       interval: 30s
       timeout: 10s
       retries: 3

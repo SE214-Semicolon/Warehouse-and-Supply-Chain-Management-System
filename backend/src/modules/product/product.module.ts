@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { PrismaModule } from '../../common/prisma/prisma.module';
+import { PrismaModule } from 'src/database/prisma/prisma.module';
+import { CacheModule } from 'src/cache/cache.module';
 import { ProductCategoryController } from './controllers/product-category.controller';
 import { ProductController } from './controllers/product.controller';
 import { ProductBatchController } from './controllers/product-batch.controller';
@@ -11,7 +12,7 @@ import { ProductRepository } from './repositories/product.repository';
 import { ProductBatchRepository } from './repositories/product-batch.repository';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, CacheModule],
   controllers: [ProductCategoryController, ProductController, ProductBatchController],
   providers: [
     ProductCategoryService,

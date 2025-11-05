@@ -1,227 +1,259 @@
-// import { Test, TestingModule } from '@nestjs/testing';
-// import { ProductService } from './product.service';
-// import { ProductRepository } from '../repositories/product.repository';
-// import { ProductCategoryRepository } from '../repositories/product-category.repository';
-// import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { ProductService } from './product.service';
+import { ProductRepository } from '../repositories/product.repository';
+import { ProductCategoryRepository } from '../repositories/product-category.repository';
+import { CacheService } from '../../../cache/cache.service';
+import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
-// describe('ProductService', () => {
-//   let service: ProductService;
-//   let productRepo: jest.Mocked<ProductRepository>;
-//   let categoryRepo: jest.Mocked<ProductCategoryRepository>;
+describe('ProductService', () => {
+  let service: ProductService;
+  let productRepo: jest.Mocked<ProductRepository>;
+  let categoryRepo: jest.Mocked<ProductCategoryRepository>;
+  let cacheService: jest.Mocked<CacheService>;
 
-//   const mockProduct = {
-//     id: 'product-uuid-1',
-//     sku: 'SKU-001',
-//     name: 'Test Product',
-//     categoryId: 'category-uuid-1',
-//     unit: 'pcs',
-//     barcode: '1234567890',
-//     parameters: { color: 'red' },
-//     createdAt: new Date(),
-//     updatedAt: new Date(),
-//     category: {
-//       id: 'category-uuid-1',
-//       name: 'Test Category',
-//       parentId: null,
-//       metadata: {},
-//     },
-//     batches: [],
-//   };
+  const mockProduct = {
+    id: 'product-uuid-1',
+    sku: 'SKU-001',
+    name: 'Test Product',
+    categoryId: 'category-uuid-1',
+    unit: 'pcs',
+    barcode: '1234567890',
+    parameters: { color: 'red' },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    category: {
+      id: 'category-uuid-1',
+      name: 'Test Category',
+      parentId: null,
+      metadata: {},
+    },
+    batches: [],
+  };
 
-//   const mockCategory = {
-//     id: 'category-uuid-1',
-//     name: 'Test Category',
-//     parentId: null,
-//     metadata: {},
-//   };
+  const mockCategory = {
+    id: 'category-uuid-1',
+    name: 'Test Category',
+    parentId: null,
+    metadata: {},
+  };
 
-//   beforeEach(async () => {
-//     const mockProductRepo = {
-//       create: jest.fn(),
-//       findAll: jest.fn(),
-//       findOne: jest.fn(),
-//       findBySku: jest.fn(),
-//       findByBarcode: jest.fn(),
-//       update: jest.fn(),
-//       delete: jest.fn(),
-//       checkSkuExists: jest.fn(),
-//     };
+  beforeEach(async () => {
+    const mockProductRepo = {
+      create: jest.fn(),
+      findAll: jest.fn(),
+      findOne: jest.fn(),
+      findBySku: jest.fn(),
+      findByBarcode: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      checkSkuExists: jest.fn(),
+    };
 
-//     const mockCategoryRepo = {
-//       findOne: jest.fn(),
-//     };
+    const mockCategoryRepo = {
+      findOne: jest.fn(),
+    };
 
-//     const module: TestingModule = await Test.createTestingModule({
-//       providers: [
-//         ProductService,
-//         {
-//           provide: ProductRepository,
-//           useValue: mockProductRepo,
-//         },
-//         {
-//           provide: ProductCategoryRepository,
-//           useValue: mockCategoryRepo,
-//         },
-//       ],
-//     }).compile();
+    const mockCacheService = {
+      get: jest.fn(),
+      set: jest.fn(),
+      getOrSet: jest.fn(),
+      delete: jest.fn(),
+      deleteByPrefix: jest.fn(),
+      reset: jest.fn(),
+    };
 
-//     service = module.get<ProductService>(ProductService);
-//     productRepo = module.get(ProductRepository);
-//     categoryRepo = module.get(ProductCategoryRepository);
-//   });
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ProductService,
+        {
+          provide: ProductRepository,
+          useValue: mockProductRepo,
+        },
+        {
+          provide: ProductCategoryRepository,
+          useValue: mockCategoryRepo,
+        },
+        {
+          provide: CacheService,
+          useValue: mockCacheService,
+        },
+      ],
+    }).compile();
 
-//   it('should be defined', () => {
-//     expect(service).toBeDefined();
-//   });
+    service = module.get<ProductService>(ProductService);
+    productRepo = module.get(ProductRepository);
+    categoryRepo = module.get(ProductCategoryRepository);
+    cacheService = module.get(CacheService);
+  });
 
-//   describe('create', () => {
-//     it('should create a product successfully', async () => {
-//       const createDto = {
-//         sku: 'SKU-001',
-//         name: 'Test Product',
-//         categoryId: 'category-uuid-1',
-//         unit: 'pcs',
-//         barcode: '1234567890',
-//         parameters: { color: 'red' },
-//       };
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
 
-//       productRepo.checkSkuExists.mockResolvedValue(false);
-//       categoryRepo.findOne.mockResolvedValue(mockCategory);
-//       productRepo.create.mockResolvedValue(mockProduct);
+  describe('create', () => {
+    it('should create a product successfully', async () => {
+      const createDto = {
+        sku: 'SKU-001',
+        name: 'Test Product',
+        categoryId: 'category-uuid-1',
+        unit: 'pcs',
+        barcode: '1234567890',
+        parameters: { color: 'red' },
+      };
 
-//       const result = await service.create(createDto);
+      productRepo.checkSkuExists.mockResolvedValue(false);
+      categoryRepo.findOne.mockResolvedValue(mockCategory);
+      productRepo.create.mockResolvedValue(mockProduct);
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
 
-//       expect(result).toEqual(mockProduct);
-//       expect(productRepo.checkSkuExists).toHaveBeenCalledWith(createDto.sku);
-//       expect(categoryRepo.findOne).toHaveBeenCalledWith(createDto.categoryId);
-//       expect(productRepo.create).toHaveBeenCalled();
-//     });
+      const result = await service.create(createDto);
 
-//     it('should throw ConflictException if SKU already exists', async () => {
-//       const createDto = {
-//         sku: 'SKU-001',
-//         name: 'Test Product',
-//         unit: 'pcs',
-//       };
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockProduct);
+      expect(result.message).toBe('Product created successfully');
+      expect(productRepo.checkSkuExists).toHaveBeenCalledWith(createDto.sku);
+      expect(categoryRepo.findOne).toHaveBeenCalledWith(createDto.categoryId);
+      expect(productRepo.create).toHaveBeenCalled();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
+    });
 
-//       productRepo.checkSkuExists.mockResolvedValue(true);
+    it('should throw ConflictException if SKU already exists', async () => {
+      const createDto = {
+        sku: 'SKU-001',
+        name: 'Test Product',
+        unit: 'pcs',
+      };
 
-//       await expect(service.create(createDto)).rejects.toThrow(ConflictException);
-//     });
+      productRepo.checkSkuExists.mockResolvedValue(true);
 
-//     it('should throw NotFoundException if category does not exist', async () => {
-//       const createDto = {
-//         sku: 'SKU-001',
-//         name: 'Test Product',
-//         categoryId: 'invalid-category-id',
-//         unit: 'pcs',
-//       };
+      await expect(service.create(createDto)).rejects.toThrow(ConflictException);
+    });
 
-//       productRepo.checkSkuExists.mockResolvedValue(false);
-//       categoryRepo.findOne.mockResolvedValue(null);
+    it('should throw NotFoundException if category does not exist', async () => {
+      const createDto = {
+        sku: 'SKU-001',
+        name: 'Test Product',
+        categoryId: 'invalid-category-id',
+        unit: 'pcs',
+      };
 
-//       await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
-//     });
-//   });
+      productRepo.checkSkuExists.mockResolvedValue(false);
+      categoryRepo.findOne.mockResolvedValue(null);
 
-//   describe('findAll', () => {
-//     it('should return paginated products', async () => {
-//       const query = {
-//         search: 'Test',
-//         limit: 10,
-//         page: 1,
-//       };
+      await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
+    });
+  });
 
-//       productRepo.findAll.mockResolvedValue({
-//         products: [mockProduct],
-//         total: 1,
-//       });
+  describe('findAll', () => {
+    it('should return paginated products', async () => {
+      const query = {
+        search: 'Test',
+        limit: 10,
+        page: 1,
+      };
 
-//       const result = await service.findAll(query);
+      productRepo.findAll.mockResolvedValue({
+        products: [mockProduct],
+        total: 1,
+      });
 
-//       expect(result.success).toBe(true);
-//       expect(result.products).toHaveLength(1);
-//       expect(result.total).toBe(1);
-//       expect(result.totalPages).toBe(1);
-//     });
-//   });
+      const result = await service.findAll(query);
 
-//   describe('findOne', () => {
-//     it('should return a product by ID', async () => {
-//       productRepo.findOne.mockResolvedValue(mockProduct);
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(result.totalPages).toBe(1);
+    });
+  });
 
-//       const result = await service.findOne('product-uuid-1');
+  describe('findOne', () => {
+    it('should return a product by ID', async () => {
+      cacheService.getOrSet.mockImplementation(async (_key, factory) => {
+        return await factory();
+      });
+      productRepo.findOne.mockResolvedValue(mockProduct);
 
-//       expect(result.success).toBe(true);
-//       expect(result.product).toEqual(mockProduct);
-//     });
+      const result = await service.findOne('product-uuid-1');
 
-//     it('should throw NotFoundException if product not found', async () => {
-//       productRepo.findOne.mockResolvedValue(null);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockProduct);
+      expect(cacheService.getOrSet).toHaveBeenCalled();
+    });
 
-//       await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
-//     });
-//   });
+    it('should throw NotFoundException if product not found', async () => {
+      cacheService.getOrSet.mockImplementation(async (_key, factory) => {
+        return await factory();
+      });
+      productRepo.findOne.mockResolvedValue(null);
 
-//   describe('update', () => {
-//     it('should update a product successfully', async () => {
-//       const updateDto = {
-//         name: 'Updated Product',
-//       };
+      await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
+    });
+  });
 
-//       productRepo.findOne.mockResolvedValue(mockProduct);
-//       productRepo.update.mockResolvedValue({ ...mockProduct, name: 'Updated Product' });
+  describe('update', () => {
+    it('should update a product successfully', async () => {
+      const updateDto = {
+        name: 'Updated Product',
+      };
 
-//       const result = await service.update('product-uuid-1', updateDto);
+      productRepo.findOne.mockResolvedValue(mockProduct);
+      productRepo.update.mockResolvedValue({ ...mockProduct, name: 'Updated Product' });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
 
-//       expect(result.success).toBe(true);
-//       expect(result.product.name).toBe('Updated Product');
-//     });
+      const result = await service.update('product-uuid-1', updateDto);
 
-//     it('should throw NotFoundException if product not found', async () => {
-//       productRepo.findOne.mockResolvedValue(null);
+      expect(result.success).toBe(true);
+      expect(result.data.name).toBe('Updated Product');
+      expect(result.message).toBe('Product updated successfully');
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
+    });
 
-//       await expect(service.update('invalid-id', { name: 'Test' })).rejects.toThrow(
-//         NotFoundException,
-//       );
-//     });
+    it('should throw NotFoundException if product not found', async () => {
+      productRepo.findOne.mockResolvedValue(null);
 
-//     it('should throw ConflictException if new SKU already exists', async () => {
-//       const updateDto = {
-//         sku: 'SKU-002',
-//       };
+      await expect(service.update('invalid-id', { name: 'Test' })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
 
-//       productRepo.findOne.mockResolvedValue(mockProduct);
-//       productRepo.checkSkuExists.mockResolvedValue(true);
+    it('should throw ConflictException if new SKU already exists', async () => {
+      const updateDto = {
+        sku: 'SKU-002',
+      };
 
-//       await expect(service.update('product-uuid-1', updateDto)).rejects.toThrow(ConflictException);
-//     });
-//   });
+      productRepo.findOne.mockResolvedValue(mockProduct);
+      productRepo.checkSkuExists.mockResolvedValue(true);
 
-//   describe('remove', () => {
-//     it('should delete a product successfully', async () => {
-//       productRepo.findOne.mockResolvedValue({ ...mockProduct, batches: [] });
-//       productRepo.delete.mockResolvedValue(mockProduct);
+      await expect(service.update('product-uuid-1', updateDto)).rejects.toThrow(ConflictException);
+    });
+  });
 
-//       const result = await service.remove('product-uuid-1');
+  describe('remove', () => {
+    it('should delete a product successfully', async () => {
+      productRepo.findOne.mockResolvedValue({ ...mockProduct, batches: [] } as any);
+      productRepo.delete.mockResolvedValue(mockProduct);
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
 
-//       expect(result.success).toBe(true);
-//       expect(result.message).toBe('Product deleted successfully');
-//     });
+      const result = await service.remove('product-uuid-1');
 
-//     it('should throw NotFoundException if product not found', async () => {
-//       productRepo.findOne.mockResolvedValue(null);
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Product deleted successfully');
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
+    });
 
-//       await expect(service.remove('invalid-id')).rejects.toThrow(NotFoundException);
-//     });
+    it('should throw NotFoundException if product not found', async () => {
+      productRepo.findOne.mockResolvedValue(null);
 
-//     it('should throw BadRequestException if product has batches', async () => {
-//       productRepo.findOne.mockResolvedValue({
-//         ...mockProduct,
-//         batches: [{ id: 'batch-1' }],
-//       });
+      await expect(service.remove('invalid-id')).rejects.toThrow(NotFoundException);
+    });
 
-//       await expect(service.remove('product-uuid-1')).rejects.toThrow(BadRequestException);
-//     });
-//   });
-// });
+    it('should throw BadRequestException if product has batches', async () => {
+      productRepo.findOne.mockResolvedValue({
+        ...mockProduct,
+        batches: [{ id: 'batch-1' }],
+      } as any);
+
+      await expect(service.remove('product-uuid-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+});

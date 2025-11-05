@@ -1,191 +1,218 @@
-// import { Test, TestingModule } from '@nestjs/testing';
-// import { WarehouseService } from './warehouse.service';
-// import { WarehouseRepository } from '../repositories/warehouse.repository';
-// import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { WarehouseService } from './warehouse.service';
+import { WarehouseRepository } from '../repositories/warehouse.repository';
+import { CacheService } from '../../../cache/cache.service';
+import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
-// describe('WarehouseService', () => {
-//   let service: WarehouseService;
-//   let repository: jest.Mocked<WarehouseRepository>;
+describe('WarehouseService', () => {
+  let service: WarehouseService;
+  let repository: jest.Mocked<WarehouseRepository>;
+  let cacheService: jest.Mocked<CacheService>;
 
-//   const mockWarehouse = {
-//     id: 'warehouse-uuid-1',
-//     code: 'WH-001',
-//     name: 'Main Warehouse',
-//     address: '123 Main Street',
-//     metadata: { type: 'Cold Storage' },
-//     createdAt: new Date(),
-//     updatedAt: new Date(),
-//     locations: [],
-//   };
+  const mockWarehouse = {
+    id: 'warehouse-uuid-1',
+    code: 'WH-001',
+    name: 'Main Warehouse',
+    address: '123 Main Street',
+    metadata: { type: 'Cold Storage' },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    locations: [],
+  };
 
-//   beforeEach(async () => {
-//     const mockRepository = {
-//       create: jest.fn(),
-//       findAll: jest.fn(),
-//       findOne: jest.fn(),
-//       findByCode: jest.fn(),
-//       update: jest.fn(),
-//       delete: jest.fn(),
-//       checkCodeExists: jest.fn(),
-//       getWarehouseStats: jest.fn(),
-//     };
+  beforeEach(async () => {
+    const mockRepository = {
+      create: jest.fn(),
+      findAll: jest.fn(),
+      findOne: jest.fn(),
+      findByCode: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      checkCodeExists: jest.fn(),
+      getWarehouseStats: jest.fn(),
+    };
 
-//     const module: TestingModule = await Test.createTestingModule({
-//       providers: [
-//         WarehouseService,
-//         {
-//           provide: WarehouseRepository,
-//           useValue: mockRepository,
-//         },
-//       ],
-//     }).compile();
+    const mockCacheService = {
+      get: jest.fn(),
+      set: jest.fn(),
+      getOrSet: jest.fn(),
+      delete: jest.fn(),
+      deleteByPrefix: jest.fn(),
+      reset: jest.fn(),
+    };
 
-//     service = module.get<WarehouseService>(WarehouseService);
-//     repository = module.get(WarehouseRepository);
-//   });
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        WarehouseService,
+        {
+          provide: WarehouseRepository,
+          useValue: mockRepository,
+        },
+        {
+          provide: CacheService,
+          useValue: mockCacheService,
+        },
+      ],
+    }).compile();
 
-//   it('should be defined', () => {
-//     expect(service).toBeDefined();
-//   });
+    service = module.get<WarehouseService>(WarehouseService);
+    repository = module.get(WarehouseRepository);
+    cacheService = module.get(CacheService);
+  });
 
-//   describe('create', () => {
-//     it('should create a warehouse successfully', async () => {
-//       const createDto = {
-//         code: 'WH-001',
-//         name: 'Main Warehouse',
-//         address: '123 Main Street',
-//         metadata: { type: 'Cold Storage' },
-//       };
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
 
-//       repository.checkCodeExists.mockResolvedValue(false);
-//       repository.create.mockResolvedValue(mockWarehouse);
+  describe('create', () => {
+    it('should create a warehouse successfully', async () => {
+      const createDto = {
+        code: 'WH-001',
+        name: 'Main Warehouse',
+        address: '123 Main Street',
+        metadata: { type: 'Cold Storage' },
+      };
 
-//       const result = await service.create(createDto);
+      repository.checkCodeExists.mockResolvedValue(false);
+      repository.create.mockResolvedValue(mockWarehouse);
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
 
-//       expect(result.success).toBe(true);
-//       expect(result.warehouse).toEqual(mockWarehouse);
-//       expect(repository.checkCodeExists).toHaveBeenCalledWith(createDto.code);
-//       expect(repository.create).toHaveBeenCalled();
-//     });
+      const result = await service.create(createDto);
 
-//     it('should throw ConflictException if code already exists', async () => {
-//       const createDto = {
-//         code: 'WH-001',
-//         name: 'Main Warehouse',
-//       };
+      expect(result.success).toBe(true);
+      expect(result.warehouse).toEqual(mockWarehouse);
+      expect(repository.checkCodeExists).toHaveBeenCalledWith(createDto.code);
+      expect(repository.create).toHaveBeenCalled();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
+    });
 
-//       repository.checkCodeExists.mockResolvedValue(true);
+    it('should throw ConflictException if code already exists', async () => {
+      const createDto = {
+        code: 'WH-001',
+        name: 'Main Warehouse',
+      };
 
-//       await expect(service.create(createDto)).rejects.toThrow(ConflictException);
-//     });
-//   });
+      repository.checkCodeExists.mockResolvedValue(true);
 
-//   describe('findAll', () => {
-//     it('should return paginated warehouses', async () => {
-//       const query = {
-//         search: 'Main',
-//         limit: 10,
-//         page: 1,
-//       };
+      await expect(service.create(createDto)).rejects.toThrow(ConflictException);
+    });
+  });
 
-//       repository.findAll.mockResolvedValue({
-//         warehouses: [mockWarehouse],
-//         total: 1,
-//       });
+  describe('findAll', () => {
+    it('should return paginated warehouses', async () => {
+      const query = {
+        search: 'Main',
+        limit: 10,
+        page: 1,
+      };
 
-//       const result = await service.findAll(query);
+      repository.findAll.mockResolvedValue({
+        warehouses: [mockWarehouse],
+        total: 1,
+      });
 
-//       expect(result.success).toBe(true);
-//       expect(result.warehouses).toHaveLength(1);
-//       expect(result.total).toBe(1);
-//       expect(result.totalPages).toBe(1);
-//     });
-//   });
+      const result = await service.findAll(query);
 
-//   describe('findOne', () => {
-//     it('should return a warehouse by ID', async () => {
-//       repository.findOne.mockResolvedValue(mockWarehouse);
-//       repository.getWarehouseStats.mockResolvedValue({
-//         totalLocations: 10,
-//         totalCapacity: 100,
-//         occupiedLocations: 5,
-//       });
+      expect(result.success).toBe(true);
+      expect(result.warehouses).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(result.totalPages).toBe(1);
+    });
+  });
 
-//       const result = await service.findOne('warehouse-uuid-1');
+  describe('findOne', () => {
+    it('should return a warehouse by ID', async () => {
+      cacheService.getOrSet.mockImplementation(async (_key, factory) => {
+        return await factory();
+      });
+      repository.findOne.mockResolvedValue(mockWarehouse);
+      repository.getWarehouseStats.mockResolvedValue({
+        totalLocations: 10,
+        totalCapacity: 100,
+        occupiedLocations: 5,
+      });
 
-//       expect(result.success).toBe(true);
-//       expect(result.warehouse).toEqual(mockWarehouse);
-//       expect(result.stats).toBeDefined();
-//     });
+      const result = await service.findOne('warehouse-uuid-1');
 
-//     it('should throw NotFoundException if warehouse not found', async () => {
-//       repository.findOne.mockResolvedValue(null);
+      expect(result.success).toBe(true);
+      expect(result.warehouse).toEqual(mockWarehouse);
+      expect(result.stats).toBeDefined();
+      expect(cacheService.getOrSet).toHaveBeenCalled();
+    });
 
-//       await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
-//     });
-//   });
+    it('should throw NotFoundException if warehouse not found', async () => {
+      cacheService.getOrSet.mockImplementation(async (_key, factory) => {
+        return await factory();
+      });
+      repository.findOne.mockResolvedValue(null);
 
-//   describe('update', () => {
-//     it('should update a warehouse successfully', async () => {
-//       const updateDto = {
-//         name: 'Updated Warehouse',
-//       };
+      await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
+    });
+  });
 
-//       repository.findOne.mockResolvedValue(mockWarehouse);
-//       repository.update.mockResolvedValue({ ...mockWarehouse, name: 'Updated Warehouse' });
+  describe('update', () => {
+    it('should update a warehouse successfully', async () => {
+      const updateDto = {
+        name: 'Updated Warehouse',
+      };
 
-//       const result = await service.update('warehouse-uuid-1', updateDto);
+      repository.findOne.mockResolvedValue(mockWarehouse);
+      repository.update.mockResolvedValue({ ...mockWarehouse, name: 'Updated Warehouse' });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
 
-//       expect(result.success).toBe(true);
-//       expect(result.warehouse.name).toBe('Updated Warehouse');
-//     });
+      const result = await service.update('warehouse-uuid-1', updateDto);
 
-//     it('should throw NotFoundException if warehouse not found', async () => {
-//       repository.findOne.mockResolvedValue(null);
+      expect(result.success).toBe(true);
+      expect(result.warehouse.name).toBe('Updated Warehouse');
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
+    });
 
-//       await expect(service.update('invalid-id', { name: 'Test' })).rejects.toThrow(
-//         NotFoundException,
-//       );
-//     });
+    it('should throw NotFoundException if warehouse not found', async () => {
+      repository.findOne.mockResolvedValue(null);
 
-//     it('should throw ConflictException if new code already exists', async () => {
-//       const updateDto = {
-//         code: 'WH-002',
-//       };
+      await expect(service.update('invalid-id', { name: 'Test' })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
 
-//       repository.findOne.mockResolvedValue(mockWarehouse);
-//       repository.checkCodeExists.mockResolvedValue(true);
+    it('should throw ConflictException if new code already exists', async () => {
+      const updateDto = {
+        code: 'WH-002',
+      };
 
-//       await expect(service.update('warehouse-uuid-1', updateDto)).rejects.toThrow(
-//         ConflictException,
-//       );
-//     });
-//   });
+      repository.findOne.mockResolvedValue(mockWarehouse);
+      repository.checkCodeExists.mockResolvedValue(true);
 
-//   describe('remove', () => {
-//     it('should delete a warehouse successfully', async () => {
-//       repository.findOne.mockResolvedValue({ ...mockWarehouse, locations: [] });
-//       repository.delete.mockResolvedValue(mockWarehouse);
+      await expect(service.update('warehouse-uuid-1', updateDto)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+  });
 
-//       const result = await service.remove('warehouse-uuid-1');
+  describe('remove', () => {
+    it('should delete a warehouse successfully', async () => {
+      repository.findOne.mockResolvedValue({ ...mockWarehouse, locations: [] } as any);
+      repository.delete.mockResolvedValue(mockWarehouse);
 
-//       expect(result.success).toBe(true);
-//       expect(result.message).toBe('Warehouse deleted successfully');
-//     });
+      const result = await service.remove('warehouse-uuid-1');
 
-//     it('should throw NotFoundException if warehouse not found', async () => {
-//       repository.findOne.mockResolvedValue(null);
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Warehouse deleted successfully');
+    });
 
-//       await expect(service.remove('invalid-id')).rejects.toThrow(NotFoundException);
-//     });
+    it('should throw NotFoundException if warehouse not found', async () => {
+      repository.findOne.mockResolvedValue(null);
 
-//     it('should throw BadRequestException if warehouse has locations', async () => {
-//       repository.findOne.mockResolvedValue({
-//         ...mockWarehouse,
-//         locations: [{ id: 'loc-1' }],
-//       });
+      await expect(service.remove('invalid-id')).rejects.toThrow(NotFoundException);
+    });
 
-//       await expect(service.remove('warehouse-uuid-1')).rejects.toThrow(BadRequestException);
-//     });
-//   });
-// });
+    it('should throw BadRequestException if warehouse has locations', async () => {
+      repository.findOne.mockResolvedValue({
+        ...mockWarehouse,
+        locations: [{ id: 'loc-1' }],
+      } as any);
+
+      await expect(service.remove('warehouse-uuid-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+});

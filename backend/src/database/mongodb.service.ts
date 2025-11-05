@@ -19,9 +19,7 @@ export class MongoDBService implements OnModuleInit, OnModuleDestroy {
       this.client = new MongoClient(mongoUri);
       await this.client.connect();
       this.db = this.client.db('warehouse_analytics');
-      console.log('✅ MongoDB connected successfully');
     } catch (error) {
-      console.error('❌ MongoDB connection failed:', error);
       throw error;
     }
   }
@@ -29,7 +27,6 @@ export class MongoDBService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy() {
     if (this.client) {
       await this.client.close();
-      console.log('🔌 MongoDB connection closed');
     }
   }
 
@@ -43,8 +40,7 @@ export class MongoDBService implements OnModuleInit, OnModuleDestroy {
     try {
       await this.db.admin().ping();
       return true;
-    } catch (error) {
-      console.error('MongoDB health check failed:', error);
+    } catch {
       return false;
     }
   }
