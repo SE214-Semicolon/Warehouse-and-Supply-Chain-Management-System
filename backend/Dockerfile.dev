@@ -12,4 +12,7 @@ COPY . .
 
 EXPOSE 3000
 
+# Run as non-root to avoid root-owned dist on host
+USER node
+
 CMD ["npm", "run", "start:dev"]

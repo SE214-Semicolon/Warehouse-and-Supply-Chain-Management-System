@@ -60,6 +60,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
+    user: "1000:1000"
     command: npm run start:dev
     healthcheck:
       test: ["CMD", "node", "healthcheck.js"]

@@ -81,7 +81,10 @@ cp .env.online.example .env
 # 4. Generate Prisma client
 npx prisma generate
 
-# 5. Start backend only
+# 5. Clean build artifacts (if switching from Docker flow)
+npm run clean
+
+# 6. Start backend only
 npm run start:dev
 ```
 
@@ -113,6 +116,69 @@ If you encounter connection issues:
 2. Verify connection strings in `.env`
 3. Ensure your IP is whitelisted in Neon/Atlas
 4. Contact backend team for database access
+
+**Permission Denied Errors (EACCES):**
+
+If switching from Docker flow to local flow and encountering `EACCES: permission denied, unlink` errors:
+
+```bash
+# Clean build artifacts owned by Docker's root user
+npm run clean
+
+# Or manually remove with elevated permissions if needed
+docker compose run --rm backend sh -c 'rm -rf /app/dist'
+
+# Then restart your local dev server
+npm run start:dev
+```
+
+This happens because Docker containers run as root by default, creating files owned by root. The clean script removes these to allow your local user to rebuild.
+
+## Common Tasks & Tips 💡
+
+### Switching Between Development Flows
+
+When switching from **Docker flow (Backend Dev)** to **Local flow (Frontend/QA)**:
+
+```bash
+# 1. Stop Docker services
+docker compose down
+
+# 2. Clean Docker-generated artifacts
+npm run clean
+
+# 3. Start local dev server
+npm run start:dev
+```
+
+When switching from **Local flow** to **Docker flow**:
+
+```bash
+# 1. Stop local dev server (Ctrl+C)
+
+# 2. Optional: clean if you want fresh build
+npm run clean
+
+# 3. Start Docker services
+docker compose up -d
+```
+
+### Available npm Scripts
+
+```bash
+npm run build          # Build production bundle
+npm run clean          # Remove dist folder
+npm run clean:dist     # Alias for clean
+npm run start:dev      # Start dev server with watch mode
+npm run start:prod     # Start production server
+npm run test           # Run unit tests
+npm run test:e2e       # Run E2E tests
+npm run lint           # Check and auto-fix code style
+npm run format         # Format code with Prettier
+npm run prisma:generate # Generate Prisma client
+npm run prisma:migrate  # Run migrations
+npm run prisma:studio   # Open Prisma Studio
+```
 
 ## Health Check Endpoints 🏥
 

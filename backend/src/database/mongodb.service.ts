@@ -40,7 +40,7 @@ export class MongoDBService implements OnModuleInit, OnModuleDestroy {
     try {
       await this.db.admin().ping();
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

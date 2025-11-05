@@ -1,13 +1,5 @@
-import {
-  CallHandler,
-  ExecutionContext,
-  Injectable,
-  NestInterceptor,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
-import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import { ValidationException } from '../exceptions/app.exception';
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';

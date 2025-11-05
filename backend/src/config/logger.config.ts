@@ -10,7 +10,7 @@ const loggerLevels = {
 };
 
 const formatMeta = (meta: any) => {
-  const splat = (meta as any)[Symbol.for('splat')];
+  const splat = meta[Symbol.for('splat')];
   if (splat && splat.length) {
     return splat.length === 1 ? JSON.stringify(splat[0]) : JSON.stringify(splat);
   }

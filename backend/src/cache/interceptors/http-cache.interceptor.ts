@@ -8,7 +8,6 @@ import {
   CACHE_TTL_METADATA,
   CACHE_OPTIONS_METADATA,
 } from '../decorators/cache.decorator';
-import { CacheOptions } from '../interfaces/cache.interface';
 
 @Injectable()
 export class HttpCacheInterceptor implements NestInterceptor {
@@ -20,10 +19,7 @@ export class HttpCacheInterceptor implements NestInterceptor {
   async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
     const key = this.getCacheKey(context);
     const ttl = this.reflector.get(CACHE_TTL_METADATA, context.getHandler());
-    const options = this.reflector.get(
-      CACHE_OPTIONS_METADATA,
-      context.getHandler(),
-    ) as CacheOptions;
+    const options = this.reflector.get(CACHE_OPTIONS_METADATA, context.getHandler());
 
     if (!key || options?.skipCache) {
       return next.handle();
@@ -40,7 +36,7 @@ export class HttpCacheInterceptor implements NestInterceptor {
           this.cacheService.set(key, response, { ttl });
         }),
       );
-    } catch (error) {
+    } catch {
       return next.handle();
     }
   }
