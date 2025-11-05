@@ -218,7 +218,7 @@ describe('LocationService', () => {
 
   describe('remove', () => {
     it('should delete a location successfully', async () => {
-      locationRepo.findOne.mockResolvedValue({ ...mockLocation, inventory: [] });
+      locationRepo.findOne.mockResolvedValue({ ...mockLocation, inventory: [] } as any);
       locationRepo.delete.mockResolvedValue(mockLocation);
 
       const result = await service.remove('location-uuid-1');
@@ -237,7 +237,7 @@ describe('LocationService', () => {
       locationRepo.findOne.mockResolvedValue({
         ...mockLocation,
         inventory: [{ id: 'inv-1', availableQty: 10, reservedQty: 0 }],
-      });
+      } as any);
 
       await expect(service.remove('location-uuid-1')).rejects.toThrow(BadRequestException);
     });

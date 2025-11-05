@@ -2,6 +2,7 @@ import { InventoryService } from './inventory.service';
 import { InventoryRepository } from '../repositories/inventory.repository';
 import { BadRequestException } from '@nestjs/common';
 import { DispatchInventoryDto } from '../dto/dispatch-inventory.dto';
+import { CacheService } from '../../../cache/cache.service';
 
 // A simple in-memory mock repository to simulate atomic updateMany behavior
 class InMemoryRepoMock {
@@ -52,7 +53,16 @@ class InMemoryRepoMock {
 describe('concurrent dispatch', () => {
   it('should not allow oversell when two dispatches run concurrently', async () => {
     const repo = new InMemoryRepoMock() as unknown as InventoryRepository;
-    const service = new InventoryService(repo);
+    // minimal CacheService mock that executes factory and no-ops invalidations
+    const mockCache: Partial<CacheService> = {
+      getOrSet: jest.fn(async (_k: string, factory: () => Promise<any>) => await factory()),
+      deleteByPrefix: jest.fn(async () => undefined as any),
+      get: jest.fn(async () => undefined as any),
+      set: jest.fn(async () => undefined as any),
+      delete: jest.fn(async () => undefined as any),
+      reset: jest.fn(async () => undefined as any),
+    };
+    const service = new InventoryService(repo as any, mockCache as CacheService);
 
     const dto = {
       productBatchId: 'pb1',

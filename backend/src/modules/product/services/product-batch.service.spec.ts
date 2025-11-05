@@ -203,7 +203,7 @@ describe('ProductBatchService', () => {
 
   describe('remove', () => {
     it('should delete a batch successfully', async () => {
-      batchRepo.findOne.mockResolvedValue({ ...mockBatch, inventory: [] });
+      batchRepo.findOne.mockResolvedValue({ ...mockBatch, inventory: [] } as any);
       batchRepo.delete.mockResolvedValue(mockBatch);
 
       const result = await service.remove('batch-uuid-1');
@@ -222,7 +222,7 @@ describe('ProductBatchService', () => {
       batchRepo.findOne.mockResolvedValue({
         ...mockBatch,
         inventory: [{ id: 'inv-1', availableQty: 10, reservedQty: 0 }],
-      });
+      } as any);
 
       await expect(service.remove('batch-uuid-1')).rejects.toThrow(BadRequestException);
     });

@@ -191,7 +191,7 @@ describe('WarehouseService', () => {
 
   describe('remove', () => {
     it('should delete a warehouse successfully', async () => {
-      repository.findOne.mockResolvedValue({ ...mockWarehouse, locations: [] });
+      repository.findOne.mockResolvedValue({ ...mockWarehouse, locations: [] } as any);
       repository.delete.mockResolvedValue(mockWarehouse);
 
       const result = await service.remove('warehouse-uuid-1');
@@ -210,7 +210,7 @@ describe('WarehouseService', () => {
       repository.findOne.mockResolvedValue({
         ...mockWarehouse,
         locations: [{ id: 'loc-1' }],
-      });
+      } as any);
 
       await expect(service.remove('warehouse-uuid-1')).rejects.toThrow(BadRequestException);
     });
