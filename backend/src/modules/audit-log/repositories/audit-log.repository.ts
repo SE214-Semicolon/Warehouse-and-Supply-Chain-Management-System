@@ -36,10 +36,7 @@ export class AuditLogRepository implements OnModuleInit {
         } catch (err) {
           attempt += 1;
           if (attempt >= maxAttempts) {
-            this.logger.error(
-              'Failed to initialize audit log collection after retries',
-              err as any,
-            );
+            this.logger.error('Failed to initialize audit log collection after retries', err);
             return;
           }
           await new Promise((res) => setTimeout(res, delayMs));
