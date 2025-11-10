@@ -160,12 +160,13 @@ model ProductBatch {
 }
 
 model Inventory {
-  id             String   @id @default(uuid()) @db.Uuid
-  productBatchId String   @db.Uuid
-  locationId     String   @db.Uuid
-  availableQty   Int      @default(0)
-  reservedQty    Int      @default(0)
-  updatedAt      DateTime @updatedAt
+  id             String    @id @default(uuid()) @db.Uuid
+  productBatchId String    @db.Uuid
+  locationId     String    @db.Uuid
+  availableQty   Int       @default(0)
+  reservedQty    Int       @default(0)
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
 
   productBatch ProductBatch @relation(fields: [productBatchId], references: [id], onDelete: Cascade)
   location     Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
@@ -173,6 +174,7 @@ model Inventory {
   @@unique([productBatchId, locationId])
   @@index([locationId], name: "idx_inventory_location")
   @@index([productBatchId], name: "idx_inventory_product")
+  @@index([deletedAt], name: "idx_inventory_deleted_at")
 }
 
 model StockMovement {
@@ -346,23 +348,5 @@ model User {
   refreshTokens  RefreshToken[]
 }
 
-model AuditLog {
-  id          String   @id @default(uuid()) @db.Uuid
-  entityType  String?
-  entityId    String?
-  action      String?
-  payload     Json?
-  performedBy String?  @db.Uuid
-  performedAt DateTime @default(now())
-}
-
-model Alert {
-  id          String    @id @default(uuid()) @db.Uuid
-  type        String?
-  referenceId String?   @db.Uuid
-  payload     Json?
-  severity    String?
-  resolved    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  resolvedAt  DateTime?
-}
+// AuditLog moved to MongoDB collection 'audit_logs' (see MongoDBService)
+// Alert moved to MongoDB collection 'alerts' (see MongoDBService)

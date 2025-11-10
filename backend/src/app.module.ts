@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 
 // Configuration imports
 import { ConfigModule } from '@nestjs/config';
@@ -16,11 +17,13 @@ import { OrderModule } from './modules/order/order.module';
 import { SupplierModule } from './modules/supplier/supplier.module';
 import { ProductModule } from './modules/product/product.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
+import { AuditLogModule } from './modules/audit-log/audit-log.module';
 
 // Controller and Service imports
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './common/controllers/health.controller';
+import { AuditContextInterceptor } from './common/interceptors/audit-context.interceptor';
 
 @Module({
   imports: [
@@ -42,8 +45,15 @@ import { HealthController } from './common/controllers/health.controller';
     WarehouseModule,
     OrderModule,
     SupplierModule,
+    AuditLogModule,
   ],
   controllers: [AppController, HealthController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditContextInterceptor,
+    },
+  ],
 })
 export class AppModule {}
