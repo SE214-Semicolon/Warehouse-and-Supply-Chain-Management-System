@@ -59,7 +59,6 @@ services:
       - RUN_MIGRATIONS=false # Migrations optional in dev
     volumes:
       - ./backend:/app
-      - /app/node_modules
     user: "1000:1000"
     command: npm run start:dev
     healthcheck:

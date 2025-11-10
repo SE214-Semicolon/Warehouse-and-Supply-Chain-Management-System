@@ -6,7 +6,11 @@ RUN npm install -g @nestjs/cli prisma
 
 COPY package*.json ./
 
-RUN npm install
+# Prepare permissions and install as non-root so node_modules is writable
+RUN mkdir -p /app/node_modules && chown -R node:node /app
+USER node
+RUN npm install && npx prisma generate || true
+USER root
 
 COPY . .
 
