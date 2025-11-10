@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuditLogService } from '../../modules/audit-log/audit-log.service';
+import { AuditLogService } from '../../modules/audit-log/services/audit-log.service';
 import { AuditContextInterceptor } from '../../common/interceptors/audit-context.interceptor';
 
 /**
