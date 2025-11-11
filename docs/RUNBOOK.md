@@ -6,7 +6,7 @@
 Hệ thống Warehouse Management System được triển khai trên nền tảng **Azure Cloud**, bao gồm:
 - **Frontend**: Ứng dụng React, chạy trên **Azure App Service**
 - **Backend**: API NestJS (Node.js 16 LTS), chạy trên **Azure App Service**
-- **Database**: PostgreSQL (Azure Flexible Server) và MongoDB (Azure Cosmos DB)
+- **Database**: PostgreSQL (Neon DB) và MongoDB (Azure Cosmos DB)
 - **Hạ tầng** được quản lý bằng **Terraform** (IaC), triển khai qua **GitHub Actions**
 
 Cấu trúc thư mục hạ tầng nằm tại `./iac/`, gồm:
@@ -142,10 +142,11 @@ az webapp log tail --name warehouse-mgmt-production-backend --resource-group war
 ## 3. Sao lưu & Phục hồi (Backup)
 
 ### 3.1 Cấu hình sao lưu
-**PostgreSQL:**
-- Backup hàng ngày, lưu 7 ngày.  
-- Cấu hình trong Azure Portal → PostgreSQL Server → Backup.  
-- Bật “Geo-Redundant Backup” để có bản sao ở khu vực khác.
+**Neon DB:**
+- Neon tự động sao lưu dữ liệu thông qua cơ chế Point-in-Time Restore (PITR).
+- Dữ liệu được lưu trữ an toàn trên hạ tầng lưu trữ phi trạng thái (serverless storage).
+- Không cần cấu hình thủ công, nhưng có thể xem và quản lý branch (nhánh dữ liệu) trong trang quản trị Neon.
+- Có thể tạo branch thủ công định kỳ (ví dụ hằng ngày) để mô phỏng bản sao lưu, giữ tối đa 7 bản gần nhất.
 
 **Cosmos DB:**
 - Đã bật **Continuous Backup**, có thể phục hồi đến bất kỳ thời điểm trong 30 ngày.  
@@ -156,9 +157,9 @@ az webapp log tail --name warehouse-mgmt-production-backend --resource-group war
 ---
 
 ### 3.2 Phục hồi dữ liệu
-**PostgreSQL:**
-- Sử dụng tính năng “Restore” trong Azure Portal, chọn thời điểm cụ thể.  
-- Sau khi phục hồi, cập nhật connection string trong Key Vault nếu server mới được tạo.
+**Neon DB:**
+- Dùng tính năng "Branch from point in time" trong giao diện quản trị Neon để phục hồi về thời điểm mong muốn.
+- Sau khi tạo branch phục hồi, cập nhật lại connection string trong ứng dụng hoặc Key Vault / file cấu hình để trỏ tới branch mới (nếu chạy server mới).
 
 **Cosmos DB:**
 - Vào Data Restore → chọn container → chọn thời gian cần khôi phục.  
