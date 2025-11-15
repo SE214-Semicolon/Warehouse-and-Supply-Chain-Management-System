@@ -139,7 +139,7 @@ export default function SignUp() {
             type="submit"
             variant="contained"
             color="primary"
-            label="Login"
+            label="Sign Up"
             fullWidth
             sx={{ mt: 2 }}
           />
