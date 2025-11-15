@@ -71,7 +71,7 @@ const ViewDialog = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth='sm'>
       <DialogTitle sx={{ fontWeight: "bold", fontSize: "19px" }}>
         Xem chi tiết {currentMenu?.label || "dữ liệu"}
       </DialogTitle>

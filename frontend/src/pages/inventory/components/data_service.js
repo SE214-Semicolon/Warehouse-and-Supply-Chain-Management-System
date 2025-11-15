@@ -1,4 +1,4 @@
-import { getAllCategories } from "@/services/category.service";
+import ProductCategories from "@/services/category.service";
 
 const buildExtraInfo = (row) =>
   `Người tạo: ${row.createdBy || "Không rõ"}
@@ -199,8 +199,9 @@ export const movementsData = [
 
 export const fetchCategoriesData = async () => {
   try {
-    const res = await getAllCategories();
+    const res = await ProductCategories.getAllCategories();
     console.log("Danh mục từ API:", res.data);
+    return res.data;
   } catch (error) {
     console.error("Lỗi khi fetch categories:", error);
     return [];
