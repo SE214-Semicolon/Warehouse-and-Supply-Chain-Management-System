@@ -1,11 +1,13 @@
-import api from './api';
+import axios from 'axios';
+import useAuthStore from '../store/authStore';
 
-const API_URL = import.meta.env.VITE_BASE_URL + '/api/auth';
+const API_URL = import.meta.env.VITE_BASE_URL + '/auth';
 
 const AuthService = {
+  // email, password, fullName? => {accessToken, refreshToken}
   signUp: async (data) => {
     try {
-      const response = await api.post(`${API_URL}/signup`, data);
+      const response = await axios.post(`${API_URL}/signup`, data);
       const { accessToken, refreshToken } = response.data;
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
@@ -16,9 +18,10 @@ const AuthService = {
     }
   },
 
+  // email, password => {accessToken, refreshToken}
   login: async (data) => {
     try {
-      const response = await api.post(`${API_URL}/login`, data);
+      const response = await axios.post(`${API_URL}/login`, data);
       const { accessToken, refreshToken } = response.data;
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
@@ -29,13 +32,31 @@ const AuthService = {
     }
   },
 
-  logout: () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+  logout: async () => {
+    useAuthStore.getState().logout();
+    localStorage.clear();
     window.location.href = '/login';
   },
 
   getAccessToken: () => localStorage.getItem('accessToken'),
+
+  // refreshToken => {accessToken, refreshToken}
+  refreshToken: async (refresh_token) => {
+    try {
+      const response = await axios.post(`${API_URL}/refresh`, {
+        refreshToken: refresh_token,
+      });
+
+      const { accessToken, refreshToken } = response.data;
+
+      useAuthStore.getState().updateTokens(accessToken, refreshToken);
+
+      return response.data;
+    } catch (error) {
+      console.error('Refresh token failed:', error);
+      throw error;
+    }
+  },
 };
 
 export default AuthService;
