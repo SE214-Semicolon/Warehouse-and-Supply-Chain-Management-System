@@ -1,14 +1,9 @@
-import React from "react";
 import {
   Dialog,
   DialogTitle,
   DialogContent,
   Box,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Typography,
 } from "@mui/material";
 import DialogButtons from "@/components/DialogButtons";
@@ -45,7 +40,14 @@ const renderField = (field, selectedRow, isEditMode) => {
   );
 };
 
-const FormDialog = ({ open, onClose, mode, selectedMenu, selectedRow }) => {
+const FormDialog = ({
+  open,
+  onClose,
+  onAction,
+  mode,
+  selectedMenu,
+  selectedRow,
+}) => {
   const currentMenu = menuItems.find((item) => item.id === selectedMenu);
   const isEditMode = mode === "edit";
 
@@ -96,7 +98,7 @@ const FormDialog = ({ open, onClose, mode, selectedMenu, selectedRow }) => {
 
       <DialogContent dividers>{renderFields()}</DialogContent>
 
-      <DialogButtons onClose={onClose} onAction={() => console.log("Lưu")} />
+      <DialogButtons onClose={onClose} onAction={onAction} />
     </Dialog>
   );
 };
