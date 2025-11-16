@@ -7,6 +7,7 @@ import Signup from '@pages/auth/signup';
 import NotFound from '@pages/notfound';
 import WarehouseManagement from '@/pages/inventory';
 import Supplier from '@/pages/supplier';
+import Shipment from '@/pages/shipment';
 
 export default function MainRoutes() {
   return (
@@ -17,6 +18,7 @@ export default function MainRoutes() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/inventory" element={<WarehouseManagement />} />
           <Route path="/supplier" element={<Supplier />} />
+          <Route path="/shipment" element={<Shipment />} />
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
