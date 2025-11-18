@@ -55,6 +55,7 @@ describe('InventoryService', () => {
     availableQty: 100,
     reservedQty: 0,
     updatedAt: new Date(),
+    deletedAt: null,
   };
 
   const mockMovement = {
@@ -270,7 +271,7 @@ describe('InventoryService', () => {
       inventoryRepo.findUser.mockResolvedValue(mockUser);
       inventoryRepo.findMovementByKey.mockResolvedValue(null);
       inventoryRepo.dispatchInventoryTx.mockResolvedValue({
-        inventory: { ...mockInventory, availableQty: 50 },
+        inventory: { ...mockInventory, availableQty: 50, deletedAt: null },
         movement: { ...mockMovement, movementType: 'DISPATCH' as any, quantity: 50 },
       });
 
@@ -419,7 +420,7 @@ describe('InventoryService', () => {
       inventoryRepo.findUser.mockResolvedValue(mockUser);
       inventoryRepo.findMovementByKey.mockResolvedValue(null);
       inventoryRepo.adjustInventoryTx.mockResolvedValue({
-        inventory: { ...mockInventory, availableQty: 110 },
+        inventory: { ...mockInventory, availableQty: 110, deletedAt: null },
         movement: { ...mockMovement, movementType: 'ADJUSTMENT' as any, quantity: 10 },
       });
 
@@ -445,7 +446,7 @@ describe('InventoryService', () => {
       inventoryRepo.findUser.mockResolvedValue(mockUser);
       inventoryRepo.findMovementByKey.mockResolvedValue(null);
       inventoryRepo.adjustInventoryTx.mockResolvedValue({
-        inventory: { ...mockInventory, availableQty: 90 },
+        inventory: { ...mockInventory, availableQty: 90, deletedAt: null },
         movement: { ...mockMovement, movementType: 'ADJUSTMENT' as any, quantity: -10 },
       });
 
@@ -591,8 +592,8 @@ describe('InventoryService', () => {
       inventoryRepo.findUser.mockResolvedValue(mockUser);
       inventoryRepo.findMovementByKey.mockResolvedValue(null);
       inventoryRepo.transferInventoryTx.mockResolvedValue({
-        fromInventory: { ...mockInventory, availableQty: 70 },
-        toInventory: { ...mockInventory, locationId: 'location-uuid-2', availableQty: 30 },
+        fromInventory: { ...mockInventory, availableQty: 70, deletedAt: null },
+        toInventory: { ...mockInventory, locationId: 'location-uuid-2', availableQty: 30, deletedAt: null },
         transferOutMovement: { ...mockMovement, movementType: 'TRANSFER_OUT' as any },
         transferInMovement: { ...mockMovement, movementType: 'TRANSFER_IN' as any },
       });
@@ -798,7 +799,7 @@ describe('InventoryService', () => {
       inventoryRepo.findUser.mockResolvedValue(mockUser);
       inventoryRepo.findMovementByKey.mockResolvedValue(null);
       inventoryRepo.reserveInventoryTx.mockResolvedValue({
-        inventory: { ...mockInventory, availableQty: 80, reservedQty: 20 },
+        inventory: { ...mockInventory, availableQty: 80, reservedQty: 20, deletedAt: null },
         movement: { ...mockMovement, movementType: 'RESERVE' as any, quantity: 20 },
       });
 
@@ -977,7 +978,7 @@ describe('InventoryService', () => {
       inventoryRepo.findUser.mockResolvedValue(mockUser);
       inventoryRepo.findMovementByKey.mockResolvedValue(null);
       inventoryRepo.releaseReservationTx.mockResolvedValue({
-        inventory: { ...mockInventory, availableQty: 100, reservedQty: 0 },
+        inventory: { ...mockInventory, availableQty: 100, reservedQty: 0, deletedAt: null },
         movement: { ...mockMovement, movementType: 'RELEASE' as any, quantity: 20 },
       });
 
@@ -1440,6 +1441,7 @@ describe('InventoryService', () => {
         ...mockInventory,
         availableQty: 150,
         reservedQty: 10,
+        deletedAt: null,
       });
 
       const result = await service.updateInventoryQuantity(productBatchId, locationId, updateDto);
@@ -1565,7 +1567,7 @@ describe('InventoryService', () => {
 
       inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
       inventoryRepo.findLocation.mockResolvedValue(mockLocation);
-      inventoryRepo.softDeleteInventory.mockResolvedValue(mockInventory);
+      inventoryRepo.softDeleteInventory.mockResolvedValue({ ...mockInventory, deletedAt: null });
 
       const result = await service.softDeleteInventory(productBatchId, locationId);
 
