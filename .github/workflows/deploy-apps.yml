@@ -181,7 +181,7 @@ jobs:
         az webapp config appsettings set \
           --resource-group warehouse-mgmt-staging-rg \
           --name warehouse-mgmt-staging-backend \
-          --settings MIGRATE_ON_STARTUP=true
+          --settings RUN_MIGRATIONS=true
 
   deploy-production:
     if: |
