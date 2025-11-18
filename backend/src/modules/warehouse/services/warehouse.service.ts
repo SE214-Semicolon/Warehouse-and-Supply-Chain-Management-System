@@ -21,6 +21,7 @@ export class WarehouseService {
     private readonly cacheService: CacheService,
   ) {}
 
+  // POST /warehouses - Min Test Cases: 5 (Success 201, Duplicate 409, Missing fields 400, No permission 403, No auth 401)
   async create(createDto: CreateWarehouseDto) {
     this.logger.log(`Creating warehouse with code: ${createDto.code}`);
     // Check if code already exists
@@ -47,6 +48,7 @@ export class WarehouseService {
     };
   }
 
+  // GET /warehouses - Min Test Cases: 6 (Get all 200, Filter code 200, Filter search 200, Page 1, Page 2, No auth 401)
   async findAll(query: QueryWarehouseDto) {
     this.logger.log(`Finding all warehouses with query: ${JSON.stringify(query)}`);
     const { search, code, limit = 20, page = 1 } = query;
@@ -82,6 +84,7 @@ export class WarehouseService {
     };
   }
 
+  // GET /warehouses/:id - Min Test Cases: 4 (Found 200, Not found 404, Cache hit 200, No auth 401)
   async findOne(id: string) {
     this.logger.debug(`Finding warehouse by ID: ${id}`);
     const cacheKey = `${CACHE_PREFIX.WAREHOUSE}:id:${id}`;
@@ -107,6 +110,7 @@ export class WarehouseService {
     );
   }
 
+  // GET /warehouses/code/:code - Min Test Cases: 4 (Found 200, Not found 404, Cache hit 200, No auth 401)
   async findByCode(code: string) {
     this.logger.debug(`Finding warehouse by code: ${code}`);
     const cacheKey = `${CACHE_PREFIX.WAREHOUSE}:code:${code}`;
@@ -131,6 +135,7 @@ export class WarehouseService {
     );
   }
 
+  // PATCH /warehouses/:id - Min Test Cases: 6 (Update 200, Duplicate code 409, Not found 404, No permission 403, No auth 401)
   async update(id: string, updateDto: UpdateWarehouseDto) {
     this.logger.log(`Updating warehouse: ${id}`);
     const warehouse = await this.warehouseRepo.findOne(id);
@@ -165,6 +170,7 @@ export class WarehouseService {
     };
   }
 
+  // DELETE /warehouses/:id - Min Test Cases: 5 (Delete 200, Not found 404, Has locations 400, No permission 403, No auth 401)
   async remove(id: string) {
     this.logger.log(`Removing warehouse: ${id}`);
     const warehouse = await this.warehouseRepo.findOne(id);
@@ -194,6 +200,7 @@ export class WarehouseService {
     };
   }
 
+  // GET /warehouses/:id/stats - Min Test Cases: 3 (Get stats 200, Not found 404, No auth 401)
   async getWarehouseStats(id: string) {
     this.logger.debug(`Getting stats for warehouse: ${id}`);
     const warehouse = await this.warehouseRepo.findOne(id);
