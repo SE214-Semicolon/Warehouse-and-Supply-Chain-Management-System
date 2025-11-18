@@ -30,6 +30,12 @@ jobs:
         run: npm ci
         working-directory: ${{ matrix.folder }}
 
+
+      - name: Generate Prisma Client
+        if: matrix.folder == 'backend'
+        run: npx prisma generate
+        working-directory: ${{ matrix.folder }}
+        
       - name: Type checking
         if: matrix.folder == 'backend'
         run: npx tsc --noEmit
