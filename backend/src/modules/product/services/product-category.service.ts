@@ -14,6 +14,16 @@ export class ProductCategoryService {
 
   constructor(private readonly categoryRepo: ProductCategoryRepository) {}
 
+  /**
+   * Create Category API
+   * Minimum test cases: 6
+   * - CAT-TC01: Create with valid data (200)
+   * - CAT-TC02: Create with parent category (200)
+   * - CAT-TC03: Parent category not found (404)
+   * - CAT-TC04: Missing required fields (tested by DTO)
+   * - CAT-TC05: Permission denied (tested by guard)
+   * - CAT-TC06: No authentication (tested by guard)
+   */
   async create(createCategoryDto: CreateCategoryDto): Promise<ProductCategoryResponseDto> {
     this.logger.log(`Creating category: ${createCategoryDto.name}`);
     if (createCategoryDto.parentId) {
@@ -29,6 +39,14 @@ export class ProductCategoryService {
     return { success: true, data: category, message: 'Category created successfully' };
   }
 
+  /**
+   * Get All Categories API
+   * Minimum test cases: 4
+   * - CAT-TC07: Get all categories with tree structure (200)
+   * - CAT-TC08: Empty categories list (200)
+   * - CAT-TC09: Permission denied (tested by guard)
+   * - CAT-TC10: No authentication (tested by guard)
+   */
   async findAll(): Promise<ProductCategoryListResponseDto> {
     this.logger.log('Fetching all categories and building tree');
     const categories = await this.categoryRepo.findAll();
@@ -61,6 +79,15 @@ export class ProductCategoryService {
     return { success: true, data: categoryTree, total: categoryTree.length };
   }
 
+  /**
+   * Get Category by ID API
+   * Minimum test cases: 5
+   * - CAT-TC11: Find by valid ID (200)
+   * - CAT-TC12: Category not found (404)
+   * - CAT-TC13: Invalid ID format (tested by DTO)
+   * - CAT-TC14: Permission denied (tested by guard)
+   * - CAT-TC15: No authentication (tested by guard)
+   */
   async findOne(id: string): Promise<ProductCategoryResponseDto> {
     this.logger.log(`Finding category by ID: ${id}`);
     const category = await this.categoryRepo.findOne(id);
@@ -70,6 +97,18 @@ export class ProductCategoryService {
     return { success: true, data: category };
   }
 
+  /**
+   * Update Category API
+   * Minimum test cases: 8
+   * - CAT-TC16: Update with valid data (200)
+   * - CAT-TC17: Category not found (404)
+   * - CAT-TC18: Parent category not found (404)
+   * - CAT-TC19: Self-reference parent (400)
+   * - CAT-TC20: Update parent category (200)
+   * - CAT-TC21: Invalid ID format (tested by DTO)
+   * - CAT-TC22: Permission denied (tested by guard)
+   * - CAT-TC23: No authentication (tested by guard)
+   */
   async update(
     id: string,
     updateCategoryDto: UpdateCategoryDto,
@@ -97,6 +136,17 @@ export class ProductCategoryService {
     return { success: true, data: updated, message: 'Category updated successfully' };
   }
 
+  /**
+   * Delete Category API
+   * Minimum test cases: 6
+   * - CAT-TC24: Delete category successfully (200)
+   * - CAT-TC25: Category not found (404)
+   * - CAT-TC26: Delete category with children (400)
+   * - CAT-TC27: Invalid ID format (tested by DTO)
+   * - CAT-TC28: Permission denied (tested by guard)
+   * - CAT-TC29: No authentication (tested by guard)
+   * Total: 29 test cases for ProductCategoryService
+   */
   async remove(id: string): Promise<ProductCategoryDeleteResponseDto> {
     this.logger.log(`Deleting category ${id}`);
     const category = await this.categoryRepo.findOne(id);

@@ -25,6 +25,18 @@ export class ProductBatchService {
     private readonly productRepo: ProductRepository,
   ) {}
 
+  /**
+   * Create Product Batch API
+   * Minimum test cases: 8
+   * - BATCH-TC01: Create with valid data (200)
+   * - BATCH-TC02: Product not found (404)
+   * - BATCH-TC03: Duplicate batch number (409)
+   * - BATCH-TC04: Invalid dates (expiry before manufacture) (400)
+   * - BATCH-TC05: Create with all optional fields (200)
+   * - BATCH-TC06: Missing required fields (tested by DTO)
+   * - BATCH-TC07: Permission denied (tested by guard)
+   * - BATCH-TC08: No authentication (tested by guard)
+   */
   async create(createBatchDto: CreateProductBatchDto): Promise<ProductBatchResponseDto> {
     this.logger.log(`Creating batch for product: ${createBatchDto.productId}`);
 
@@ -80,6 +92,20 @@ export class ProductBatchService {
     };
   }
 
+  /**
+   * Get All Product Batches API
+   * Minimum test cases: 10
+   * - BATCH-TC09: Get all with default pagination (200)
+   * - BATCH-TC10: Filter by product ID (200)
+   * - BATCH-TC11: Filter by batch number (200)
+   * - BATCH-TC12: Filter by barcode/QR (200)
+   * - BATCH-TC13: Filter by expiry before (200)
+   * - BATCH-TC14: Filter by expiry after (200)
+   * - BATCH-TC15: Pagination page 1 (200)
+   * - BATCH-TC16: Pagination page 2 (200)
+   * - BATCH-TC17: Permission denied (tested by guard)
+   * - BATCH-TC18: No authentication (tested by guard)
+   */
   async findAll(query: QueryProductBatchDto): Promise<ProductBatchListResponseDto> {
     this.logger.log(`Finding all product batches with filters: ${JSON.stringify(query)}`);
 
@@ -137,6 +163,15 @@ export class ProductBatchService {
     };
   }
 
+  /**
+   * Get Product Batch by ID API
+   * Minimum test cases: 5
+   * - BATCH-TC19: Find by valid ID (200)
+   * - BATCH-TC20: Batch not found (404)
+   * - BATCH-TC21: Invalid ID format (tested by DTO)
+   * - BATCH-TC22: Permission denied (tested by guard)
+   * - BATCH-TC23: No authentication (tested by guard)
+   */
   async findOne(id: string): Promise<ProductBatchResponseDto> {
     this.logger.log(`Finding product batch by ID: ${id}`);
 
@@ -152,6 +187,15 @@ export class ProductBatchService {
     };
   }
 
+  /**
+   * Get Batches by Product API
+   * Minimum test cases: 5
+   * - BATCH-TC24: Find by valid product ID (200)
+   * - BATCH-TC25: Product not found (404)
+   * - BATCH-TC26: Empty batches list (200)
+   * - BATCH-TC27: Permission denied (tested by guard)
+   * - BATCH-TC28: No authentication (tested by guard)
+   */
   async findByProduct(productId: string): Promise<ProductBatchListResponseDto> {
     this.logger.log(`Finding batches for product: ${productId}`);
 
@@ -175,6 +219,16 @@ export class ProductBatchService {
     };
   }
 
+  /**
+   * Get Expiring Batches API
+   * Minimum test cases: 6
+   * - BATCH-TC29: Find expiring within default days (200)
+   * - BATCH-TC30: Find expiring within custom days (200)
+   * - BATCH-TC31: Pagination (200)
+   * - BATCH-TC32: No expiring batches (200)
+   * - BATCH-TC33: Permission denied (tested by guard)
+   * - BATCH-TC34: No authentication (tested by guard)
+   */
   async findExpiring(
     daysAhead: number = 30,
     page: number = 1,
@@ -208,6 +262,19 @@ export class ProductBatchService {
     };
   }
 
+  /**
+   * Update Product Batch API
+   * Minimum test cases: 9
+   * - BATCH-TC35: Update with valid data (200)
+   * - BATCH-TC36: Batch not found (404)
+   * - BATCH-TC37: Duplicate batch number (409)
+   * - BATCH-TC38: Invalid dates (expiry before manufacture) (400)
+   * - BATCH-TC39: Update batch number (200)
+   * - BATCH-TC40: Update quantity (200)
+   * - BATCH-TC41: Invalid ID format (tested by DTO)
+   * - BATCH-TC42: Permission denied (tested by guard)
+   * - BATCH-TC43: No authentication (tested by guard)
+   */
   async update(
     id: string,
     updateBatchDto: UpdateProductBatchDto,
@@ -272,6 +339,17 @@ export class ProductBatchService {
     };
   }
 
+  /**
+   * Delete Product Batch API
+   * Minimum test cases: 6
+   * - BATCH-TC44: Delete batch successfully (200)
+   * - BATCH-TC45: Batch not found (404)
+   * - BATCH-TC46: Delete batch with inventory (400)
+   * - BATCH-TC47: Invalid ID format (tested by DTO)
+   * - BATCH-TC48: Permission denied (tested by guard)
+   * - BATCH-TC49: No authentication (tested by guard)
+   * Total: 49 test cases for ProductBatchService
+   */
   async remove(id: string): Promise<ProductBatchDeleteResponseDto> {
     this.logger.log(`Deleting product batch: ${id}`);
 

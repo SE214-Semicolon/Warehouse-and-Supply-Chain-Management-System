@@ -28,6 +28,17 @@ export class ProductService {
     private readonly cacheService: CacheService,
   ) {}
 
+  /**
+   * Create Product API
+   * Minimum test cases: 7
+   * - PROD-TC01: Create with valid data (200)
+   * - PROD-TC02: Duplicate SKU (409)
+   * - PROD-TC03: Category not found (404)
+   * - PROD-TC04: Create with category (200)
+   * - PROD-TC05: Missing required fields (tested by DTO)
+   * - PROD-TC06: Permission denied (tested by guard)
+   * - PROD-TC07: No authentication (tested by guard)
+   */
   async create(createProductDto: CreateProductDto): Promise<ProductResponseDto> {
     this.logger.log(`Creating product with SKU: ${createProductDto.sku}`);
 
@@ -70,6 +81,19 @@ export class ProductService {
     };
   }
 
+  /**
+   * Get All Products API
+   * Minimum test cases: 9
+   * - PROD-TC08: Get all with default pagination (200)
+   * - PROD-TC09: Filter by search (200)
+   * - PROD-TC10: Filter by category (200)
+   * - PROD-TC11: Filter by barcode (200)
+   * - PROD-TC12: Pagination page 1 (200)
+   * - PROD-TC13: Pagination page 2 (200)
+   * - PROD-TC14: Sort by different fields (200)
+   * - PROD-TC15: Permission denied (tested by guard)
+   * - PROD-TC16: No authentication (tested by guard)
+   */
   async findAll(query: QueryProductDto): Promise<ProductListResponseDto> {
     this.logger.log(`Finding all products with filters: ${JSON.stringify(query)}`);
 
@@ -120,6 +144,16 @@ export class ProductService {
     };
   }
 
+  /**
+   * Get Product by ID API
+   * Minimum test cases: 6
+   * - PROD-TC17: Find by valid ID (200)
+   * - PROD-TC18: Product not found (404)
+   * - PROD-TC19: Cache hit (200)
+   * - PROD-TC20: Invalid ID format (tested by DTO)
+   * - PROD-TC21: Permission denied (tested by guard)
+   * - PROD-TC22: No authentication (tested by guard)
+   */
   async findOne(id: string): Promise<ProductResponseDto> {
     this.logger.log(`Finding product by ID: ${id}`);
 
@@ -142,6 +176,15 @@ export class ProductService {
     };
   }
 
+  /**
+   * Get Product by SKU API
+   * Minimum test cases: 5
+   * - PROD-TC23: Find by valid SKU (200)
+   * - PROD-TC24: Product not found (404)
+   * - PROD-TC25: Cache hit (200)
+   * - PROD-TC26: Permission denied (tested by guard)
+   * - PROD-TC27: No authentication (tested by guard)
+   */
   async findBySku(sku: string): Promise<ProductResponseDto> {
     this.logger.log(`Finding product by SKU: ${sku}`);
 
@@ -164,6 +207,15 @@ export class ProductService {
     };
   }
 
+  /**
+   * Get Product by Barcode API
+   * Minimum test cases: 5
+   * - PROD-TC28: Find by valid barcode (200)
+   * - PROD-TC29: Product not found (404)
+   * - PROD-TC30: Cache hit (200)
+   * - PROD-TC31: Permission denied (tested by guard)
+   * - PROD-TC32: No authentication (tested by guard)
+   */
   async findByBarcode(barcode: string): Promise<ProductResponseDto> {
     this.logger.log(`Finding product by barcode: ${barcode}`);
 
@@ -186,6 +238,15 @@ export class ProductService {
     };
   }
 
+  /**
+   * Autocomplete Products API
+   * Minimum test cases: 5
+   * - PROD-TC33: Autocomplete with search (200)
+   * - PROD-TC34: Autocomplete without search (200)
+   * - PROD-TC35: Cache hit (200)
+   * - PROD-TC36: Permission denied (tested by guard)
+   * - PROD-TC37: No authentication (tested by guard)
+   */
   async autocomplete(search: string, limit = 10) {
     this.logger.log(`Autocomplete products - search: ${search}, limit: ${limit}`);
     const key = { prefix: CACHE_PREFIX.PRODUCT, key: `ac:${search || ''}:${limit}` };
@@ -218,6 +279,19 @@ export class ProductService {
     );
   }
 
+  /**
+   * Update Product API
+   * Minimum test cases: 9
+   * - PROD-TC38: Update with valid data (200)
+   * - PROD-TC39: Product not found (404)
+   * - PROD-TC40: Duplicate SKU (409)
+   * - PROD-TC41: Category not found (404)
+   * - PROD-TC42: Update with category (200)
+   * - PROD-TC43: Update SKU (200)
+   * - PROD-TC44: Invalid ID format (tested by DTO)
+   * - PROD-TC45: Permission denied (tested by guard)
+   * - PROD-TC46: No authentication (tested by guard)
+   */
   async update(id: string, updateProductDto: UpdateProductDto): Promise<ProductResponseDto> {
     this.logger.log(`Updating product: ${id}`);
 
@@ -271,6 +345,17 @@ export class ProductService {
     };
   }
 
+  /**
+   * Delete Product API
+   * Minimum test cases: 6
+   * - PROD-TC47: Delete product successfully (200)
+   * - PROD-TC48: Product not found (404)
+   * - PROD-TC49: Delete product with batches (400)
+   * - PROD-TC50: Invalid ID format (tested by DTO)
+   * - PROD-TC51: Permission denied (tested by guard)
+   * - PROD-TC52: No authentication (tested by guard)
+   * Total: 52 test cases for ProductService
+   */
   async remove(id: string): Promise<ProductDeleteResponseDto> {
     this.logger.log(`Deleting product: ${id}`);
 

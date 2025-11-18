@@ -27,6 +27,19 @@ export class InventoryService {
     private readonly cacheService: CacheService,
   ) {}
 
+  /**
+   * Receive Inventory API
+   * Minimum test cases: 9
+   * - INV-TC01: Receive with valid data (200)
+   * - INV-TC02: Product batch not found (404)
+   * - INV-TC03: Location not found (404)
+   * - INV-TC04: User not found (404)
+   * - INV-TC05: Idempotency key reuse (200)
+   * - INV-TC06: Concurrent idempotency conflict (200)
+   * - INV-TC07: Missing required fields (tested by DTO)
+   * - INV-TC08: Permission denied (tested by guard)
+   * - INV-TC09: No authentication (tested by guard)
+   */
   async receiveInventory(dto: ReceiveInventoryDto) {
     this.logger.log(
       `Receiving inventory - Batch: ${dto.productBatchId}, Location: ${dto.locationId}, Qty: ${dto.quantity}`,
@@ -87,6 +100,20 @@ export class InventoryService {
     }
   }
 
+  /**
+   * Dispatch Inventory API
+   * Minimum test cases: 10
+   * - INV-TC10: Dispatch with valid data (200)
+   * - INV-TC11: Product batch not found (404)
+   * - INV-TC12: Location not found (404)
+   * - INV-TC13: User not found (404)
+   * - INV-TC14: Not enough stock (400)
+   * - INV-TC15: Idempotency key reuse (200)
+   * - INV-TC16: Concurrent idempotency conflict (200)
+   * - INV-TC17: Missing required fields (tested by DTO)
+   * - INV-TC18: Permission denied (tested by guard)
+   * - INV-TC19: No authentication (tested by guard)
+   */
   async dispatchInventory(dto: DispatchInventoryDto) {
     // Basic existence validation
     const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
@@ -143,6 +170,21 @@ export class InventoryService {
     }
   }
 
+  /**
+   * Adjust Inventory API
+   * Minimum test cases: 11
+   * - INV-TC20: Adjust with positive quantity (200)
+   * - INV-TC21: Adjust with negative quantity (200)
+   * - INV-TC22: Product batch not found (404)
+   * - INV-TC23: Location not found (404)
+   * - INV-TC24: User not found (404)
+   * - INV-TC25: Zero adjustment quantity (400)
+   * - INV-TC26: Idempotency key reuse (200)
+   * - INV-TC27: Concurrent idempotency conflict (200)
+   * - INV-TC28: Missing required fields (tested by DTO)
+   * - INV-TC29: Permission denied (tested by guard)
+   * - INV-TC30: No authentication (tested by guard)
+   */
   async adjustInventory(dto: AdjustInventoryDto) {
     // Basic existence validation
     const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
@@ -202,6 +244,22 @@ export class InventoryService {
     }
   }
 
+  /**
+   * Transfer Inventory API
+   * Minimum test cases: 12
+   * - INV-TC31: Transfer with valid data (200)
+   * - INV-TC32: Product batch not found (404)
+   * - INV-TC33: From location not found (404)
+   * - INV-TC34: To location not found (404)
+   * - INV-TC35: User not found (404)
+   * - INV-TC36: Same source and destination (400)
+   * - INV-TC37: Not enough stock (400)
+   * - INV-TC38: Idempotency key reuse (200)
+   * - INV-TC39: Concurrent idempotency conflict (200)
+   * - INV-TC40: Missing required fields (tested by DTO)
+   * - INV-TC41: Permission denied (tested by guard)
+   * - INV-TC42: No authentication (tested by guard)
+   */
   async transferInventory(dto: TransferInventoryDto) {
     // Basic existence validation
     const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
@@ -277,6 +335,21 @@ export class InventoryService {
     }
   }
 
+  /**
+   * Reserve Inventory API
+   * Minimum test cases: 11
+   * - INV-TC43: Reserve with valid data (200)
+   * - INV-TC44: Product batch not found (404)
+   * - INV-TC45: Location not found (404)
+   * - INV-TC46: User not found (404)
+   * - INV-TC47: Zero or negative quantity (400)
+   * - INV-TC48: Not enough available stock (400)
+   * - INV-TC49: Idempotency key reuse (200)
+   * - INV-TC50: Concurrent idempotency conflict (200)
+   * - INV-TC51: Missing required fields (tested by DTO)
+   * - INV-TC52: Permission denied (tested by guard)
+   * - INV-TC53: No authentication (tested by guard)
+   */
   async reserveInventory(dto: ReserveInventoryDto) {
     // Basic existence validation
     const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
@@ -340,6 +413,21 @@ export class InventoryService {
     }
   }
 
+  /**
+   * Release Reservation API
+   * Minimum test cases: 11
+   * - INV-TC54: Release with valid data (200)
+   * - INV-TC55: Product batch not found (404)
+   * - INV-TC56: Location not found (404)
+   * - INV-TC57: User not found (404)
+   * - INV-TC58: Inventory not found (404)
+   * - INV-TC59: Not enough reserved stock (400)
+   * - INV-TC60: Idempotency key reuse (200)
+   * - INV-TC61: Concurrent idempotency conflict (200)
+   * - INV-TC62: Missing required fields (tested by DTO)
+   * - INV-TC63: Permission denied (tested by guard)
+   * - INV-TC64: No authentication (tested by guard)
+   */
   async releaseReservation(dto: ReleaseReservationDto) {
     // Basic existence validation
     const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
@@ -401,6 +489,18 @@ export class InventoryService {
     }
   }
 
+  /**
+   * Get Inventory by Location API
+   * Minimum test cases: 8
+   * - INV-TC65: Get with valid location (200)
+   * - INV-TC66: Location not found (404)
+   * - INV-TC67: Invalid page number (400)
+   * - INV-TC68: Invalid limit (400)
+   * - INV-TC69: Pagination and sorting (200)
+   * - INV-TC70: Cache hit (200)
+   * - INV-TC71: Permission denied (tested by guard)
+   * - INV-TC72: No authentication (tested by guard)
+   */
   async getInventoryByLocation(dto: QueryByLocationDto) {
     // Basic existence validation
     const location = await this.inventoryRepo.findLocation(dto.locationId);
@@ -409,11 +509,11 @@ export class InventoryService {
     }
 
     // Validate pagination parameters
-    if (dto.page && dto.page < 1) {
+    if (dto.page != undefined && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
     }
 
-    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+    if (dto.limit != undefined && (dto.limit < 1 || dto.limit > 100)) {
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
@@ -443,6 +543,18 @@ export class InventoryService {
     };
   }
 
+  /**
+   * Get Inventory by Product Batch API
+   * Minimum test cases: 8
+   * - INV-TC73: Get with valid product batch (200)
+   * - INV-TC74: Product batch not found (404)
+   * - INV-TC75: Invalid page number (400)
+   * - INV-TC76: Invalid limit (400)
+   * - INV-TC77: Pagination and sorting (200)
+   * - INV-TC78: Cache hit (200)
+   * - INV-TC79: Permission denied (tested by guard)
+   * - INV-TC80: No authentication (tested by guard)
+   */
   async getInventoryByProductBatch(dto: QueryByProductBatchDto) {
     // Basic existence validation
     const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
@@ -451,11 +563,11 @@ export class InventoryService {
     }
 
     // Validate pagination parameters
-    if (dto.page && dto.page < 1) {
+    if (dto.page != undefined && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
     }
 
-    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+    if (dto.limit != undefined && (dto.limit < 1 || dto.limit > 100)) {
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
@@ -485,6 +597,19 @@ export class InventoryService {
     };
   }
 
+  /**
+   * Update Inventory Quantity API
+   * Minimum test cases: 9
+   * - INV-TC81: Update with valid data (200)
+   * - INV-TC82: Product batch not found (404)
+   * - INV-TC83: Location not found (404)
+   * - INV-TC84: User not found (404)
+   * - INV-TC85: Negative available quantity (400)
+   * - INV-TC86: Negative reserved quantity (400)
+   * - INV-TC87: Missing required fields (tested by DTO)
+   * - INV-TC88: Permission denied (tested by guard)
+   * - INV-TC89: No authentication (tested by guard)
+   */
   async updateInventoryQuantity(
     productBatchId: string,
     locationId: string,
@@ -531,6 +656,16 @@ export class InventoryService {
     };
   }
 
+  /**
+   * Soft Delete Inventory API
+   * Minimum test cases: 6
+   * - INV-TC90: Soft delete with valid data (200)
+   * - INV-TC91: Product batch not found (404)
+   * - INV-TC92: Location not found (404)
+   * - INV-TC93: Invalid ID format (tested by DTO)
+   * - INV-TC94: Permission denied (tested by guard)
+   * - INV-TC95: No authentication (tested by guard)
+   */
   async softDeleteInventory(productBatchId: string, locationId: string) {
     // Basic existence validation
     const batch = await this.inventoryRepo.findProductBatch(productBatchId);
@@ -555,13 +690,22 @@ export class InventoryService {
     };
   }
 
+  /**
+   * Get Low Stock Alerts API
+   * Minimum test cases: 5
+   * - INV-TC96: Get alerts with threshold (200)
+   * - INV-TC97: Filter by location and product (200)
+   * - INV-TC98: Invalid pagination (400)
+   * - INV-TC99: Permission denied (tested by guard)
+   * - INV-TC100: No authentication (tested by guard)
+   */
   async getLowStockAlerts(dto: AlertQueryDto) {
     // Validate pagination parameters
-    if (dto.page && dto.page < 1) {
+    if (dto.page != undefined && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
     }
 
-    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+    if (dto.limit != undefined && (dto.limit < 1 || dto.limit > 100)) {
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
@@ -581,13 +725,18 @@ export class InventoryService {
     };
   }
 
+  /**
+   * Get Expiry Alerts API
+   * (Shares test cases with Low Stock Alerts - similar logic)
+   * Test coverage: INV-TC96 to TC100 apply here too
+   */
   async getExpiryAlerts(dto: AlertQueryDto) {
     // Validate pagination parameters
-    if (dto.page && dto.page < 1) {
+    if (dto.page != undefined && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
     }
 
-    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+    if (dto.limit != undefined && (dto.limit < 1 || dto.limit > 100)) {
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
@@ -607,13 +756,18 @@ export class InventoryService {
     };
   }
 
+  /**
+   * Get Stock Level Report API
+   * (Similar pagination/validation logic to alert APIs)
+   * Test coverage: Similar to INV-TC96-100
+   */
   async getStockLevelReport(dto: StockLevelReportDto) {
     // Validate pagination parameters
-    if (dto.page && dto.page < 1) {
+    if (dto.page != undefined && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
     }
 
-    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+    if (dto.limit != undefined && (dto.limit < 1 || dto.limit > 100)) {
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
@@ -631,13 +785,18 @@ export class InventoryService {
     };
   }
 
+  /**
+   * Get Movement Report API
+   * (Similar pagination/validation logic to other report APIs)
+   * Test coverage: Similar to INV-TC96-100
+   */
   async getMovementReport(dto: MovementReportDto) {
     // Validate pagination parameters
-    if (dto.page && dto.page < 1) {
+    if (dto.page != undefined && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
     }
 
-    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+    if (dto.limit != undefined && (dto.limit < 1 || dto.limit > 100)) {
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
@@ -659,13 +818,18 @@ export class InventoryService {
     };
   }
 
+  /**
+   * Get Valuation Report API
+   * (Similar pagination/validation logic to other report APIs)
+   * Test coverage: Similar to INV-TC96-100
+   */
   async getValuationReport(dto: ValuationReportDto) {
     // Validate pagination parameters
-    if (dto.page && dto.page < 1) {
+    if (dto.page != undefined && dto.page < 1) {
       throw new BadRequestException('Page must be greater than 0');
     }
 
-    if (dto.limit && (dto.limit < 1 || dto.limit > 100)) {
+    if (dto.limit != undefined && (dto.limit < 1 || dto.limit > 100)) {
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
