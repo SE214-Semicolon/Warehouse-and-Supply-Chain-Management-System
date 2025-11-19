@@ -1,10 +1,6 @@
 import { Stack, Button } from '@mui/material';
 
-export default function InventoryToolbar({
-  menuItems,
-  selectedMenu,
-  onSelect,
-}) {
+export default function Toolbar({ menuItems, selectedMenu, onSelect }) {
   return (
     <Stack
       direction="row"
@@ -17,7 +13,6 @@ export default function InventoryToolbar({
         <Button
           key={item.id}
           color={selectedMenu === item.id ? 'secondary' : 'inherit'}
-          // startIcon={item.icon}
           onClick={() => onSelect(item.id)}
         >
           {item.label}
