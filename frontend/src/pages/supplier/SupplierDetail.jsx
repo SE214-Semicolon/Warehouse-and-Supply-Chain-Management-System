@@ -10,8 +10,8 @@ import RecentPOs from './detail-components/RecentPOs';
 
 export default function SupplierDetail() {
   const location = useLocation();
-  const data = location.state;
-  const [supplierData, setSupplierData] = useState(mockSupplierData);
+  const _data = location.state;
+  const [supplierData, _setSupplierData] = useState(mockSupplierData);
 
   return (
     <Box
