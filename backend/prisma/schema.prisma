@@ -10,14 +10,14 @@ datasource db {
 // Auth: refresh tokens table references existing User model below
 
 model RefreshToken {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String   @db.Uuid
-  user       User     @relation(fields: [userId], references: [id])
-  userEmail  String
-  userRole   UserRole
-  createdAt  DateTime @default(now())
-  expiresAt  DateTime
-  revokedAt  DateTime?
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id])
+  userEmail String
+  userRole  UserRole
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
 }
 
 /**
@@ -126,12 +126,19 @@ model Product {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  category      ProductCategory?    @relation(fields: [categoryId], references: [id])
-  batches       ProductBatch[]
-  stockMoves    StockMovement[]
-  poItems       PurchaseOrderItem[]
-  soItems       SalesOrderItem[]
-  shipmentItems ShipmentItem[]
+  // Fields for alerts and demand planning
+  minStockLevel    Int? // Minimum stock level before an alert is triggered
+  reorderPoint     Int? // Stock level at which a new order should be placed
+  leadTimeDays     Int? // Expected number of days for a purchase order to arrive
+  safetyStockLevel Int? // Extra quantity of an item held in inventory
+
+  category        ProductCategory?    @relation(fields: [categoryId], references: [id])
+  batches         ProductBatch[]
+  stockMoves      StockMovement[]
+  poItems         PurchaseOrderItem[]
+  soItems         SalesOrderItem[]
+  shipmentItems   ShipmentItem[]
+  demandForecasts DemandForecast[]
 
   @@index([sku], name: "idx_product_sku")
 }
@@ -329,6 +336,20 @@ model ShipmentTrackingEvent {
   rawPayload Json?
 
   shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+}
+
+model DemandForecast {
+  id                 String   @id @default(cuid())
+  productId          String   @db.Uuid
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  forecastDate       DateTime // The date for which the forecast is made
+  forecastedQuantity Int // The forecasted sales quantity
+  algorithmUsed      String   @default("SIMPLE_MOVING_AVERAGE") // The algorithm used for this forecast
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([productId, forecastDate])
+  @@index([productId], name: "idx_demandforecast_product")
 }
 
 model User {

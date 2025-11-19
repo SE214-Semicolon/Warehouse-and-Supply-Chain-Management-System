@@ -18,6 +18,7 @@ import { SupplierModule } from './modules/supplier/supplier.module';
 import { ProductModule } from './modules/product/product.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
+import { AlertsModule } from './modules/alerts/alerts.module';
 
 // Controller and Service imports
 import { AppController } from './app.controller';
@@ -39,13 +40,12 @@ import { AuditContextInterceptor } from './common/interceptors/audit-context.int
     AuthModule,
     UsersModule,
 
-    // Business modules
-    InventoryModule,
+    // Feature Modules
     ProductModule,
     WarehouseModule,
-    OrderModule,
-    SupplierModule,
+    InventoryModule,
     AuditLogModule,
+    AlertsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [
