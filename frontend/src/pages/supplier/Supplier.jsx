@@ -3,7 +3,7 @@ import { Box, Typography } from '@mui/material';
 import DataTable from '@/components/DataTable';
 import SearchBar from '@/components/SearchBar';
 import ActionButtons from '@/components/ActionButton';
-import SupplierToolbar from './components/SupplierToolbar';
+import Toolbar from '../../components/Toolbar';
 import FormDialog from './components/FormDialog';
 import { menuItems } from './components/MenuConfig';
 import SupplierService from '../../services/supplier.service';
@@ -94,7 +94,7 @@ export default function Supplier() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <SupplierToolbar menuItems={menuItems} selectedMenu={selectedMenu} />
+      <Toolbar menuItems={menuItems} selectedMenu={selectedMenu} />
 
       <Box
         sx={{
@@ -116,7 +116,7 @@ export default function Supplier() {
 
       <Box>
         {dataTables[selectedMenu] || (
-          <Typography>Module khác đang phát triển...</Typography>
+          <Typography>Module đang phát triển...</Typography>
         )}
       </Box>
 
