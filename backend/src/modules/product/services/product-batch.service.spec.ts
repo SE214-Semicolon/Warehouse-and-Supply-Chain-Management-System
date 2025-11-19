@@ -19,6 +19,10 @@ describe('ProductBatchService', () => {
     parameters: {},
     createdAt: new Date(),
     updatedAt: new Date(),
+    minStockLevel: null,
+    reorderPoint: null,
+    leadTimeDays: null,
+    safetyStockLevel: null,
   };
 
   const mockBatch = {
