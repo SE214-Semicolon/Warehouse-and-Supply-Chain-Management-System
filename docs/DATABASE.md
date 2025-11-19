@@ -10,8 +10,6 @@ The system implements a **Polyglot Persistence** strategy, using PostgreSQL for 
 
 ![PostgreSQL ERD](./diagrams/database-erd.png)
 
-_Note: Generate this ERD from pgAdmin by connecting to the database and using Tools → ERD For Database._
-
 ### Schema Overview
 
 **16 Tables organized by Bounded Context:**
