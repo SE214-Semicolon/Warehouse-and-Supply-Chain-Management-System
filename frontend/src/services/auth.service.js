@@ -9,8 +9,10 @@ const AuthService = {
     try {
       const response = await axios.post(`${API_URL}/signup`, data);
       const { accessToken, refreshToken } = response.data;
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
+      useAuthStore.getState().login({
+        accessToken,
+        refreshToken,
+      });
       return { accessToken, refreshToken };
     } catch (error) {
       console.error('Error during sign up:', error);
@@ -23,8 +25,10 @@ const AuthService = {
     try {
       const response = await axios.post(`${API_URL}/login`, data);
       const { accessToken, refreshToken } = response.data;
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
+      useAuthStore.getState().login({
+        accessToken,
+        refreshToken,
+      });
       return { accessToken, refreshToken };
     } catch (error) {
       console.error('Error during login:', error);
@@ -46,11 +50,6 @@ const AuthService = {
       const response = await axios.post(`${API_URL}/refresh`, {
         refreshToken: refresh_token,
       });
-
-      const { accessToken, refreshToken } = response.data;
-
-      useAuthStore.getState().updateTokens(accessToken, refreshToken);
-
       return response.data;
     } catch (error) {
       console.error('Refresh token failed:', error);
