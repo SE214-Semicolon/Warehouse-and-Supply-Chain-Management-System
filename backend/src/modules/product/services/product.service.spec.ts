@@ -21,6 +21,10 @@ describe('ProductService', () => {
     parameters: { color: 'red' },
     createdAt: new Date(),
     updatedAt: new Date(),
+    minStockLevel: null,
+    reorderPoint: null,
+    leadTimeDays: null,
+    safetyStockLevel: null,
     category: {
       id: 'category-uuid-1',
       name: 'Test Category',
