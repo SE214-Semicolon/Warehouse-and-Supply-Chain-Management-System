@@ -13,8 +13,6 @@ import { UsersModule } from './users/users.module';
 
 // Business module imports
 import { InventoryModule } from './modules/inventory/inventory.module';
-import { OrderModule } from './modules/order/order.module';
-import { SupplierModule } from './modules/supplier/supplier.module';
 import { ProductModule } from './modules/product/product.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
