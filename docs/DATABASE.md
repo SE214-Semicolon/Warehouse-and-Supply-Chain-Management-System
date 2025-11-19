@@ -12,7 +12,7 @@ The system implements a **Polyglot Persistence** strategy, using PostgreSQL for 
 
 ### Schema Overview
 
-**16 Tables organized by Bounded Context:**
+**19 Tables organized by Bounded Context:**
 
 | Module                   | Tables                                        | Purpose                                                      |
 | ------------------------ | --------------------------------------------- | ------------------------------------------------------------ |
