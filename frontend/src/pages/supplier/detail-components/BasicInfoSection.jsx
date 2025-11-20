@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Typography, Link } from '@mui/material';
 import ApartmentIcon from '@mui/icons-material/Apartment';
-import InfoCard from './InfoCard';
+import InfoCard from '@/components/InfoCard';
 
 export default function BasicInfoSection({ data }) {
   const fields = [
@@ -24,7 +24,7 @@ export default function BasicInfoSection({ data }) {
             marginBottom: 0,
           },
           color: 'text.secondary',
-          fontSize: '0.875rem',
+          fontSize: '0.825rem',
         }}
       >
         {fields.map((field, index) => (
@@ -45,7 +45,6 @@ export default function BasicInfoSection({ data }) {
                 color: 'text.primary',
                 marginRight: 1,
                 marginBottom: { xs: 0.5, sm: 0 },
-                // Đảm bảo không bị ngắt dòng khi ở chế độ sm:row
                 flexShrink: { xs: 0, sm: 0 },
               }}
             >
@@ -58,11 +57,11 @@ export default function BasicInfoSection({ data }) {
                 rel="noopener noreferrer"
                 sx={{
                   color: 'primary.main',
+                  fontSize: '1rem',
                   textDecoration: 'none',
                   '&:hover': {
                     textDecoration: 'underline',
                   },
-                  // Fix lỗi tràn chữ khi width nhỏ
                   wordBreak: 'break-all',
                 }}
               >
@@ -73,7 +72,6 @@ export default function BasicInfoSection({ data }) {
                 sx={{
                   flexGrow: 1,
                   color: 'text.secondary',
-                  // Fix lỗi tràn chữ khi width nhỏ
                   overflowWrap: 'break-word',
                   wordBreak: 'normal',
                 }}
