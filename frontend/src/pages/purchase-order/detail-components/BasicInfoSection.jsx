@@ -1,20 +1,39 @@
-import React from 'react';
-import { Box, Typography, Link } from '@mui/material';
-import ApartmentIcon from '@mui/icons-material/Apartment';
+import { Box, Chip, Typography } from '@mui/material';
 import InfoCard from '@/components/InfoCard';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 
-export default function BasicInfoSection({ data }) {
+export default function BasicInfoSection({
+  status,
+  statusColor,
+  updatedAt,
+  placedAt,
+  supplier,
+  expectedArrival,
+}) {
+  const statusColorMap = {
+    success: { bg: '#d1fae5', text: '#065f46' },
+    warning: { bg: '#fef3c7', text: '#92400e' },
+    error: { bg: '#fee2e2', text: '#991b1b' },
+  };
+
+  const currentStatusStyle =
+    statusColorMap[statusColor] || statusColorMap.warning;
+
   const fields = [
-    { label: 'Địa chỉ', value: data.address },
-    { label: 'Điện thoại', value: data.phone },
-    { label: 'Email', value: data.email },
-    { label: 'Website', value: data.website, isLink: true },
-    { label: 'Mã số thuế', value: data.taxCode },
-    { label: 'Ngành hàng', value: data.category },
-    { label: 'Ngày hợp tác', value: data.cooperationDate },
+    { label: 'Nhà cung cấp', value: supplier.name },
+    { label: 'Mã NCC', value: supplier.code },
+    { label: 'Trạng thái', value: status, isChip: true },
+    { label: 'Ngày đặt hàng', value: placedAt },
+    { label: 'Ngày giao hàng dự kiến', value: expectedArrival },
+    { label: 'Cập nhật lần cuối', value: updatedAt },
   ];
+
   return (
-    <InfoCard title="Thông tin cơ bản" icon={ApartmentIcon} iconColor="blue">
+    <InfoCard
+      title="Thông tin giao hàng"
+      icon={LocalShippingIcon}
+      iconColor="blue"
+    >
       <Box
         sx={{
           '& > div': {
@@ -40,7 +59,7 @@ export default function BasicInfoSection({ data }) {
             <Typography
               component="strong"
               sx={{
-                width: { sm: 128 },
+                width: { sm: 200 },
                 fontWeight: 'medium',
                 color: 'text.primary',
                 marginRight: 1,
@@ -50,23 +69,19 @@ export default function BasicInfoSection({ data }) {
             >
               {field.label}:
             </Typography>
-            {field.isLink ? (
-              <Link
-                href={field.value}
-                target="_blank"
-                rel="noopener noreferrer"
+            {field.isChip ? (
+              <Chip
+                label={field.value}
+                size="medium"
                 sx={{
-                  color: 'primary.main',
+                  backgroundColor: currentStatusStyle.bg,
+                  color: currentStatusStyle.text,
                   fontSize: '1rem',
-                  textDecoration: 'none',
-                  '&:hover': {
-                    textDecoration: 'underline',
-                  },
-                  wordBreak: 'break-all',
+                  fontWeight: 'medium',
+                  height: 'auto',
+                  borderRadius: '0px',
                 }}
-              >
-                {field.value}
-              </Link>
+              />
             ) : (
               <Typography
                 sx={{

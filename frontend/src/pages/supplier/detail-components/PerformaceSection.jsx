@@ -1,15 +1,13 @@
 import QueryStatsIcon from '@mui/icons-material/QueryStats';
 import { Box, Typography, Rating, LinearProgress } from '@mui/material';
-import InfoCard from './InfoCard';
+import InfoCard from '@/components/InfoCard';
 
 export default function PerformaceSection({ performance }) {
-  // Hàm này trả về màu hex hoặc tên màu theme MUI dựa trên phần trăm
   const getProgressColor = (percentage) => {
-    // Sử dụng màu cố định tương đương với Tailwind 500
-    if (percentage >= 90) return '#10b981'; // green-500
-    if (percentage >= 80) return '#10b981'; // green-500 (giữ nguyên logic gốc)
-    if (percentage >= 70) return '#f59e0b'; // yellow-500
-    return '#f97316'; // orange-500
+    if (percentage >= 90) return '#10b981';
+    if (percentage >= 80) return '#10b981';
+    if (percentage >= 70) return '#f59e0b';
+    return '#f97316';
   };
 
   return (
@@ -20,16 +18,16 @@ export default function PerformaceSection({ performance }) {
     >
       <Box
         sx={{
-          textAlign: 'center', // text-center
-          marginBottom: 3, // mb-6
+          textAlign: 'center',
+          marginBottom: 3,
         }}
       >
         <Typography
           variant="h3"
           component="div"
           sx={{
-            fontWeight: 'bold', // font-bold
-            color: 'primary.main', // text-blue-600 (sử dụng màu primary của theme)
+            fontWeight: 'bold',
+            color: 'primary.main',
           }}
         >
           {performance.rating.toFixed(1)}
@@ -40,15 +38,15 @@ export default function PerformaceSection({ performance }) {
           precision={0.1}
           readOnly
           sx={{
-            marginTop: 1, // mt-2 (tương đương 8px, 1 * 8 = 8px)
-            color: '#f59e0b', // text-yellow-500 (màu vàng cố định cho Rating)
+            marginTop: 1,
+            color: '#f59e0b',
           }}
         />
         <Typography
           variant="body2"
           sx={{
-            color: 'text.secondary', // text-gray-600
-            marginTop: 0.5, // mt-1
+            color: 'text.secondary',
+            marginTop: 0.5,
           }}
         >
           trên {performance.totalReviews} đánh giá
@@ -58,7 +56,7 @@ export default function PerformaceSection({ performance }) {
       <Box
         sx={{
           '& > div': {
-            marginBottom: 1.5, // space-y-3 (1.5 * 8 = 12px)
+            marginBottom: 1.5,
           },
           '& > div:last-child': {
             marginBottom: 0,
@@ -69,10 +67,10 @@ export default function PerformaceSection({ performance }) {
           <Box key={index}>
             <Box
               sx={{
-                display: 'flex', // flex
-                justifyContent: 'space-between', // justify-between
-                fontSize: '0.875rem', // text-sm
-                marginBottom: 0.5, // mb-1
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: '0.875rem',
+                marginBottom: 0.5,
               }}
             >
               <Typography variant="body2">{metric.name}</Typography>
@@ -84,10 +82,9 @@ export default function PerformaceSection({ performance }) {
               variant="determinate"
               value={metric.percentage}
               sx={{
-                height: 12, // h-3 (12px)
-                borderRadius: 9999, // rounded-full
-                backgroundColor: 'grey.300', // bg-gray-200
-                // Áp dụng màu động trực tiếp cho thanh tiến trình
+                height: 12,
+                borderRadius: 9999,
+                backgroundColor: 'grey.300',
                 '& .MuiLinearProgress-bar': {
                   backgroundColor: getProgressColor(metric.percentage),
                 },

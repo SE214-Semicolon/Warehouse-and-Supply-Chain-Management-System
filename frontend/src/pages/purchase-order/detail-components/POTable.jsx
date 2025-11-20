@@ -1,5 +1,4 @@
 import {
-  Chip,
   Card,
   Box,
   Typography,
@@ -9,45 +8,10 @@ import {
   Table,
   TableBody,
   TableCell,
-  Link,
 } from '@mui/material';
 import ArticleIcon from '@mui/icons-material/Article';
 
-export default function RecentPOs({ orders }) {
-  const getStatusChip = (status, color) => {
-    const colorStyles = {
-      success: {
-        backgroundColor: '#d1fae5',
-        color: '#065f46',
-      },
-      warning: {
-        backgroundColor: '#fef3c7',
-        color: '#92400e',
-      },
-      error: {
-        backgroundColor: '#fee2e2',
-        color: '#991b1b',
-      },
-    };
-    const currentStyle = colorStyles[color] || colorStyles.success;
-
-    return (
-      <Chip
-        label={status}
-        size="small"
-        sx={{
-          paddingX: 1,
-          paddingY: 0.5,
-          fontSize: '0.825rem',
-          borderRadius: 9999,
-          fontWeight: 'medium',
-          backgroundColor: currentStyle.backgroundColor,
-          color: currentStyle.color,
-          height: 'auto',
-        }}
-      />
-    );
-  };
+export default function POTable({ products }) {
   return (
     <Card
       sx={{
@@ -85,21 +49,8 @@ export default function RecentPOs({ orders }) {
               height: 20,
             }}
           />
-          Đơn hàng gần đây
+          Chi tiết đơn hàng
         </Typography>
-        <Link
-          href="#"
-          sx={{
-            color: 'primary.main',
-            '&:hover': {
-              textDecoration: 'underline',
-            },
-            fontSize: '1rem',
-            fontWeight: 'medium',
-          }}
-        >
-          Xem tất cả &rarr;
-        </Link>
       </Box>
       <TableContainer>
         <Table size="medium">
@@ -109,31 +60,36 @@ export default function RecentPOs({ orders }) {
             }}
           >
             <TableRow>
-              {['Mã PO', 'Ngày đặt', 'Giá trị', 'Trạng thái', 'Hành động'].map(
-                (head, index) => (
-                  <TableCell
-                    key={index}
-                    sx={{
-                      paddingX: 3,
-                      paddingY: 1.5,
-                      fontSize: '0.75rem',
-                      fontWeight: 'medium',
-                      color: 'grey.500',
-                      textTransform: 'uppercase',
-                      letterSpacing: 'wider',
-                      borderBottom: 'none',
-                    }}
-                  >
-                    {head}
-                  </TableCell>
-                )
-              )}
+              {[
+                'STT',
+                'Mã sản phẩm',
+                'Tên sản phẩm',
+                'SL',
+                'Đơn giá',
+                'Thành tiền',
+              ].map((head, index) => (
+                <TableCell
+                  key={index}
+                  sx={{
+                    paddingX: 3,
+                    paddingY: 1.5,
+                    fontSize: '0.825rem',
+                    fontWeight: 'medium',
+                    color: 'grey.500',
+                    textTransform: 'uppercase',
+                    letterSpacing: 'wider',
+                    borderBottom: 'none',
+                  }}
+                >
+                  {head}
+                </TableCell>
+              ))}
             </TableRow>
           </TableHead>
           <TableBody>
-            {orders.map((order, index) => (
+            {products.map((product, index) => (
               <TableRow
-                key={index}
+                key={product.code}
                 hover
                 sx={{
                   '&:hover': {
@@ -148,10 +104,9 @@ export default function RecentPOs({ orders }) {
                     whiteSpace: 'nowrap',
                     fontSize: '0.875rem',
                     fontWeight: 'medium',
-                    color: 'primary.main',
                   }}
                 >
-                  {order.id}
+                  {index + 1}
                 </TableCell>
                 <TableCell
                   sx={{
@@ -159,10 +114,10 @@ export default function RecentPOs({ orders }) {
                     paddingY: 2,
                     whiteSpace: 'nowrap',
                     fontSize: '0.875rem',
-                    color: 'grey.600',
+                    color: 'primary.main',
                   }}
                 >
-                  {order.date}
+                  {product.code}
                 </TableCell>
                 <TableCell
                   sx={{
@@ -173,7 +128,7 @@ export default function RecentPOs({ orders }) {
                     color: 'text.primary',
                   }}
                 >
-                  {order.value}
+                  {product.name}
                 </TableCell>
                 <TableCell
                   sx={{
@@ -182,7 +137,7 @@ export default function RecentPOs({ orders }) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {getStatusChip(order.status, order.statusColor)}
+                  {product.quantity}
                 </TableCell>
                 <TableCell
                   sx={{
@@ -192,17 +147,18 @@ export default function RecentPOs({ orders }) {
                     fontSize: '0.875rem',
                   }}
                 >
-                  <Link
-                    href="#"
-                    sx={{
-                      color: 'primary.main',
-                      '&:hover': {
-                        textDecoration: 'underline',
-                      },
-                    }}
-                  >
-                    Xem chi tiết
-                  </Link>
+                  {product.unitPrice}
+                </TableCell>
+                <TableCell
+                  sx={{
+                    paddingX: 3,
+                    paddingY: 2,
+                    whiteSpace: 'nowrap',
+                    fontSize: '0.875rem',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  {product.total}
                 </TableCell>
               </TableRow>
             ))}
