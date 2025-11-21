@@ -15,6 +15,8 @@ import { UsersModule } from './users/users.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { ProductModule } from './modules/product/product.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
+import { OrderModule } from './modules/order/order.module';
+import { SupplierModule } from './modules/supplier/supplier.module';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 
@@ -42,6 +44,8 @@ import { AuditContextInterceptor } from './common/interceptors/audit-context.int
     ProductModule,
     WarehouseModule,
     InventoryModule,
+    OrderModule,
+    SupplierModule,
     AuditLogModule,
     AlertsModule,
   ],
