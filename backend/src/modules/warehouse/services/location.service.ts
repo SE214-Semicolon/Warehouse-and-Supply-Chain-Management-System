@@ -23,6 +23,7 @@ export class LocationService {
     private readonly cacheService: CacheService,
   ) {}
 
+  // POST /locations - Min Test Cases: 6 (Success 201, Warehouse not found 404, Duplicate code 409, Invalid data 400, No permission 403, No auth 401)
   async create(createDto: CreateLocationDto) {
     this.logger.log(
       `Creating location with code: ${createDto.code} in warehouse: ${createDto.warehouseId}`,
@@ -66,6 +67,7 @@ export class LocationService {
     };
   }
 
+  // GET /locations - Min Test Cases: 7 (Get all 200, Filter warehouse 200, Filter type 200, Filter search 200, Pagination, No auth 401)
   async findAll(query: QueryLocationDto) {
     this.logger.log(`Finding all locations with query: ${JSON.stringify(query)}`);
     const { warehouseId, search, type, limit = 20, page = 1 } = query;
@@ -105,6 +107,7 @@ export class LocationService {
     };
   }
 
+  // GET /locations/:id - Min Test Cases: 4 (Found 200, Not found 404, Cache hit 200, No auth 401)
   async findOne(id: string) {
     this.logger.debug(`Finding location by ID: ${id}`);
     const cacheKey = `${CACHE_PREFIX.WAREHOUSE}:location:id:${id}`;
@@ -130,6 +133,7 @@ export class LocationService {
     );
   }
 
+  // GET /locations/code/:warehouseId/:code - Min Test Cases: 4 (Found 200, Not found 404, Cache hit 200, No auth 401)
   async findByCode(warehouseId: string, code: string) {
     this.logger.debug(`Finding location by code: ${code} in warehouse: ${warehouseId}`);
     const cacheKey = `${CACHE_PREFIX.WAREHOUSE}:location:${warehouseId}:${code}`;
@@ -156,6 +160,7 @@ export class LocationService {
     );
   }
 
+  // GET /locations/warehouse/:warehouseId - Min Test Cases: 4 (Found 200, Warehouse not found 404, Cache hit 200, No auth 401)
   async findByWarehouse(warehouseId: string) {
     this.logger.debug(`Finding locations by warehouse: ${warehouseId}`);
     const cacheKey = `${CACHE_PREFIX.WAREHOUSE}:locations:warehouse:${warehouseId}`;
@@ -185,6 +190,7 @@ export class LocationService {
     );
   }
 
+  // GET /locations/available/:warehouseId - Min Test Cases: 5 (Found 200, With minCapacity 200, Warehouse not found 404, Empty result 200, No auth 401)
   async findAvailableLocations(warehouseId: string, minCapacity?: number) {
     this.logger.debug(
       `Finding available locations in warehouse: ${warehouseId} with minCapacity: ${minCapacity}`,
@@ -214,6 +220,7 @@ export class LocationService {
     };
   }
 
+  // PATCH /locations/:id - Min Test Cases: 6 (Update 200, Duplicate code 409, Not found 404, No permission 403, No auth 401)
   async update(id: string, updateDto: UpdateLocationDto) {
     this.logger.log(`Updating location: ${id}`);
     const location = await this.locationRepo.findOne(id);
@@ -255,6 +262,7 @@ export class LocationService {
     };
   }
 
+  // DELETE /locations/:id - Min Test Cases: 5 (Delete 200, Not found 404, Has inventory 400, No permission 403, No auth 401)
   async remove(id: string) {
     this.logger.log(`Removing location: ${id}`);
     const location = await this.locationRepo.findOne(id);
@@ -297,6 +305,7 @@ export class LocationService {
     };
   }
 
+  // GET /locations/:id/stats - Min Test Cases: 3 (Get stats 200, Not found 404, No auth 401)
   async getLocationStats(id: string) {
     this.logger.debug(`Getting stats for location: ${id}`);
     const location = await this.locationRepo.findOne(id);

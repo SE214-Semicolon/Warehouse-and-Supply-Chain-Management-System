@@ -1,17 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { _useEffect, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import DataTable from '@/components/DataTable';
 import SearchBar from '@/components/SearchBar';
 import ActionButtons from '@/components/ActionButton';
 import Toolbar from '../../components/Toolbar';
-import FormDialog from './components/FormDialog';
 import { menuItems } from './components/MenuConfig';
-import SupplierService from '../../services/supplier.service';
+import FormDialog from './components/FormDialog';
+// import POService from '../../services/supplier.service';
 import mockData from './mockData';
 import { useNavigate } from 'react-router-dom';
-
-export default function Supplier() {
-  const selectedMenu = 'supplier';
+export default function PurchaseOrder() {
+  const selectedMenu = 'purchase-order';
   const [searchTerm, setSearchTerm] = useState('');
 
   const [dialogMode, setDialogMode] = useState(null);
@@ -33,7 +32,7 @@ export default function Supplier() {
   const navigate = useNavigate();
 
   const handleView = (row) => {
-    navigate('/supplier/detail', { state: { id: row.id, row } });
+    navigate('/purchase-order/detail', { state: { id: row.id, row } });
   };
 
   const handleDelete = (row) => {
@@ -50,20 +49,20 @@ export default function Supplier() {
     onDelete: handleDelete,
   };
 
-  const [suppliers, setSuppliers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [pos, _setPOs] = useState(mockData);
+  const [loading, _setLoading] = useState(false);
 
-  useEffect(() => {
-    setLoading(true);
-    SupplierService.getSuppliers()
-      .then((res) => {
-        setSuppliers(res.data || mockData);
-      })
-      .catch(() => {
-        setSuppliers(mockData);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  // useEffect(() => {
+  //   setLoading(true);
+  //   SupplierService.getSuppliers()
+  //     .then((res) => {
+  //       setSuppliers(res.data || mockData);
+  //     })
+  //     .catch(() => {
+  //       setSuppliers(mockData);
+  //     })
+  //     .finally(() => setLoading(false));
+  // }, []);
 
   if (loading) {
     return (
@@ -73,20 +72,22 @@ export default function Supplier() {
     );
   }
 
-  if (suppliers.length === 0) {
+  if (pos.length === 0) {
     return (
       <Box textAlign="center" py={5}>
-        <Typography color="text.secondary">Không có supplier nào.</Typography>
+        <Typography color="text.secondary">
+          Không có purchase order nào.
+        </Typography>
       </Box>
     );
   }
 
   const dataTables = {
-    supplier: (
+    'purchase-order': (
       <DataTable
-        title="Supplier"
+        title="Purchase Order"
         columns={menuItems[0].columns}
-        data={suppliers}
+        data={pos}
         {...commonProps}
       />
     ),
