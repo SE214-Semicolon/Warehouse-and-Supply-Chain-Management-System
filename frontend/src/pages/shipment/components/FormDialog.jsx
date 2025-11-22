@@ -11,7 +11,7 @@ import { menuItems } from "./MenuConfig";
 import { fieldConfigs } from "./FieldConfig";
 
 const renderField = (field, selectedRow, isEditMode) => {
-  const value = isEditMode ? selectedRow?.[field.id] ?? "" : "";
+  const defaultValue = isEditMode ? selectedRow?.[field.id] || "" : "";
 
   if (field.component) {
     const CustomComponent = field.component;
@@ -19,11 +19,10 @@ const renderField = (field, selectedRow, isEditMode) => {
       <CustomComponent
         key={field.id}
         label={field.label}
-        value={value}
+        defaultValue={defaultValue}
         type={field.type}
         options={field.options}
-        placeholder={field.placeholder}
-        inputProps={{ readOnly: field.readOnly }}
+        fullWidth
         {...field.componentProps}
       />
     );
