@@ -207,39 +207,57 @@ export default function DataTable({
                     {renderCellContent(col, row, index)}
                   </TableCell>
                 ))}
-                <TableCell align="center">
-                  {onView && (
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() =>
-                        onView({
-                          ...row,
-                          stt: page * rowsPerPage + index + 1,
-                        })
-                      }
-                    >
-                      <Visibility />
-                    </IconButton>
-                  )}
-                  {onEdit && (
-                    <IconButton
-                      size="small"
-                      onClick={() => onEdit(row)}
-                      sx={{ color: "#1a7d45ff" }}
-                    >
-                      <Edit />
-                    </IconButton>
-                  )}
-                  {onDelete && (
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => onDelete(row)}
-                    >
-                      <Delete />
-                    </IconButton>
-                  )}
+                <TableCell
+                  align="center"
+                  sx={{
+                    width: 0.15,
+                    maxWidth: 0,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      gap: 0.5,
+                    }}
+                  >
+                    {onView && (
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() =>
+                          onView({
+                            ...row,
+                            stt: page * rowsPerPage + index + 1,
+                          })
+                        }
+                      >
+                        <Visibility />
+                      </IconButton>
+                    )}
+
+                    {onEdit && (
+                      <IconButton
+                        size="small"
+                        onClick={() => onEdit(row)}
+                        sx={{ color: "#1a7d45ff" }}
+                      >
+                        <Edit />
+                      </IconButton>
+                    )}
+
+                    {onDelete && (
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => onDelete(row)}
+                      >
+                        <Delete />
+                      </IconButton>
+                    )}
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}

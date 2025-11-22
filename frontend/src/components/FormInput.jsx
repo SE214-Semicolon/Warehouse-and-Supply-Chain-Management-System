@@ -6,7 +6,11 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
-import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
+import {
+  LocalizationProvider,
+  DateTimePicker,
+  DatePicker,
+} from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { enUS } from "date-fns/locale";
 
@@ -24,13 +28,66 @@ const inputComponents = {
         label={label}
         format="dd/MM/yyyy"
         value={value ? new Date(value) : null}
-        onChange={onChange}
+        onChange={(date) => onChange(date)}
         slotProps={{
           textField: {
             fullWidth: true,
             size: "medium",
             sx: { ...focusedStyles, ...sx },
             ...props,
+          },
+          popper: {
+            placement: "bottom-start",
+            modifiers: [
+              {
+                name: "preventOverflow",
+                enabled: true,
+                options: {
+                  boundary: "clippingParents",
+                  altAxis: true,
+                },
+              },
+              {
+                name: "flip",
+                enabled: true,
+              },
+            ],
+          },
+        }}
+      />
+    </LocalizationProvider>
+  ),
+
+  datetime: ({ label, value, onChange, sx, ...props }) => (
+    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enUS}>
+      <DateTimePicker
+        label={label}
+        format="dd/MM/yyyy HH:mm"
+        value={value ? new Date(value) : null}
+        onChange={(date) => onChange(date)}
+        slotProps={{
+          textField: {
+            fullWidth: true,
+            size: "medium",
+            sx: { ...focusedStyles, ...sx },
+            ...props,
+          },
+          popper: {
+            placement: "bottom-start",
+            modifiers: [
+              {
+                name: "preventOverflow",
+                enabled: true,
+                options: {
+                  boundary: "clippingParents",
+                  altAxis: true,
+                },
+              },
+              {
+                name: "flip",
+                enabled: true,
+              },
+            ],
           },
         }}
       />
@@ -50,10 +107,11 @@ const inputComponents = {
     </FormControl>
   ),
 
-  text: ({ label, value, onChange, type, sx, ...props }) => (
+  text: ({ label, value, placeholder, onChange, type, sx, ...props }) => (
     <TextField
       label={label}
       value={value}
+      placeholder={placeholder}
       onChange={onChange}
       type={type}
       fullWidth
@@ -83,8 +141,14 @@ export default function FormInput({
   }, [controlledValue]);
 
   const handleChange = (eventOrDate) => {
-    const newValue =
-      type === "date" ? eventOrDate : eventOrDate?.target?.value ?? "";
+    let newValue;
+
+    if (type === "date" || type === "datetime") {
+      newValue = eventOrDate;
+    } else {
+      newValue = eventOrDate?.target?.value ?? "";
+    }
+
     setValue(newValue);
     onChange?.(newValue);
   };

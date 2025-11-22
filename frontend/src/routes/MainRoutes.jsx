@@ -7,6 +7,7 @@ import Signup from '@pages/auth/signup';
 import NotFound from '@pages/notfound';
 import WarehouseManagement from '@/pages/inventory';
 import Supplier from '@/pages/supplier';
+import Shipment from '@/pages/shipment';
 import SupplierDetail from '@/pages/supplier/SupplierDetail';
 import PurchaseOrder from '@/pages/purchase-order';
 import PODetail from '@/pages/purchase-order/PODetail';
@@ -20,6 +21,7 @@ export default function MainRoutes() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/inventory" element={<WarehouseManagement />} />
           <Route path="/supplier" element={<Supplier />} />
+          <Route path="/shipment" element={<Shipment />} />
           <Route path="/supplier/detail" element={<SupplierDetail />} />
           <Route path="purchase-order" element={<PurchaseOrder />} />
           <Route path="purchase-order/detail" element={<PODetail />} />
