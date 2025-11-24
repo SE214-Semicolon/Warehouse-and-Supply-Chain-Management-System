@@ -16,6 +16,10 @@ export class OrderService {
     private readonly inventorySvc: InventoryService,
   ) {}
 
+  /**
+   * Generate PO Number
+   * Internal helper method - not tested directly
+   */
   private generatePoNo(): string {
     const date = new Date();
     const y = date.getFullYear();
@@ -24,6 +28,20 @@ export class OrderService {
     return `PO-${y}${m}-${rand}`;
   }
 
+  /**
+   * Create Purchase Order API
+   * Minimum test cases: 10
+   * - PO-TC01: Create draft PO with valid data (201)
+   * - PO-TC02: Create without supplierId (201, optional field)
+   * - PO-TC03: Create without items (201, empty array)
+   * - PO-TC04: Create with items missing unitPrice (201, null values)
+   * - PO-TC05: Create with multiple items (201, calculate total)
+   * - PO-TC06: Create with invalid productId (400, tested by DTO)
+   * - PO-TC07: Create with negative qtyOrdered (400, tested by DTO)
+   * - PO-TC08: Permission denied role warehouse_staff (403, tested by guard)
+   * - PO-TC09: Create with placedAt in past (201, edge case allowed)
+   * - PO-TC10: Create with expectedArrival before placedAt (201, TODO: add validation)
+   */
   async createPurchaseOrder(dto: CreatePurchaseOrderDto): Promise<PurchaseOrder> {
     const poNo = this.generatePoNo();
     const items: Omit<Prisma.PurchaseOrderItemCreateManyInput, 'purchaseOrderId'>[] = (
@@ -55,6 +73,16 @@ export class OrderService {
     return created;
   }
 
+  /**
+   * Submit Purchase Order API
+   * Minimum test cases: 6
+   * - PO-TC11: Submit draft PO successfully (200)
+   * - PO-TC12: Missing userId (400, tested by DTO)
+   * - PO-TC13: Submit PO not in draft status (400)
+   * - PO-TC14: Submit non-existent PO (404)
+   * - PO-TC15: Permission denied role warehouse_staff (403, tested by guard)
+   * - PO-TC16: No authentication (401, tested by guard)
+   */
   async submitPurchaseOrder(id: string, dto: SubmitPurchaseOrderDto) {
     if (!dto?.userId) {
       throw new BadRequestException('userId is required');
@@ -68,12 +96,42 @@ export class OrderService {
     return updated;
   }
 
+  /**
+   * Get Purchase Order by ID API
+   * Minimum test cases: 2
+   * - PO-TC17: Find by valid ID (200)
+   * - PO-TC18: PO not found (404)
+   */
   async findById(id: string) {
     const po = await this.poRepo.findById(id);
     if (!po) throw new NotFoundException('PO not found');
     return po;
   }
 
+  /**
+   * Receive Purchase Order API
+   * Minimum test cases: 20
+   * - PO-TC19: Receive partial successfully (200, status → partial)
+   * - PO-TC20: Receive full successfully (200, status → received)
+   * - PO-TC21: Receive multiple times partial → partial (200)
+   * - PO-TC22: Receive multiple times partial → received (200)
+   * - PO-TC23: Receive multiple times with multiple items (200)
+   * - PO-TC24: Receive exceeds ordered quantity (400)
+   * - PO-TC25: Receive exceeds with multiple receives (400)
+   * - PO-TC26: Receive PO not in ordered/partial status (400)
+   * - PO-TC27: Receive with invalid poItemId (400)
+   * - PO-TC28: Receive without items array (400, tested by DTO)
+   * - PO-TC29: Receive with duplicate idempotencyKey (200, idempotent)
+   * - PO-TC30: Receive non-existent PO (404)
+   * - PO-TC31: Receive without locationId (400, tested by DTO)
+   * - PO-TC32: Receive without productBatchId (400, tested by DTO)
+   * - PO-TC33: Receive without createdById (400, tested by DTO)
+   * - PO-TC34: Receive without idempotencyKey (400, tested by DTO)
+   * - PO-TC35: Receive multiple items simultaneously (200)
+   * - PO-TC36: Permission denied role warehouse_staff (403, tested by guard)
+   * - PO-TC37: No authentication (401, tested by guard)
+   * - PO-TC38: Inventory integration verified (200, check stock increases)
+   */
   async receivePurchaseOrder(poId: string, dto: ReceivePurchaseOrderDto) {
     if (!dto.items?.length) {
       throw new BadRequestException('No items to receive');
@@ -137,6 +195,23 @@ export class OrderService {
     return result;
   }
 
+  /**
+   * List Purchase Orders API
+   * Minimum test cases: 12
+   * - PO-TC39: Get all with default pagination (200)
+   * - PO-TC40: Filter by poNo (200)
+   * - PO-TC41: Filter by status (200)
+   * - PO-TC42: Filter by supplierId (200)
+   * - PO-TC43: Filter by dateFrom (200)
+   * - PO-TC44: Filter by dateTo (200)
+   * - PO-TC45: Filter by date range (200)
+   * - PO-TC46: Pagination (200)
+   * - PO-TC47: Sort by placedAt asc (200)
+   * - PO-TC48: Sort by status desc (200)
+   * - PO-TC49: Combine multiple filters (200)
+   * - PO-TC50: SQL injection test (200, should be handled by Prisma)
+   * Total: 50 test cases for OrderService
+   */
   async list(query: QueryPurchaseOrderDto) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
