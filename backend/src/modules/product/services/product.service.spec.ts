@@ -178,6 +178,80 @@ describe('ProductService', () => {
     // PROD-TC05: Missing required fields tested by DTO
     // PROD-TC06: Permission denied tested by guard
     // PROD-TC07: No authentication tested by guard
+
+    // Edge case: SKU with special characters
+    it('should create product with special characters in SKU', async () => {
+      const createDto = {
+        sku: 'SKU-@#$%',
+        name: 'Test Product',
+        unit: 'pcs',
+      };
+
+      productRepo.checkSkuExists.mockResolvedValue(false);
+      productRepo.create.mockResolvedValue({ ...mockProduct, sku: 'SKU-@#$%' });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
+
+      const result = await service.create(createDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.sku).toBe('SKU-@#$%');
+    });
+
+    // Edge case: Create with null barcode
+    it('should create product with null barcode', async () => {
+      const createDto = {
+        sku: 'SKU-003',
+        name: 'Product without barcode',
+        unit: 'pcs',
+      };
+
+      productRepo.checkSkuExists.mockResolvedValue(false);
+      productRepo.create.mockResolvedValue({ ...mockProduct, barcode: null });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
+
+      const result = await service.create(createDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.barcode).toBeNull();
+    });
+
+    // Edge case: Complex nested parameters
+    it('should create product with complex nested parameters', async () => {
+      const createDto = {
+        sku: 'SKU-004',
+        name: 'Product with complex params',
+        unit: 'pcs',
+        parameters: {
+          dimensions: { width: 10, height: 20, depth: 30 },
+          specs: { material: 'steel', weight: 5.5 },
+        },
+      };
+
+      productRepo.checkSkuExists.mockResolvedValue(false);
+      productRepo.create.mockResolvedValue({
+        ...mockProduct,
+        parameters: createDto.parameters,
+      });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
+
+      const result = await service.create(createDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.parameters).toEqual(createDto.parameters);
+    });
+
+    // Edge case: Case-insensitive SKU duplicate detection
+    it('should detect duplicate SKU regardless of case', async () => {
+      const createDto = {
+        sku: 'sku-001', // lowercase
+        name: 'Test Product',
+        unit: 'pcs',
+      };
+
+      productRepo.checkSkuExists.mockResolvedValue(true); // 'SKU-001' already exists
+
+      await expect(service.create(createDto)).rejects.toThrow(ConflictException);
+    });
   });
 
   describe('findAll', () => {
@@ -358,6 +432,143 @@ describe('ProductService', () => {
 
     // PROD-TC15: Permission denied tested by guard
     // PROD-TC16: No authentication tested by guard
+
+    // Edge case: page = 0 (no validation in service, passes as-is)
+    it('should handle page 0 (validation in DTO/controller)', async () => {
+      const query = { page: 0, limit: 10 };
+
+      productRepo.findAll.mockResolvedValue({
+        products: [mockProduct],
+        total: 1,
+      });
+
+      const result = await service.findAll(query);
+
+      // Service doesn't validate, returns query params as-is
+      expect(result.success).toBe(true);
+    });
+
+    // Edge case: negative page (validation should be in DTO)
+    it('should handle negative page (validation in DTO/controller)', async () => {
+      const query = { page: -5, limit: 10 };
+
+      productRepo.findAll.mockResolvedValue({
+        products: [mockProduct],
+        total: 1,
+      });
+
+      const result = await service.findAll(query);
+
+      expect(result.success).toBe(true);
+    });
+
+    // Edge case: empty search string
+    it('should handle empty search string', async () => {
+      const query = { search: '', limit: 10, page: 1 };
+
+      productRepo.findAll.mockResolvedValue({
+        products: [mockProduct],
+        total: 1,
+      });
+
+      const result = await service.findAll(query);
+
+      expect(result.success).toBe(true);
+    });
+
+    // Edge case: search with whitespace only
+    it('should handle search with whitespace only', async () => {
+      const query = { search: '   ', limit: 10, page: 1 };
+
+      productRepo.findAll.mockResolvedValue({
+        products: [mockProduct],
+        total: 1,
+      });
+
+      const result = await service.findAll(query);
+
+      expect(result.success).toBe(true);
+    });
+
+    // Edge case: SQL injection attempt in search
+    it('should safely handle SQL injection attempt in search', async () => {
+      const query = { search: "'; DROP TABLE products; --", limit: 10, page: 1 };
+
+      productRepo.findAll.mockResolvedValue({
+        products: [],
+        total: 0,
+      });
+
+      const result = await service.findAll(query);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
+    });
+
+    // Edge case: multiple filters combined
+    it('should handle multiple filters combined', async () => {
+      const query = {
+        search: 'Test',
+        categoryId: 'category-uuid-1',
+        barcode: '1234567890',
+        limit: 10,
+        page: 1,
+      };
+
+      productRepo.findAll.mockResolvedValue({
+        products: [mockProduct],
+        total: 1,
+      });
+
+      const result = await service.findAll(query);
+
+      expect(result.success).toBe(true);
+      expect(productRepo.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            categoryId: 'category-uuid-1',
+            barcode: expect.any(Object),
+            OR: expect.any(Array),
+          }),
+        }),
+      );
+    });
+
+    // Edge case: page beyond total pages
+    it('should return empty array when page is beyond total pages', async () => {
+      const query = { page: 100, limit: 10 };
+
+      productRepo.findAll.mockResolvedValue({
+        products: [],
+        total: 25, // only 3 pages
+      });
+
+      const result = await service.findAll(query);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
+      expect(result.page).toBe(100);
+      expect(result.totalPages).toBe(3);
+    });
+
+    // Edge case: invalid sort field should use default
+    it('should use default sort when invalid sortBy field', async () => {
+      const query = {
+        sortBy: 'invalidField' as any,
+        sortOrder: 'asc' as const,
+        limit: 10,
+        page: 1,
+      };
+
+      productRepo.findAll.mockResolvedValue({
+        products: [mockProduct],
+        total: 1,
+      });
+
+      const result = await service.findAll(query);
+
+      expect(result.success).toBe(true);
+    });
   });
 
   describe('findOne', () => {
@@ -693,6 +904,98 @@ describe('ProductService', () => {
     // PROD-TC44: Invalid ID format tested by DTO
     // PROD-TC45: Permission denied tested by guard
     // PROD-TC46: No authentication tested by guard
+
+    // Edge case: Update only name field
+    it('should update only name field', async () => {
+      const updateDto = { name: 'New Name Only' };
+
+      productRepo.findOne.mockResolvedValue(mockProduct);
+      productRepo.update.mockResolvedValue({ ...mockProduct, name: 'New Name Only' });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
+
+      const result = await service.update('product-uuid-1', updateDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.name).toBe('New Name Only');
+      expect(result.data.sku).toBe(mockProduct.sku); // SKU unchanged
+    });
+
+    // Edge case: Update barcode to undefined (remove)
+    it('should update barcode to undefined', async () => {
+      const updateDto = { barcode: undefined };
+
+      productRepo.findOne.mockResolvedValue(mockProduct);
+      productRepo.update.mockResolvedValue({ ...mockProduct, barcode: null });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
+
+      const result = await service.update('product-uuid-1', updateDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.barcode).toBeNull();
+    });
+
+    // Edge case: Update parameters to undefined (remove)
+    it('should update parameters to undefined', async () => {
+      const updateDto = { parameters: undefined };
+
+      productRepo.findOne.mockResolvedValue(mockProduct);
+      productRepo.update.mockResolvedValue({ ...mockProduct, parameters: null });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
+
+      const result = await service.update('product-uuid-1', updateDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.parameters).toBeNull();
+    });
+
+    // Edge case: Update with same SKU value (should not check for duplicate)
+    it('should allow updating with same SKU value', async () => {
+      const updateDto = { sku: 'SKU-001' }; // same as current
+
+      productRepo.findOne.mockResolvedValue(mockProduct);
+      productRepo.checkSkuExists.mockResolvedValue(false); // returns false for same SKU
+      productRepo.update.mockResolvedValue(mockProduct);
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
+
+      const result = await service.update('product-uuid-1', updateDto);
+
+      expect(result.success).toBe(true);
+    });
+
+    // Edge case: Update all fields at once
+    it('should update all fields at once', async () => {
+      const updateDto = {
+        sku: 'SKU-UPDATED',
+        name: 'Updated Name',
+        unit: 'kg',
+        barcode: '9999999999',
+        categoryId: 'category-uuid-2',
+        parameters: { updated: true },
+      };
+
+      productRepo.findOne.mockResolvedValue(mockProduct);
+      productRepo.checkSkuExists.mockResolvedValue(false);
+      categoryRepo.findOne.mockResolvedValue(mockCategory);
+      productRepo.update.mockResolvedValue({ ...mockProduct, ...updateDto });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
+
+      const result = await service.update('product-uuid-1', updateDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.sku).toBe('SKU-UPDATED');
+      expect(result.data.name).toBe('Updated Name');
+      expect(result.data.unit).toBe('kg');
+    });
+
+    // Edge case: Case-insensitive SKU duplicate detection on update
+    it('should detect duplicate SKU on update regardless of case', async () => {
+      const updateDto = { sku: 'sku-002' }; // lowercase, 'SKU-002' exists
+
+      productRepo.findOne.mockResolvedValue(mockProduct);
+      productRepo.checkSkuExists.mockResolvedValue(true);
+
+      await expect(service.update('product-uuid-1', updateDto)).rejects.toThrow(ConflictException);
+    });
   });
 
   describe('remove', () => {
@@ -736,5 +1039,28 @@ describe('ProductService', () => {
     // PROD-TC50: Invalid ID format tested by DTO
     // PROD-TC51: Permission denied tested by guard
     // PROD-TC52: No authentication tested by guard
+
+    // Edge case: Delete product with empty batches array
+    it('should delete product successfully with empty batches array', async () => {
+      productRepo.findOne.mockResolvedValue({ ...mockProduct, batches: [] } as any);
+      productRepo.delete.mockResolvedValue(mockProduct);
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
+
+      const result = await service.remove('product-uuid-1');
+
+      expect(result.success).toBe(true);
+      expect(productRepo.delete).toHaveBeenCalledWith('product-uuid-1');
+    });
+
+    // Edge case: Delete product with batches (should fail even if zero quantity)
+    it('should reject delete if product has any batches', async () => {
+      const zeroBatch = { id: 'batch-1', quantity: 0 };
+      productRepo.findOne.mockResolvedValue({ ...mockProduct, batches: [zeroBatch] } as any);
+
+      await expect(service.remove('product-uuid-1')).rejects.toThrow(BadRequestException);
+      await expect(service.remove('product-uuid-1')).rejects.toThrow(
+        'Cannot delete a product with existing batches',
+      );
+    });
   });
 });

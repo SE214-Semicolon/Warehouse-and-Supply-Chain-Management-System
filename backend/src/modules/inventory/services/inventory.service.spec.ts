@@ -254,6 +254,77 @@ describe('InventoryService', () => {
     // INV-TC07: Missing required fields tested by DTO
     // INV-TC08: Permission denied tested by guard
     // INV-TC09: No authentication tested by guard
+
+    // Edge case: Receive with very large quantity
+    it('should receive inventory with very large quantity', async () => {
+      const receiveDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        quantity: 999999999,
+        createdById: 'user-uuid-1',
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.findUser.mockResolvedValue(mockUser);
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.receiveInventoryTx.mockResolvedValue({
+        inventory: { ...mockInventory, availableQty: 999999999 },
+        movement: mockMovement,
+      });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
+
+      const result = await service.receiveInventory(receiveDto);
+
+      expect(result.success).toBe(true);
+      expect(result.inventory).toBeDefined();
+      expect(result.inventory!.availableQty).toBe(999999999);
+    });
+
+    // Edge case: Receive without createdById
+    it('should receive inventory without createdById', async () => {
+      const receiveDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        quantity: 100,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.receiveInventoryTx.mockResolvedValue({
+        inventory: mockInventory,
+        movement: mockMovement,
+      });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
+
+      const result = await service.receiveInventory(receiveDto);
+
+      expect(result.success).toBe(true);
+      expect(inventoryRepo.findUser).not.toHaveBeenCalled();
+    });
+
+    // Edge case: Receive without idempotency key
+    it('should receive inventory without idempotency key', async () => {
+      const receiveDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        quantity: 100,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.receiveInventoryTx.mockResolvedValue({
+        inventory: mockInventory,
+        movement: mockMovement,
+      });
+      cacheService.deleteByPrefix.mockResolvedValue(undefined);
+
+      const result = await service.receiveInventory(receiveDto);
+
+      expect(result.success).toBe(true);
+      expect(inventoryRepo.findMovementByKey).not.toHaveBeenCalled();
+    });
   });
 
   describe('dispatchInventory', () => {
@@ -402,6 +473,53 @@ describe('InventoryService', () => {
     // INV-TC17: Missing required fields tested by DTO
     // INV-TC18: Permission denied tested by guard
     // INV-TC19: No authentication tested by guard
+
+    // Edge case: Dispatch exact available quantity
+    it('should dispatch all available inventory', async () => {
+      const dispatchDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        quantity: 100, // exact available qty
+        createdById: 'user-uuid-1',
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.findUser.mockResolvedValue(mockUser);
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.dispatchInventoryTx.mockResolvedValue({
+        inventory: { ...mockInventory, availableQty: 0, deletedAt: new Date() },
+        movement: { ...mockMovement, movementType: 'DISPATCH' as any, quantity: 100 },
+      });
+
+      const result = await service.dispatchInventory(dispatchDto);
+
+      expect(result.success).toBe(true);
+      expect(result.inventory).toBeDefined();
+      expect(result.inventory!.availableQty).toBe(0);
+    });
+
+    // Edge case: Dispatch with quantity = 1
+    it('should dispatch minimal quantity of 1', async () => {
+      const dispatchDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        quantity: 1,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.dispatchInventoryTx.mockResolvedValue({
+        inventory: { ...mockInventory, availableQty: 99, deletedAt: null },
+        movement: { ...mockMovement, movementType: 'DISPATCH' as any, quantity: 1 },
+      });
+
+      const result = await service.dispatchInventory(dispatchDto);
+
+      expect(result.success).toBe(true);
+      expect(result.movement.quantity).toBe(1);
+    });
   });
 
   describe('adjustInventory', () => {
@@ -573,6 +691,98 @@ describe('InventoryService', () => {
     // INV-TC28: Missing required fields tested by DTO
     // INV-TC29: Permission denied tested by guard
     // INV-TC30: No authentication tested by guard
+
+    // Edge case: Adjust with very large positive value
+    it('should adjust inventory with very large positive value', async () => {
+      const adjustDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        adjustmentQuantity: 1000000,
+        reason: AdjustmentReason.COUNT_ERROR,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.adjustInventoryTx.mockResolvedValue({
+        inventory: { ...mockInventory, availableQty: 1000100, deletedAt: null },
+        movement: { ...mockMovement, movementType: 'ADJUSTMENT' as any, quantity: 1000000 },
+      });
+
+      const result = await service.adjustInventory(adjustDto);
+
+      expect(result.success).toBe(true);
+      expect(result.inventory).toBeDefined();
+    });
+
+    // Edge case: Adjust with very large negative value
+    it('should adjust inventory with very large negative value', async () => {
+      const adjustDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        adjustmentQuantity: -50,
+        reason: AdjustmentReason.DAMAGE,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.adjustInventoryTx.mockResolvedValue({
+        inventory: { ...mockInventory, availableQty: 50, deletedAt: null },
+        movement: { ...mockMovement, movementType: 'ADJUSTMENT' as any, quantity: -50 },
+      });
+
+      const result = await service.adjustInventory(adjustDto);
+
+      expect(result.success).toBe(true);
+      expect(result.inventory).toBeDefined();
+    });
+
+    // Edge case: Adjust by 1 (minimum positive)
+    it('should adjust inventory by 1', async () => {
+      const adjustDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        adjustmentQuantity: 1,
+        reason: AdjustmentReason.COUNT_ERROR,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.adjustInventoryTx.mockResolvedValue({
+        inventory: { ...mockInventory, availableQty: 101, deletedAt: null },
+        movement: { ...mockMovement, movementType: 'ADJUSTMENT' as any, quantity: 1 },
+      });
+
+      const result = await service.adjustInventory(adjustDto);
+
+      expect(result.success).toBe(true);
+      expect(result.movement).toBeDefined();
+    });
+
+    // Edge case: Adjust by -1 (minimum negative)
+    it('should adjust inventory by -1', async () => {
+      const adjustDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        adjustmentQuantity: -1,
+        reason: AdjustmentReason.THEFT,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.adjustInventoryTx.mockResolvedValue({
+        inventory: { ...mockInventory, availableQty: 99, deletedAt: null },
+        movement: { ...mockMovement, movementType: 'ADJUSTMENT' as any, quantity: -1 },
+      });
+
+      const result = await service.adjustInventory(adjustDto);
+
+      expect(result.success).toBe(true);
+      expect(result.movement).toBeDefined();
+    });
   });
 
   describe('transferInventory', () => {
@@ -593,7 +803,12 @@ describe('InventoryService', () => {
       inventoryRepo.findMovementByKey.mockResolvedValue(null);
       inventoryRepo.transferInventoryTx.mockResolvedValue({
         fromInventory: { ...mockInventory, availableQty: 70, deletedAt: null },
-        toInventory: { ...mockInventory, locationId: 'location-uuid-2', availableQty: 30, deletedAt: null },
+        toInventory: {
+          ...mockInventory,
+          locationId: 'location-uuid-2',
+          availableQty: 30,
+          deletedAt: null,
+        },
         transferOutMovement: { ...mockMovement, movementType: 'TRANSFER_OUT' as any },
         transferInMovement: { ...mockMovement, movementType: 'TRANSFER_IN' as any },
       });
@@ -780,6 +995,75 @@ describe('InventoryService', () => {
     // INV-TC40: Missing required fields tested by DTO
     // INV-TC41: Permission denied tested by guard
     // INV-TC42: No authentication tested by guard
+
+    // Edge case: Transfer all available quantity
+    it('should transfer entire available quantity', async () => {
+      const transferDto = {
+        productBatchId: 'batch-uuid-1',
+        fromLocationId: 'location-uuid-1',
+        toLocationId: 'location-uuid-2',
+        quantity: 100, // all available
+        createdById: 'user-uuid-1',
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValueOnce(mockLocation);
+      inventoryRepo.findLocation.mockResolvedValueOnce({ ...mockLocation, id: 'location-uuid-2' });
+      inventoryRepo.findUser.mockResolvedValue(mockUser);
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.transferInventoryTx.mockResolvedValue({
+        fromInventory: { ...mockInventory, availableQty: 0, deletedAt: new Date() },
+        toInventory: {
+          ...mockInventory,
+          locationId: 'location-uuid-2',
+          availableQty: 100,
+          deletedAt: null,
+        },
+        transferOutMovement: {
+          ...mockMovement,
+          movementType: 'TRANSFER_OUT' as any,
+          quantity: 100,
+        },
+        transferInMovement: { ...mockMovement, movementType: 'TRANSFER_IN' as any, quantity: 100 },
+      });
+
+      const result = await service.transferInventory(transferDto);
+
+      expect(result.success).toBe(true);
+      expect(result.fromInventory).toBeDefined();
+      expect(result.toInventory).toBeDefined();
+    });
+
+    // Edge case: Transfer minimal quantity of 1
+    it('should transfer minimal quantity of 1', async () => {
+      const transferDto = {
+        productBatchId: 'batch-uuid-1',
+        fromLocationId: 'location-uuid-1',
+        toLocationId: 'location-uuid-2',
+        quantity: 1,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValueOnce(mockLocation);
+      inventoryRepo.findLocation.mockResolvedValueOnce({ ...mockLocation, id: 'location-uuid-2' });
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.transferInventoryTx.mockResolvedValue({
+        fromInventory: { ...mockInventory, availableQty: 99, deletedAt: null },
+        toInventory: {
+          ...mockInventory,
+          locationId: 'location-uuid-2',
+          availableQty: 1,
+          deletedAt: null,
+        },
+        transferOutMovement: { ...mockMovement, movementType: 'TRANSFER_OUT' as any, quantity: 1 },
+        transferInMovement: { ...mockMovement, movementType: 'TRANSFER_IN' as any, quantity: 1 },
+      });
+
+      const result = await service.transferInventory(transferDto);
+
+      expect(result.success).toBe(true);
+      expect((result as any).transferOutMovement.quantity).toBe(1);
+    });
   });
 
   describe('reserveInventory', () => {
@@ -959,6 +1243,54 @@ describe('InventoryService', () => {
     // INV-TC51: Missing required fields tested by DTO
     // INV-TC52: Permission denied tested by guard
     // INV-TC53: No authentication tested by guard
+
+    // Edge case: Reserve all available quantity
+    it('should reserve entire available quantity', async () => {
+      const reserveDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        quantity: 100,
+        orderId: 'order-uuid-1',
+        idempotencyKey: 'reserve-all-key',
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.reserveInventoryTx.mockResolvedValue({
+        inventory: { ...mockInventory, availableQty: 0, reservedQty: 100 },
+        movement: { ...mockMovement, movementType: 'RESERVE' as any, quantity: 100 },
+      });
+
+      const result = await service.reserveInventory(reserveDto);
+
+      expect(result.success).toBe(true);
+      expect(result.inventory).toBeDefined();
+    });
+
+    // Edge case: Reserve minimal quantity of 1
+    it('should reserve minimal quantity of 1', async () => {
+      const reserveDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        quantity: 1,
+        orderId: 'order-uuid-2',
+        idempotencyKey: 'reserve-one-key',
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.reserveInventoryTx.mockResolvedValue({
+        inventory: { ...mockInventory, availableQty: 99, reservedQty: 1 },
+        movement: { ...mockMovement, movementType: 'RESERVE' as any, quantity: 1 },
+      });
+
+      const result = await service.reserveInventory(reserveDto);
+
+      expect(result.success).toBe(true);
+      expect(result.movement).toBeDefined();
+    });
   });
 
   describe('releaseReservation', () => {
@@ -1145,6 +1477,56 @@ describe('InventoryService', () => {
     // INV-TC62: Missing required fields tested by DTO
     // INV-TC63: Permission denied tested by guard
     // INV-TC64: No authentication tested by guard
+
+    // Edge case: Release all reserved quantity
+    it('should release entire reserved quantity', async () => {
+      const releaseDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        quantity: 100,
+        orderId: 'order-uuid-1',
+        idempotencyKey: 'release-all-key',
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.findUser.mockResolvedValue(null);
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.releaseReservationTx.mockResolvedValue({
+        inventory: { ...mockInventory, availableQty: 100, reservedQty: 0 },
+        movement: { ...mockMovement, movementType: 'RELEASE_RESERVATION' as any, quantity: 100 },
+      });
+
+      const result = await service.releaseReservation(releaseDto);
+
+      expect(result.success).toBe(true);
+      expect(result.inventory).toBeDefined();
+    });
+
+    // Edge case: Release partial reservation
+    it('should release partial reserved quantity', async () => {
+      const releaseDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        quantity: 20,
+        orderId: 'order-uuid-1',
+        idempotencyKey: 'release-partial-key',
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.findUser.mockResolvedValue(null);
+      inventoryRepo.findMovementByKey.mockResolvedValue(null);
+      inventoryRepo.releaseReservationTx.mockResolvedValue({
+        inventory: { ...mockInventory, availableQty: 20, reservedQty: 80 },
+        movement: { ...mockMovement, movementType: 'RELEASE_RESERVATION' as any, quantity: 20 },
+      });
+
+      const result = await service.releaseReservation(releaseDto);
+
+      expect(result.success).toBe(true);
+      expect(result.movement).toBeDefined();
+    });
   });
 
   describe('getInventoryByLocation', () => {
@@ -1283,6 +1665,48 @@ describe('InventoryService', () => {
 
     // INV-TC71: Permission denied tested by guard
     // INV-TC72: No authentication tested by guard
+
+    // Edge case: Query with page = 0 (should reject)
+    it('should reject page 0', async () => {
+      const queryDto = {
+        locationId: 'location-uuid-1',
+        page: 0,
+        limit: 20,
+      };
+
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+
+      await expect(service.getInventoryByLocation(queryDto)).rejects.toThrow(BadRequestException);
+      await expect(service.getInventoryByLocation(queryDto)).rejects.toThrow(
+        'Page must be greater than 0',
+      );
+    });
+
+    // Edge case: Query with limit = 0 (invalid)
+    it('should reject invalid limit of 0', async () => {
+      const queryDto = {
+        locationId: 'location-uuid-1',
+        page: 1,
+        limit: 0,
+      };
+
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+
+      await expect(service.getInventoryByLocation(queryDto)).rejects.toThrow(BadRequestException);
+    });
+
+    // Edge case: Query with very large limit
+    it('should reject limit greater than 100', async () => {
+      const queryDto = {
+        locationId: 'location-uuid-1',
+        page: 1,
+        limit: 101,
+      };
+
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+
+      await expect(service.getInventoryByLocation(queryDto)).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe('getInventoryByProductBatch', () => {
@@ -1557,6 +1981,80 @@ describe('InventoryService', () => {
     // INV-TC87: Missing required fields tested by DTO
     // INV-TC88: Permission denied tested by guard
     // INV-TC89: No authentication tested by guard
+
+    // Edge case: Update with both availableQty and reservedQty to 0
+    it('should update both quantities to 0', async () => {
+      const updateDto = {
+        availableQty: 0,
+        reservedQty: 0,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.updateInventoryQuantities.mockResolvedValue({
+        ...mockInventory,
+        availableQty: 0,
+        reservedQty: 0,
+      });
+
+      const result = await service.updateInventoryQuantity(
+        'batch-uuid-1',
+        'location-uuid-1',
+        updateDto,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.inventory.availableQty).toBe(0);
+      expect(result.inventory.reservedQty).toBe(0);
+    });
+
+    // Edge case: Update only availableQty
+    it('should update only availableQty', async () => {
+      const updateDto = {
+        availableQty: 50,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.updateInventoryQuantities.mockResolvedValue({
+        ...mockInventory,
+        availableQty: 50,
+      });
+
+      const result = await service.updateInventoryQuantity(
+        'batch-uuid-1',
+        'location-uuid-1',
+        updateDto,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.inventory.availableQty).toBe(50);
+    });
+
+    // Edge case: Update with very large values
+    it('should update with very large quantities', async () => {
+      const updateDto = {
+        availableQty: 999999999,
+        reservedQty: 888888888,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue(mockLocation);
+      inventoryRepo.updateInventoryQuantities.mockResolvedValue({
+        ...mockInventory,
+        availableQty: 999999999,
+        reservedQty: 888888888,
+      });
+
+      const result = await service.updateInventoryQuantity(
+        'batch-uuid-1',
+        'location-uuid-1',
+        updateDto,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.inventory.availableQty).toBe(999999999);
+    });
   });
 
   describe('softDeleteInventory', () => {
@@ -1734,5 +2232,70 @@ describe('InventoryService', () => {
 
     // INV-TC99: Permission denied tested by guard
     // INV-TC100: No authentication tested by guard
+
+    // Edge case: Get alerts with very high threshold
+    it('should get alerts with high threshold', async () => {
+      const alertDto = {
+        threshold: 10000,
+        page: 1,
+        limit: 20,
+      };
+
+      inventoryRepo.findLowStockInventory.mockResolvedValue({
+        inventories: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+      });
+
+      const result = await service.getLowStockAlerts(alertDto);
+
+      expect(result.success).toBe(true);
+      expect(result.inventories).toEqual([]);
+    });
+
+    // Edge case: Get alerts with negative page (should reject)
+    it('should reject negative page number', async () => {
+      const alertDto = {
+        threshold: 10,
+        page: -1,
+        limit: 20,
+      };
+
+      await expect(service.getLowStockAlerts(alertDto)).rejects.toThrow(BadRequestException);
+      await expect(service.getLowStockAlerts(alertDto)).rejects.toThrow(
+        'Page must be greater than 0',
+      );
+    });
+
+    // Edge case: Get alerts without threshold (should use default)
+    it('should use default threshold of 10 when not provided', async () => {
+      const alertDto = {
+        page: 1,
+        limit: 20,
+      };
+
+      inventoryRepo.findLowStockInventory.mockResolvedValue({
+        inventories: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+      });
+
+      const result = await service.getLowStockAlerts(alertDto);
+
+      expect(result.success).toBe(true);
+      expect(inventoryRepo.findLowStockInventory).toHaveBeenCalledWith(
+        10, // default threshold
+        undefined,
+        undefined,
+        1,
+        20,
+        'availableQty',
+        'asc',
+      );
+    });
   });
 });

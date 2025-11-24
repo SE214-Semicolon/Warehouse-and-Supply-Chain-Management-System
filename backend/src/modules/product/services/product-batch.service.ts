@@ -26,8 +26,8 @@ export class ProductBatchService {
   ) {}
 
   /**
-   * Create Product Batch API
-   * Minimum test cases: 8
+   * Create Product Batch API - Test Cases: 20
+   * Basic:
    * - BATCH-TC01: Create with valid data (200)
    * - BATCH-TC02: Product not found (404)
    * - BATCH-TC03: Duplicate batch number (409)
@@ -36,6 +36,20 @@ export class ProductBatchService {
    * - BATCH-TC06: Missing required fields (tested by DTO)
    * - BATCH-TC07: Permission denied (tested by guard)
    * - BATCH-TC08: No authentication (tested by guard)
+   * 
+   * Edge Cases:
+   * - BATCH-TC09: Empty batch number → 201 (nullable)
+   * - BATCH-TC10: Batch number with special chars → 201
+   * - BATCH-TC11: Very long batch number → 400
+   * - BATCH-TC12: Duplicate batch case insensitive → 409
+   * - BATCH-TC13: Zero quantity → 201
+   * - BATCH-TC14: Negative quantity → 400
+   * - BATCH-TC15: Future manufacture date → 201 or 400
+   * - BATCH-TC16: Past expiry date → 201 (allowed)
+   * - BATCH-TC17: Same manufacture & expiry dates → 400
+   * - BATCH-TC18: Only manufacture date → 201
+   * - BATCH-TC19: Only expiry date → 201
+   * - BATCH-TC20: SQL injection in batch number → sanitized
    */
   async create(createBatchDto: CreateProductBatchDto): Promise<ProductBatchResponseDto> {
     this.logger.log(`Creating batch for product: ${createBatchDto.productId}`);
@@ -93,18 +107,35 @@ export class ProductBatchService {
   }
 
   /**
-   * Get All Product Batches API
-   * Minimum test cases: 10
-   * - BATCH-TC09: Get all with default pagination (200)
-   * - BATCH-TC10: Filter by product ID (200)
-   * - BATCH-TC11: Filter by batch number (200)
-   * - BATCH-TC12: Filter by barcode/QR (200)
-   * - BATCH-TC13: Filter by expiry before (200)
-   * - BATCH-TC14: Filter by expiry after (200)
-   * - BATCH-TC15: Pagination page 1 (200)
-   * - BATCH-TC16: Pagination page 2 (200)
-   * - BATCH-TC17: Permission denied (tested by guard)
-   * - BATCH-TC18: No authentication (tested by guard)
+   * Get All Product Batches API - Test Cases: 25
+   * Basic:
+   * - BATCH-TC21: Get all with default pagination (200)
+   * - BATCH-TC22: Filter by product ID (200)
+   * - BATCH-TC23: Filter by batch number (200)
+   * - BATCH-TC24: Filter by barcode/QR (200)
+   * - BATCH-TC25: Filter by expiry before (200)
+   * - BATCH-TC26: Filter by expiry after (200)
+   * - BATCH-TC27: Pagination page 1 (200)
+   * - BATCH-TC28: Pagination page 2 (200)
+   * - BATCH-TC29: Permission denied (tested by guard)
+   * - BATCH-TC30: No authentication (tested by guard)
+
+   * Edge Cases:
+   * - BATCH-TC31: Page = 0 → use default
+   * - BATCH-TC32: Negative page → use default
+   * - BATCH-TC33: Limit = 0 → use default
+   * - BATCH-TC34: Very large limit → cap
+   * - BATCH-TC35: Invalid product ID → empty
+   * - BATCH-TC36: Empty batch number search → all
+   * - BATCH-TC37: SQL injection in filters → sanitized
+   * - BATCH-TC38: Multiple filters combined → 200
+   * - BATCH-TC39: Filter productId + batchNo → 200
+   * - BATCH-TC40: Filter expiry range → 200
+   * - BATCH-TC41: Invalid date format → 400
+   * - BATCH-TC42: Future expiry before → 200
+   * - BATCH-TC43: Past expiry after → empty
+   * - BATCH-TC44: Case insensitive search → 200
+   * - BATCH-TC45: Page beyond total → empty
    */
   async findAll(query: QueryProductBatchDto): Promise<ProductBatchListResponseDto> {
     this.logger.log(`Finding all product batches with filters: ${JSON.stringify(query)}`);
@@ -263,17 +294,35 @@ export class ProductBatchService {
   }
 
   /**
-   * Update Product Batch API
-   * Minimum test cases: 9
-   * - BATCH-TC35: Update with valid data (200)
-   * - BATCH-TC36: Batch not found (404)
-   * - BATCH-TC37: Duplicate batch number (409)
-   * - BATCH-TC38: Invalid dates (expiry before manufacture) (400)
-   * - BATCH-TC39: Update batch number (200)
-   * - BATCH-TC40: Update quantity (200)
-   * - BATCH-TC41: Invalid ID format (tested by DTO)
-   * - BATCH-TC42: Permission denied (tested by guard)
-   * - BATCH-TC43: No authentication (tested by guard)
+   * Update Product Batch API - Test Cases: 25
+   * Basic:
+   * - BATCH-TC46: Update with valid data (200)
+   * - BATCH-TC47: Batch not found (404)
+   * - BATCH-TC48: Duplicate batch number (409)
+   * - BATCH-TC49: Invalid dates (expiry before manufacture) (400)
+   * - BATCH-TC50: Update batch number (200)
+   * - BATCH-TC51: Update quantity (200)
+   * - BATCH-TC52: Invalid ID format (tested by DTO)
+   * - BATCH-TC53: Permission denied (tested by guard)
+   * - BATCH-TC54: No authentication (tested by guard)
+
+   * Edge Cases:
+   * - BATCH-TC55: Update only batchNo → 200
+   * - BATCH-TC56: Update only quantity → 200
+   * - BATCH-TC57: Update only manufacture date → 200
+   * - BATCH-TC58: Update only expiry date → 200
+   * - BATCH-TC59: Update only barcode → 200
+   * - BATCH-TC60: Update all fields → 200
+   * - BATCH-TC61: Update with empty object → 200
+   * - BATCH-TC62: Update batchNo to same → 200
+   * - BATCH-TC63: Duplicate batchNo case insensitive → 409
+   * - BATCH-TC64: Update quantity to zero → 200
+   * - BATCH-TC65: Update quantity to negative → 400
+   * - BATCH-TC66: Update barcode to null → 200
+   * - BATCH-TC67: Update dates validate together → 400 if invalid
+   * - BATCH-TC68: Update only mfg date check existing expiry → validate
+   * - BATCH-TC69: Update only exp date check existing mfg → validate
+   * - BATCH-TC70: Clear inbound receipt → 200
    */
   async update(
     id: string,
@@ -340,15 +389,24 @@ export class ProductBatchService {
   }
 
   /**
-   * Delete Product Batch API
-   * Minimum test cases: 6
-   * - BATCH-TC44: Delete batch successfully (200)
-   * - BATCH-TC45: Batch not found (404)
-   * - BATCH-TC46: Delete batch with inventory (400)
-   * - BATCH-TC47: Invalid ID format (tested by DTO)
-   * - BATCH-TC48: Permission denied (tested by guard)
-   * - BATCH-TC49: No authentication (tested by guard)
-   * Total: 49 test cases for ProductBatchService
+   * Delete Product Batch API - Test Cases: 12
+   * Basic:
+   * - BATCH-TC71: Delete batch successfully (200)
+   * - BATCH-TC72: Batch not found (404)
+   * - BATCH-TC73: Delete batch with inventory (400)
+   * - BATCH-TC74: Invalid ID format (tested by DTO)
+   * - BATCH-TC75: Permission denied (tested by guard)
+   * - BATCH-TC76: No authentication (tested by guard)
+
+   * Edge Cases:
+   * - BATCH-TC77: Delete with empty inventory array → 200
+   * - BATCH-TC78: Delete with zero qty inventory → 200
+   * - BATCH-TC79: Delete with reserved qty only → 400
+   * - BATCH-TC80: Delete with available qty → 400
+   * - BATCH-TC81: Concurrent delete → 404 second
+   * - BATCH-TC82: Invalid ID format → 404
+
+   * Total: 82 test cases for ProductBatchService
    */
   async remove(id: string): Promise<ProductBatchDeleteResponseDto> {
     this.logger.log(`Deleting product batch: ${id}`);

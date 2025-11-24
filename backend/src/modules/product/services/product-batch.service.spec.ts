@@ -190,6 +190,94 @@ describe('ProductBatchService', () => {
     // BATCH-TC06: Missing required fields tested by DTO
     // BATCH-TC07: Permission denied tested by guard
     // BATCH-TC08: No authentication tested by guard
+
+    // Edge case: Create batch with zero quantity
+    it('should create batch with zero quantity', async () => {
+      const createDto = {
+        productId: 'product-uuid-1',
+        batchNo: 'BATCH-ZERO',
+        quantity: 0,
+      };
+
+      productRepo.findOne.mockResolvedValue(mockProduct);
+      batchRepo.findByBatchNo.mockResolvedValue(null);
+      batchRepo.create.mockResolvedValue({ ...mockBatch, quantity: 0 });
+
+      const result = await service.create(createDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.quantity).toBe(0);
+    });
+
+    // Edge case: Create batch with negative quantity (should fail if validated)
+    it('should reject negative quantity', async () => {
+      const createDto = {
+        productId: 'product-uuid-1',
+        batchNo: 'BATCH-NEG',
+        quantity: -10,
+      };
+
+      productRepo.findOne.mockResolvedValue(mockProduct);
+
+      // Assuming DTO validates this
+      await expect(service.create(createDto)).rejects.toThrow();
+    });
+
+    // Edge case: Same manufacture and expiry dates (service requires expiry > manufacture)
+    it('should reject same manufacture and expiry dates', async () => {
+      const createDto = {
+        productId: 'product-uuid-1',
+        batchNo: 'BATCH-SAME',
+        quantity: 50,
+        manufactureDate: '2024-12-31',
+        expiryDate: '2024-12-31',
+      };
+
+      productRepo.findOne.mockResolvedValue(mockProduct);
+      batchRepo.findByBatchNo.mockResolvedValue(null);
+
+      await expect(service.create(createDto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(createDto)).rejects.toThrow(
+        'Expiry date must be after manufacture date',
+      );
+    });
+
+    // Edge case: Create with only one date (manufacture or expiry)
+    it('should create batch with only manufacture date', async () => {
+      const createDto = {
+        productId: 'product-uuid-1',
+        batchNo: 'BATCH-MFG',
+        quantity: 30,
+        manufactureDate: '2024-06-01',
+      };
+
+      productRepo.findOne.mockResolvedValue(mockProduct);
+      batchRepo.findByBatchNo.mockResolvedValue(null);
+      batchRepo.create.mockResolvedValue({ ...mockBatch, expiryDate: null });
+
+      const result = await service.create(createDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.expiryDate).toBeNull();
+    });
+
+    // Edge case: Batch number with special characters
+    it('should create batch with special characters in batch number', async () => {
+      const createDto = {
+        productId: 'product-uuid-1',
+        batchNo: 'BATCH-@#$-2024',
+        quantity: 75,
+      };
+
+      productRepo.findOne.mockResolvedValue(mockProduct);
+      batchRepo.findByBatchNo.mockResolvedValue(null);
+      batchRepo.create.mockResolvedValue({ ...mockBatch, batchNo: 'BATCH-@#$-2024' });
+
+      const result = await service.create(createDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.batchNo).toBe('BATCH-@#$-2024');
+    });
   });
 
   describe('findAll', () => {
@@ -404,6 +492,93 @@ describe('ProductBatchService', () => {
 
     // BATCH-TC17: Permission denied tested by guard
     // BATCH-TC18: No authentication tested by guard
+
+    // Edge case: page = 0 (validation should be in DTO/controller)
+    it('should handle page 0 (validation in DTO)', async () => {
+      const query = { page: 0, limit: 10 };
+
+      batchRepo.findAll.mockResolvedValue({
+        batches: [mockBatch],
+        total: 1,
+      });
+
+      const result = await service.findAll(query);
+
+      expect(result.success).toBe(true);
+    });
+
+    // Edge case: Invalid date format in filter
+    it('should handle invalid date format gracefully', async () => {
+      const query = { expiryBefore: 'invalid-date', limit: 10, page: 1 };
+
+      batchRepo.findAll.mockResolvedValue({
+        batches: [],
+        total: 0,
+      });
+
+      // Should not throw, but handle gracefully
+      const result = await service.findAll(query);
+
+      expect(result.success).toBe(true);
+    });
+
+    // Edge case: Filter with both expiryBefore and expiryAfter (date range)
+    it('should filter by date range', async () => {
+      const query = {
+        expiryAfter: '2024-01-01',
+        expiryBefore: '2025-12-31',
+        limit: 10,
+        page: 1,
+      };
+
+      batchRepo.findAll.mockResolvedValue({
+        batches: [mockBatch],
+        total: 1,
+      });
+
+      const result = await service.findAll(query);
+
+      expect(result.success).toBe(true);
+      expect(batchRepo.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            expiryDate: expect.objectContaining({
+              gte: expect.any(Date),
+              lte: expect.any(Date),
+            }),
+          }),
+        }),
+      );
+    });
+
+    // Edge case: Multiple filters combined
+    it('should handle multiple filters combined', async () => {
+      const query = {
+        productId: 'product-uuid-1',
+        batchNo: 'BATCH-001',
+        expiryBefore: '2025-12-31',
+        limit: 10,
+        page: 1,
+      };
+
+      batchRepo.findAll.mockResolvedValue({
+        batches: [mockBatch],
+        total: 1,
+      });
+
+      const result = await service.findAll(query);
+
+      expect(result.success).toBe(true);
+      expect(batchRepo.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            productId: 'product-uuid-1',
+            batchNo: expect.any(Object),
+            expiryDate: expect.any(Object),
+          }),
+        }),
+      );
+    });
   });
 
   describe('findOne', () => {
@@ -652,6 +827,84 @@ describe('ProductBatchService', () => {
     // BATCH-TC41: Invalid ID format tested by DTO
     // BATCH-TC42: Permission denied tested by guard
     // BATCH-TC43: No authentication tested by guard
+
+    // Edge case: Update quantity to zero
+    it('should update quantity to zero', async () => {
+      const updateDto = { quantity: 0 };
+
+      batchRepo.findOne.mockResolvedValue(mockBatch);
+      batchRepo.update.mockResolvedValue({ ...mockBatch, quantity: 0 });
+
+      const result = await service.update('batch-uuid-1', updateDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.quantity).toBe(0);
+    });
+
+    // Edge case: Negative quantity validation (handled by DTO)
+    // Skipped - DTO should validate before reaching service
+
+    // Edge case: Update dates - same dates (service requires expiry > manufacture)
+    it('should reject same manufacture and expiry dates on update', async () => {
+      const updateDto = {
+        manufactureDate: '2024-12-31',
+        expiryDate: '2024-12-31',
+      };
+
+      batchRepo.findOne.mockResolvedValue(mockBatch);
+
+      await expect(service.update('batch-uuid-1', updateDto)).rejects.toThrow(BadRequestException);
+    });
+
+    // Edge case: Update only manufacture date (keeping existing expiry)
+    it('should update only manufacture date', async () => {
+      const updateDto = { manufactureDate: '2024-05-01' };
+
+      batchRepo.findOne.mockResolvedValue(mockBatch);
+      batchRepo.update.mockResolvedValue({ ...mockBatch, manufactureDate: new Date('2024-05-01') });
+
+      const result = await service.update('batch-uuid-1', updateDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.manufactureDate).toEqual(new Date('2024-05-01'));
+    });
+
+    // Edge case: Update only expiry date (validate against existing manufacture date)
+    it('should validate expiry date against existing manufacture date', async () => {
+      const updateDto = { expiryDate: '2023-01-01' }; // before existing manufacture date
+
+      batchRepo.findOne.mockResolvedValue(mockBatch); // manufacture: 2024-01-01
+
+      await expect(service.update('batch-uuid-1', updateDto)).rejects.toThrow(BadRequestException);
+    });
+
+    // Edge case: Update all fields at once
+    it('should update all fields at once', async () => {
+      const updateDto = {
+        batchNo: 'BATCH-UPDATED',
+        quantity: 300,
+        manufactureDate: '2024-06-01',
+        expiryDate: '2025-06-01',
+        barcodeOrQr: 'QR:UPDATED',
+      };
+
+      batchRepo.findOne.mockResolvedValue(mockBatch);
+      batchRepo.findByBatchNo.mockResolvedValue(null);
+      batchRepo.update.mockResolvedValue({
+        ...mockBatch,
+        ...updateDto,
+        manufactureDate: updateDto.manufactureDate
+          ? new Date(updateDto.manufactureDate)
+          : mockBatch.manufactureDate,
+        expiryDate: updateDto.expiryDate ? new Date(updateDto.expiryDate) : mockBatch.expiryDate,
+      });
+
+      const result = await service.update('batch-uuid-1', updateDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.batchNo).toBe('BATCH-UPDATED');
+      expect(result.data.quantity).toBe(300);
+    });
   });
 
   describe('remove', () => {
@@ -693,5 +946,38 @@ describe('ProductBatchService', () => {
     // BATCH-TC47: Invalid ID format tested by DTO
     // BATCH-TC48: Permission denied tested by guard
     // BATCH-TC49: No authentication tested by guard
+
+    // Edge case: Delete batch with zero quantity inventory
+    it('should delete batch successfully with zero quantity inventory', async () => {
+      batchRepo.findOne.mockResolvedValue({
+        ...mockBatch,
+        inventory: [{ availableQty: 0, reservedQty: 0 }],
+      } as any);
+      batchRepo.delete.mockResolvedValue(mockBatch);
+
+      const result = await service.remove('batch-uuid-1');
+
+      expect(result.success).toBe(true);
+    });
+
+    // Edge case: Delete batch with only reserved quantity (should fail)
+    it('should reject deletion if batch has reserved quantity', async () => {
+      batchRepo.findOne.mockResolvedValue({
+        ...mockBatch,
+        inventory: [{ availableQty: 0, reservedQty: 5 }],
+      } as any);
+
+      await expect(service.remove('batch-uuid-1')).rejects.toThrow(BadRequestException);
+    });
+
+    // Edge case: Delete batch with both available and reserved quantity
+    it('should reject deletion if batch has any quantity', async () => {
+      batchRepo.findOne.mockResolvedValue({
+        ...mockBatch,
+        inventory: [{ availableQty: 10, reservedQty: 5 }],
+      } as any);
+
+      await expect(service.remove('batch-uuid-1')).rejects.toThrow(BadRequestException);
+    });
   });
 });

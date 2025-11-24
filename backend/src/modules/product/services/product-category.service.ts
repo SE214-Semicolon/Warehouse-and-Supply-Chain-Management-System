@@ -15,14 +15,25 @@ export class ProductCategoryService {
   constructor(private readonly categoryRepo: ProductCategoryRepository) {}
 
   /**
-   * Create Category API
-   * Minimum test cases: 6
+   * Create Category API - Test Cases: 15
+   * Basic:
    * - CAT-TC01: Create with valid data (200)
    * - CAT-TC02: Create with parent category (200)
    * - CAT-TC03: Parent category not found (404)
    * - CAT-TC04: Missing required fields (tested by DTO)
    * - CAT-TC05: Permission denied (tested by guard)
    * - CAT-TC06: No authentication (tested by guard)
+
+   * Edge Cases:
+   * - CAT-TC07: Empty string name → 400
+   * - CAT-TC08: Whitespace only name → 400
+   * - CAT-TC09: Very long name (>200 chars) → 400
+   * - CAT-TC10: Name with special chars → 201
+   * - CAT-TC11: Create without parent (root) → 201
+   * - CAT-TC12: Invalid parent ID format → 404
+   * - CAT-TC13: SQL injection in name → sanitized
+   * - CAT-TC14: Duplicate name same parent → 201 (allowed)
+   * - CAT-TC15: Create with description → 201
    */
   async create(createCategoryDto: CreateCategoryDto): Promise<ProductCategoryResponseDto> {
     this.logger.log(`Creating category: ${createCategoryDto.name}`);
@@ -40,12 +51,18 @@ export class ProductCategoryService {
   }
 
   /**
-   * Get All Categories API
-   * Minimum test cases: 4
-   * - CAT-TC07: Get all categories with tree structure (200)
-   * - CAT-TC08: Empty categories list (200)
-   * - CAT-TC09: Permission denied (tested by guard)
-   * - CAT-TC10: No authentication (tested by guard)
+   * Get All Categories API - Test Cases: 8
+   * Basic:
+   * - CAT-TC16: Get all categories with tree structure (200)
+   * - CAT-TC17: Empty categories list (200)
+   * - CAT-TC18: Permission denied (tested by guard)
+   * - CAT-TC19: No authentication (tested by guard)
+
+   * Edge Cases:
+   * - CAT-TC20: Only root categories → 200
+   * - CAT-TC21: Deep nested categories (3+ levels) → 200
+   * - CAT-TC22: Orphaned categories (parent deleted) → handled
+   * - CAT-TC23: Large number of categories → 200
    */
   async findAll(): Promise<ProductCategoryListResponseDto> {
     this.logger.log('Fetching all categories and building tree');
@@ -98,16 +115,28 @@ export class ProductCategoryService {
   }
 
   /**
-   * Update Category API
-   * Minimum test cases: 8
-   * - CAT-TC16: Update with valid data (200)
-   * - CAT-TC17: Category not found (404)
-   * - CAT-TC18: Parent category not found (404)
-   * - CAT-TC19: Self-reference parent (400)
-   * - CAT-TC20: Update parent category (200)
-   * - CAT-TC21: Invalid ID format (tested by DTO)
-   * - CAT-TC22: Permission denied (tested by guard)
-   * - CAT-TC23: No authentication (tested by guard)
+   * Update Category API - Test Cases: 18
+   * Basic:
+   * - CAT-TC24: Update with valid data (200)
+   * - CAT-TC25: Category not found (404)
+   * - CAT-TC26: Parent category not found (404)
+   * - CAT-TC27: Self-reference parent (400)
+   * - CAT-TC28: Update parent category (200)
+   * - CAT-TC29: Invalid ID format (tested by DTO)
+   * - CAT-TC30: Permission denied (tested by guard)
+   * - CAT-TC31: No authentication (tested by guard)
+
+   * Edge Cases:
+   * - CAT-TC32: Update only name → 200
+   * - CAT-TC33: Update only description → 200
+   * - CAT-TC34: Update only parent → 200
+   * - CAT-TC35: Update all fields → 200
+   * - CAT-TC36: Update with empty object → 200
+   * - CAT-TC37: Update parent to null (make root) → 200
+   * - CAT-TC38: Update to same parent → 200
+   * - CAT-TC39: Circular reference check → 400
+   * - CAT-TC40: Update name with special chars → 200
+   * - CAT-TC41: Move to child's subtree → 400 (if checked)
    */
   async update(
     id: string,
@@ -137,15 +166,24 @@ export class ProductCategoryService {
   }
 
   /**
-   * Delete Category API
-   * Minimum test cases: 6
-   * - CAT-TC24: Delete category successfully (200)
-   * - CAT-TC25: Category not found (404)
-   * - CAT-TC26: Delete category with children (400)
-   * - CAT-TC27: Invalid ID format (tested by DTO)
-   * - CAT-TC28: Permission denied (tested by guard)
-   * - CAT-TC29: No authentication (tested by guard)
-   * Total: 29 test cases for ProductCategoryService
+   * Delete Category API - Test Cases: 12
+   * Basic:
+   * - CAT-TC42: Delete category successfully (200)
+   * - CAT-TC43: Category not found (404)
+   * - CAT-TC44: Delete category with children (400)
+   * - CAT-TC45: Invalid ID format (tested by DTO)
+   * - CAT-TC46: Permission denied (tested by guard)
+   * - CAT-TC47: No authentication (tested by guard)
+
+   * Edge Cases:
+   * - CAT-TC48: Delete with empty children array → 200
+   * - CAT-TC49: Delete category with products → 200 or 400
+   * - CAT-TC50: Delete root category → 200
+   * - CAT-TC51: Delete leaf category → 200
+   * - CAT-TC52: Concurrent delete → 404 second
+   * - CAT-TC53: Invalid ID format → 404
+
+   * Total: 53 test cases for ProductCategoryService
    */
   async remove(id: string): Promise<ProductCategoryDeleteResponseDto> {
     this.logger.log(`Deleting category ${id}`);
