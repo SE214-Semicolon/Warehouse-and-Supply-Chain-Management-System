@@ -16,6 +16,10 @@ RUN npm install --no-audit --no-fund
 
 # copy source and build
 COPY . .
+
+ARG VITE_BASE_URL
+ENV VITE_BASE_URL=$VITE_BASE_URL
+
 ENV NODE_ENV=production
 RUN npm run build
 

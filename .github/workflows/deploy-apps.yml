@@ -138,6 +138,8 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          VITE_BASE_URL=${{ github.ref == 'refs/heads/main' && vars.BACKEND_URL_PRODUCTION || vars.BACKEND_URL_STAGING }}
 
   deploy-staging:
     if: |
