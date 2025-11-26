@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ProductBatchService } from './product-batch.service';
+import { ProductBatchService } from '../services/product-batch.service';
 import { ProductBatchRepository } from '../repositories/product-batch.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';

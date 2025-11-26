@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { InventoryService } from './inventory.service';
+import { InventoryService } from '../services/inventory.service';
 import { InventoryRepository } from '../repositories/inventory.repository';
 import { CacheService } from '../../../cache/cache.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';

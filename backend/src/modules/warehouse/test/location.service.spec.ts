@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { LocationService } from './location.service';
+import { LocationService } from '../services/location.service';
 import { LocationRepository } from '../repositories/location.repository';
 import { WarehouseRepository } from '../repositories/warehouse.repository';
 import { CacheService } from '../../../cache/cache.service';

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ProductService } from './product.service';
+import { ProductService } from '../services/product.service';
 import { ProductRepository } from '../repositories/product.repository';
 import { ProductCategoryRepository } from '../repositories/product-category.repository';
 import { CacheService } from '../../../cache/cache.service';

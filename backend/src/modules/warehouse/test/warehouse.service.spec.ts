@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { WarehouseService } from './warehouse.service';
+import { WarehouseService } from '../services/warehouse.service';
 import { WarehouseRepository } from '../repositories/warehouse.repository';
 import { CacheService } from '../../../cache/cache.service';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
@@ -105,7 +105,7 @@ describe('WarehouseService', () => {
 
     // WH-TC06: Edge case - empty string code (tested by DTO)
     // WH-TC07: Edge case - whitespace only name (tested by DTO)
-    
+
     // WH-TC08: Code with special characters
     it('should create warehouse with special characters in code', async () => {
       const createDto = {
@@ -126,7 +126,7 @@ describe('WarehouseService', () => {
     // WH-TC09: Very long code (tested by DTO max length validation)
     // WH-TC10: Very long name (tested by DTO max length validation)
     // WH-TC11: SQL injection attempt (Prisma handles this)
-    
+
     // WH-TC12: Duplicate code case insensitive
     it('should detect duplicate code case insensitively', async () => {
       const createDto = {
@@ -344,7 +344,7 @@ describe('WarehouseService', () => {
     });
 
     // WH-TC25: Negative limit (tested at DTO level typically)
-    
+
     // WH-TC26: Very large limit
     it('should handle very large limit', async () => {
       const query = {
@@ -459,7 +459,7 @@ describe('WarehouseService', () => {
     });
 
     // WH-TC32: Multiple filters tested above
-    
+
     // WH-TC33: Page beyond total pages
     it('should handle page beyond total pages', async () => {
       const query = {
@@ -674,7 +674,7 @@ describe('WarehouseService', () => {
     // WH-TC65: Update with null values (tested by DTO)
     // WH-TC66: Update code with special chars
     // WH-TC67: Update with very long strings (tested by DTO)
-    
+
     // WH-TC68: Duplicate code case insensitive
     it('should detect duplicate code case insensitively on update', async () => {
       const updateDto = { code: 'wh-002' };
