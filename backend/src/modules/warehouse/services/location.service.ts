@@ -23,7 +23,30 @@ export class LocationService {
     private readonly cacheService: CacheService,
   ) {}
 
-  // POST /locations - Min Test Cases: 6 (Success 201, Warehouse not found 404, Duplicate code 409, Invalid data 400, No permission 403, No auth 401)
+  /**
+   * POST /locations - Test Cases: 18
+   * Basic:
+   * LOC-TC01: Create with valid data → 201
+   * LOC-TC02: Warehouse not found → 404
+   * LOC-TC03: Duplicate code in same warehouse → 409
+   * LOC-TC04: Invalid data → 400 (tested by DTO)
+   * LOC-TC05: No permission → 403 (tested by guard)
+   * LOC-TC06: No auth → 401 (tested by guard)
+   * 
+   * Edge Cases:
+   * LOC-TC07: Empty string code → 400
+   * LOC-TC08: Whitespace only name → 400
+   * LOC-TC09: Negative capacity → 400
+   * LOC-TC10: Zero capacity → 400 or 201 based on business rules
+   * LOC-TC11: Very large capacity (>1000000) → 201 or 400
+   * LOC-TC12: Code with special chars → 201 or 400
+   * LOC-TC13: Very long code (>50 chars) → 400
+   * LOC-TC14: Invalid type value → 400
+   * LOC-TC15: Duplicate code (case insensitive) same warehouse → 409
+   * LOC-TC16: Same code different warehouse → 201
+   * LOC-TC17: SQL injection in code → sanitized
+   * LOC-TC18: Complex nested properties → 201
+   */
   async create(createDto: CreateLocationDto) {
     this.logger.log(
       `Creating location with code: ${createDto.code} in warehouse: ${createDto.warehouseId}`,
@@ -67,7 +90,37 @@ export class LocationService {
     };
   }
 
-  // GET /locations - Min Test Cases: 7 (Get all 200, Filter warehouse 200, Filter type 200, Filter search 200, Pagination, No auth 401)
+  /**
+   * GET /locations - Test Cases: 25
+   * Basic:
+   * LOC-TC19: Get all with default pagination → 200
+   * LOC-TC20: Filter by warehouse → 200
+   * LOC-TC21: Filter by type → 200
+   * LOC-TC22: Filter by search → 200
+   * LOC-TC23: Pagination page 1 → 200
+   * LOC-TC24: Pagination page 2 → 200
+   * LOC-TC25: No auth → 401 (tested by guard)
+   * 
+   * Edge Cases:
+   * LOC-TC26: Page = 0 → default to 1 or 400
+   * LOC-TC27: Negative page → default to 1 or 400
+   * LOC-TC28: Limit = 0 → use default or 400
+   * LOC-TC29: Negative limit → use default or 400
+   * LOC-TC30: Very large limit (>1000) → cap at max
+   * LOC-TC31: Search with empty string → return all
+   * LOC-TC32: Search with SQL injection → sanitized
+   * LOC-TC33: Filter warehouse + type → 200
+   * LOC-TC34: Filter warehouse + search → 200
+   * LOC-TC35: Filter type + search → 200
+   * LOC-TC36: All filters combined → 200
+   * LOC-TC37: Invalid warehouse ID filter → empty result
+   * LOC-TC38: Case insensitive type filter → 200
+   * LOC-TC39: Case insensitive search → 200
+   * LOC-TC40: Partial code match → 200
+   * LOC-TC41: Page beyond total pages → empty array
+   * LOC-TC42: Sort by code ascending → 200
+   * LOC-TC43: Invalid type value → empty result or all
+   */
   async findAll(query: QueryLocationDto) {
     this.logger.log(`Finding all locations with query: ${JSON.stringify(query)}`);
     const { warehouseId, search, type, limit = 20, page = 1 } = query;
@@ -107,7 +160,20 @@ export class LocationService {
     };
   }
 
-  // GET /locations/:id - Min Test Cases: 4 (Found 200, Not found 404, Cache hit 200, No auth 401)
+  /**
+   * GET /locations/:id - Test Cases: 8
+   * Basic:
+   * LOC-TC44: Find by valid ID → 200
+   * LOC-TC45: Not found → 404
+   * LOC-TC46: Cache hit on repeated call → 200
+   * LOC-TC47: No auth → 401 (tested by guard)
+   * 
+   * Edge Cases:
+   * LOC-TC48: Invalid UUID format → 400 or 404
+   * LOC-TC49: Empty string ID → 400
+   * LOC-TC50: SQL injection in ID → sanitized, 404
+   * LOC-TC51: Very long ID string → 400 or 404
+   */
   async findOne(id: string) {
     this.logger.debug(`Finding location by ID: ${id}`);
     const cacheKey = `${CACHE_PREFIX.WAREHOUSE}:location:id:${id}`;
@@ -133,7 +199,22 @@ export class LocationService {
     );
   }
 
-  // GET /locations/code/:warehouseId/:code - Min Test Cases: 4 (Found 200, Not found 404, Cache hit 200, No auth 401)
+  /**
+   * GET /locations/code/:warehouseId/:code - Test Cases: 10
+   * Basic:
+   * LOC-TC52: Find by valid code → 200
+   * LOC-TC53: Not found → 404
+   * LOC-TC54: Cache hit on repeated call → 200
+   * LOC-TC55: No auth → 401 (tested by guard)
+   * 
+   * Edge Cases:
+   * LOC-TC56: Invalid warehouse ID → 404
+   * LOC-TC57: Case insensitive code → 200
+   * LOC-TC58: Code with special chars → 200 or 404
+   * LOC-TC59: Empty string code → 404 or 400
+   * LOC-TC60: SQL injection in code → sanitized, 404
+   * LOC-TC61: Valid code wrong warehouse → 404
+   */
   async findByCode(warehouseId: string, code: string) {
     this.logger.debug(`Finding location by code: ${code} in warehouse: ${warehouseId}`);
     const cacheKey = `${CACHE_PREFIX.WAREHOUSE}:location:${warehouseId}:${code}`;
@@ -160,7 +241,20 @@ export class LocationService {
     );
   }
 
-  // GET /locations/warehouse/:warehouseId - Min Test Cases: 4 (Found 200, Warehouse not found 404, Cache hit 200, No auth 401)
+  /**
+   * GET /locations/warehouse/:warehouseId - Test Cases: 8
+   * Basic:
+   * LOC-TC62: Find by valid warehouse → 200
+   * LOC-TC63: Warehouse not found → 404
+   * LOC-TC64: Cache hit on repeated call → 200
+   * LOC-TC65: No auth → 401 (tested by guard)
+   * 
+   * Edge Cases:
+   * LOC-TC66: Warehouse with no locations → empty array
+   * LOC-TC67: Warehouse with many locations → all returned
+   * LOC-TC68: Invalid warehouse ID format → 404
+   * LOC-TC69: SQL injection in warehouse ID → sanitized, 404
+   */
   async findByWarehouse(warehouseId: string) {
     this.logger.debug(`Finding locations by warehouse: ${warehouseId}`);
     const cacheKey = `${CACHE_PREFIX.WAREHOUSE}:locations:warehouse:${warehouseId}`;
@@ -190,7 +284,24 @@ export class LocationService {
     );
   }
 
-  // GET /locations/available/:warehouseId - Min Test Cases: 5 (Found 200, With minCapacity 200, Warehouse not found 404, Empty result 200, No auth 401)
+  /**
+   * GET /locations/available/:warehouseId - Test Cases: 12
+   * Basic:
+   * LOC-TC70: Get available locations → 200
+   * LOC-TC71: With minCapacity filter → 200
+   * LOC-TC72: Warehouse not found → 404
+   * LOC-TC73: Empty result → 200 with empty array
+   * LOC-TC74: No auth → 401 (tested by guard)
+   * 
+   * Edge Cases:
+   * LOC-TC75: minCapacity = 0 → return all available
+   * LOC-TC76: Negative minCapacity → ignore or 400
+   * LOC-TC77: Very large minCapacity → empty result
+   * LOC-TC78: All locations full (100% utilization) → empty
+   * LOC-TC79: All locations partially full → all returned
+   * LOC-TC80: Mixed utilization → only <100% returned
+   * LOC-TC81: Invalid warehouse ID → 404
+   */
   async findAvailableLocations(warehouseId: string, minCapacity?: number) {
     this.logger.debug(
       `Finding available locations in warehouse: ${warehouseId} with minCapacity: ${minCapacity}`,
@@ -220,7 +331,34 @@ export class LocationService {
     };
   }
 
-  // PATCH /locations/:id - Min Test Cases: 6 (Update 200, Duplicate code 409, Not found 404, No permission 403, No auth 401)
+  /**
+   * PATCH /locations/:id - Test Cases: 22
+   * Basic:
+   * LOC-TC82: Update with valid data → 200
+   * LOC-TC83: Duplicate code → 409
+   * LOC-TC84: Not found → 404
+   * LOC-TC85: No permission → 403 (tested by guard)
+   * LOC-TC86: No auth → 401 (tested by guard)
+   * 
+   * Edge Cases:
+   * LOC-TC87: Update only name → 200
+   * LOC-TC88: Update only code → 200
+   * LOC-TC89: Update only capacity → 200
+   * LOC-TC90: Update only type → 200
+   * LOC-TC91: Update only properties → 200
+   * LOC-TC92: Update all fields at once → 200
+   * LOC-TC93: Update with empty object → 200 (no changes)
+   * LOC-TC94: Update code to same value → 200
+   * LOC-TC95: Update capacity to negative → 400
+   * LOC-TC96: Update capacity to zero → 400 or 200
+   * LOC-TC97: Update capacity smaller than current usage → 400 or allow with warning
+   * LOC-TC98: Update with empty string name → 400
+   * LOC-TC99: Update with null values → 400 or strip nulls
+   * LOC-TC100: Update code with special chars → 400 or 200
+   * LOC-TC101: Duplicate code (case insensitive) → 409
+   * LOC-TC102: Update type to invalid value → 400
+   * LOC-TC103: Update properties with nested objects → 200
+   */
   async update(id: string, updateDto: UpdateLocationDto) {
     this.logger.log(`Updating location: ${id}`);
     const location = await this.locationRepo.findOne(id);
@@ -262,7 +400,22 @@ export class LocationService {
     };
   }
 
-  // DELETE /locations/:id - Min Test Cases: 5 (Delete 200, Not found 404, Has inventory 400, No permission 403, No auth 401)
+  /**
+   * DELETE /locations/:id - Test Cases: 10
+   * Basic:
+   * LOC-TC104: Delete valid location → 200
+   * LOC-TC105: Not found → 404
+   * LOC-TC106: Has inventory with stock → 400
+   * LOC-TC107: No permission → 403 (tested by guard)
+   * LOC-TC108: No auth → 401 (tested by guard)
+   * 
+   * Edge Cases:
+   * LOC-TC109: Has inventory with zero qty → 200
+   * LOC-TC110: Has reserved qty only → 400
+   * LOC-TC111: Empty inventory array → 200
+   * LOC-TC112: Invalid ID format → 400 or 404
+   * LOC-TC113: Concurrent delete → 404 for second request
+   */
   async remove(id: string) {
     this.logger.log(`Removing location: ${id}`);
     const location = await this.locationRepo.findOne(id);
@@ -305,7 +458,18 @@ export class LocationService {
     };
   }
 
-  // GET /locations/:id/stats - Min Test Cases: 3 (Get stats 200, Not found 404, No auth 401)
+  /**
+   * GET /locations/:id/stats - Test Cases: 6
+   * Basic:
+   * LOC-TC114: Get stats for valid location → 200
+   * LOC-TC115: Not found → 404
+   * LOC-TC116: No auth → 401 (tested by guard)
+   * 
+   * Edge Cases:
+   * LOC-TC117: Location with no inventory → stats with zeros
+   * LOC-TC118: Location with full capacity → 100% utilization
+   * LOC-TC119: Location with reserved inventory → stats include reserved
+   */
   async getLocationStats(id: string) {
     this.logger.debug(`Getting stats for location: ${id}`);
     const location = await this.locationRepo.findOne(id);

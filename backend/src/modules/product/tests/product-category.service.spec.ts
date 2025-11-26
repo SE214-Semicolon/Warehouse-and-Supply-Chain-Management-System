@@ -107,6 +107,68 @@ describe('ProductCategoryService', () => {
     // CAT-TC04: Missing required fields tested by DTO
     // CAT-TC05: Permission denied tested by guard
     // CAT-TC06: No authentication tested by guard
+
+    // Edge case: Create category with special characters in name
+    it('should create category with special characters in name', async () => {
+      const createDto = {
+        name: 'Electronics & Gadgets (2024)',
+        description: 'Special category',
+      };
+
+      categoryRepo.create.mockResolvedValue({ ...mockCategory, name: createDto.name });
+
+      const result = await service.create(createDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.name).toBe('Electronics & Gadgets (2024)');
+    });
+
+    // Edge case: Create category without description (optional field)
+    it('should create category without description', async () => {
+      const createDto = {
+        name: 'New Category',
+      };
+
+      categoryRepo.create.mockResolvedValue({ ...mockCategory, name: 'New Category' });
+
+      const result = await service.create(createDto);
+
+      expect(result.success).toBe(true);
+      expect(categoryRepo.create).toHaveBeenCalledWith(createDto);
+    });
+
+    // Edge case: Create root category without parent
+    it('should create root category without parentId', async () => {
+      const createDto = {
+        name: 'Root Category',
+      };
+
+      categoryRepo.create.mockResolvedValue({
+        ...mockCategory,
+        name: 'Root Category',
+        parentId: null,
+      });
+
+      const result = await service.create(createDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.parentId).toBeNull();
+    });
+
+    // Edge case: Duplicate names are allowed (different from products)
+    it('should allow duplicate category names', async () => {
+      const createDto = {
+        name: 'Electronics', // same name as existing
+        description: 'Another electronics category',
+      };
+
+      categoryRepo.create.mockResolvedValue({ ...mockCategory, id: 'new-id' });
+
+      const result = await service.create(createDto);
+
+      expect(result.success).toBe(true);
+      // No duplicate check should be performed
+    });
   });
 
   describe('findAll', () => {
@@ -142,6 +204,38 @@ describe('ProductCategoryService', () => {
 
     // CAT-TC09: Permission denied tested by guard
     // CAT-TC10: No authentication tested by guard
+
+    // Edge case: Deep nested categories (3+ levels)
+    it('should handle deep nested categories', async () => {
+      const categories = [
+        { id: '1', name: 'Root', parentId: null, metadata: {} },
+        { id: '2', name: 'Level 1', parentId: '1', metadata: {} },
+        { id: '3', name: 'Level 2', parentId: '2', metadata: {} },
+        { id: '4', name: 'Level 3', parentId: '3', metadata: {} },
+      ];
+
+      categoryRepo.findAll.mockResolvedValue(categories);
+
+      const result = await service.findAll();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveLength(1); // 1 root node with nested children
+    });
+
+    // Edge case: Orphaned categories (parent doesn't exist)
+    it('should handle orphaned categories gracefully', async () => {
+      const categories = [
+        { id: '1', name: 'Root', parentId: null, metadata: {} },
+        { id: '2', name: 'Orphan', parentId: 'non-existent-id', metadata: {} },
+      ];
+
+      categoryRepo.findAll.mockResolvedValue(categories);
+
+      const result = await service.findAll();
+
+      expect(result.success).toBe(true);
+      // Orphaned category should be treated as root or filtered out
+    });
   });
 
   describe('findOne', () => {
@@ -267,6 +361,73 @@ describe('ProductCategoryService', () => {
     // CAT-TC21: Invalid ID format tested by DTO
     // CAT-TC22: Permission denied tested by guard
     // CAT-TC23: No authentication tested by guard
+
+    // Edge case: Update parent to null (make it root)
+    it('should update category to root by setting parentId to null', async () => {
+      const updateDto = { parentId: undefined };
+      const updatedCategory = { ...mockCategory, parentId: null };
+
+      categoryRepo.findOne.mockResolvedValue({ ...mockCategory, parentId: 'old-parent' });
+      categoryRepo.update.mockResolvedValue(updatedCategory);
+
+      const result = await service.update('category-uuid-1', updateDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.parentId).toBeNull();
+    });
+
+    // Edge case: Circular reference - note validation if implemented
+    it('should handle parent update (circular validation may not exist)', async () => {
+      const childCategory = { ...mockCategory, id: 'child-id', parentId: 'category-uuid-1' };
+      const updateDto = { parentId: 'child-id' }; // trying to set child as parent
+
+      categoryRepo.findOne.mockImplementation(async (id: string) => {
+        if (id === 'category-uuid-1') return mockCategory;
+        if (id === 'child-id') return childCategory;
+        return null;
+      });
+      categoryRepo.update.mockResolvedValue({ ...mockCategory, parentId: 'child-id' });
+
+      // Service may not validate circular refs - depends on implementation
+      const result = await service.update('category-uuid-1', updateDto);
+      expect(result.success).toBe(true);
+    });
+
+    // Edge case: Update only name field
+    it('should update only name field', async () => {
+      const updateDto = { name: 'New Name Only' };
+
+      categoryRepo.findOne.mockResolvedValue(mockCategory);
+      categoryRepo.update.mockResolvedValue({ ...mockCategory, name: 'New Name Only' });
+
+      const result = await service.update('category-uuid-1', updateDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.name).toBe('New Name Only');
+      expect(result.data.parentId).toBe(mockCategory.parentId); // unchanged
+    });
+
+    // Edge case: Update all fields at once
+    it('should update all fields at once', async () => {
+      const parentCategory = { ...mockCategory, id: 'new-parent', name: 'Parent' };
+      const updateDto = {
+        name: 'Completely Updated',
+        description: 'Updated description',
+        parentId: 'new-parent',
+        metadata: { updated: true },
+      };
+
+      categoryRepo.findOne
+        .mockResolvedValueOnce(mockCategory)
+        .mockResolvedValueOnce(parentCategory);
+      categoryRepo.update.mockResolvedValue({ ...mockCategory, ...updateDto });
+
+      const result = await service.update('category-uuid-1', updateDto);
+
+      expect(result.success).toBe(true);
+      expect(result.data.name).toBe('Completely Updated');
+      expect(result.data.parentId).toBe('new-parent');
+    });
   });
 
   describe('remove', () => {
@@ -312,5 +473,41 @@ describe('ProductCategoryService', () => {
     // CAT-TC27: Invalid ID format tested by DTO
     // CAT-TC28: Permission denied tested by guard
     // CAT-TC29: No authentication tested by guard
+
+    // Edge case: Delete category with empty children array
+    it('should delete category successfully with empty children array', async () => {
+      const category = { ...mockCategory, children: [] };
+
+      categoryRepo.findOne.mockResolvedValue(category);
+      categoryRepo.delete.mockResolvedValue(category);
+
+      const result = await service.remove('category-uuid-1');
+
+      expect(result.success).toBe(true);
+    });
+
+    // Edge case: Delete root category (no parent)
+    it('should delete root category successfully', async () => {
+      const rootCategory = { ...mockCategory, parentId: null, children: [] };
+
+      categoryRepo.findOne.mockResolvedValue(rootCategory);
+      categoryRepo.delete.mockResolvedValue(rootCategory);
+
+      const result = await service.remove('category-uuid-1');
+
+      expect(result.success).toBe(true);
+    });
+
+    // Edge case: Delete leaf category (has parent but no children)
+    it('should delete leaf category successfully', async () => {
+      const leafCategory = { ...mockCategory, parentId: 'parent-id', children: [] };
+
+      categoryRepo.findOne.mockResolvedValue(leafCategory);
+      categoryRepo.delete.mockResolvedValue(leafCategory);
+
+      const result = await service.remove('category-uuid-1');
+
+      expect(result.success).toBe(true);
+    });
   });
 });

@@ -29,7 +29,7 @@ export class InventoryService {
 
   /**
    * Receive Inventory API
-   * Minimum test cases: 9
+   * Minimum test cases: 12
    * - INV-TC01: Receive with valid data (200)
    * - INV-TC02: Product batch not found (404)
    * - INV-TC03: Location not found (404)
@@ -39,6 +39,10 @@ export class InventoryService {
    * - INV-TC07: Missing required fields (tested by DTO)
    * - INV-TC08: Permission denied (tested by guard)
    * - INV-TC09: No authentication (tested by guard)
+   * Edge cases:
+   * - Receive with very large quantity (999,999,999)
+   * - Receive without createdById (optional field)
+   * - Receive without idempotency key (optional field)
    */
   async receiveInventory(dto: ReceiveInventoryDto) {
     this.logger.log(
@@ -102,7 +106,7 @@ export class InventoryService {
 
   /**
    * Dispatch Inventory API
-   * Minimum test cases: 10
+   * Minimum test cases: 12
    * - INV-TC10: Dispatch with valid data (200)
    * - INV-TC11: Product batch not found (404)
    * - INV-TC12: Location not found (404)
@@ -113,6 +117,9 @@ export class InventoryService {
    * - INV-TC17: Missing required fields (tested by DTO)
    * - INV-TC18: Permission denied (tested by guard)
    * - INV-TC19: No authentication (tested by guard)
+   * Edge cases:
+   * - Dispatch exact available quantity (all stock)
+   * - Dispatch minimal quantity of 1
    */
   async dispatchInventory(dto: DispatchInventoryDto) {
     // Basic existence validation
@@ -172,7 +179,7 @@ export class InventoryService {
 
   /**
    * Adjust Inventory API
-   * Minimum test cases: 11
+   * Minimum test cases: 15
    * - INV-TC20: Adjust with positive quantity (200)
    * - INV-TC21: Adjust with negative quantity (200)
    * - INV-TC22: Product batch not found (404)
@@ -184,6 +191,11 @@ export class InventoryService {
    * - INV-TC28: Missing required fields (tested by DTO)
    * - INV-TC29: Permission denied (tested by guard)
    * - INV-TC30: No authentication (tested by guard)
+   * Edge cases:
+   * - Adjust with very large positive value (1,000,000)
+   * - Adjust with very large negative value (-50)
+   * - Adjust by +1 (minimum positive)
+   * - Adjust by -1 (minimum negative)
    */
   async adjustInventory(dto: AdjustInventoryDto) {
     // Basic existence validation
@@ -246,7 +258,7 @@ export class InventoryService {
 
   /**
    * Transfer Inventory API
-   * Minimum test cases: 12
+   * Minimum test cases: 14
    * - INV-TC31: Transfer with valid data (200)
    * - INV-TC32: Product batch not found (404)
    * - INV-TC33: From location not found (404)
@@ -259,6 +271,9 @@ export class InventoryService {
    * - INV-TC40: Missing required fields (tested by DTO)
    * - INV-TC41: Permission denied (tested by guard)
    * - INV-TC42: No authentication (tested by guard)
+   * Edge cases:
+   * - Transfer entire available quantity
+   * - Transfer minimal quantity of 1
    */
   async transferInventory(dto: TransferInventoryDto) {
     // Basic existence validation
@@ -337,7 +352,7 @@ export class InventoryService {
 
   /**
    * Reserve Inventory API
-   * Minimum test cases: 11
+   * Minimum test cases: 13
    * - INV-TC43: Reserve with valid data (200)
    * - INV-TC44: Product batch not found (404)
    * - INV-TC45: Location not found (404)
@@ -349,6 +364,9 @@ export class InventoryService {
    * - INV-TC51: Missing required fields (tested by DTO)
    * - INV-TC52: Permission denied (tested by guard)
    * - INV-TC53: No authentication (tested by guard)
+   * Edge cases:
+   * - Reserve entire available quantity
+   * - Reserve minimal quantity of 1
    */
   async reserveInventory(dto: ReserveInventoryDto) {
     // Basic existence validation
@@ -415,7 +433,7 @@ export class InventoryService {
 
   /**
    * Release Reservation API
-   * Minimum test cases: 11
+   * Minimum test cases: 13
    * - INV-TC54: Release with valid data (200)
    * - INV-TC55: Product batch not found (404)
    * - INV-TC56: Location not found (404)
@@ -427,6 +445,9 @@ export class InventoryService {
    * - INV-TC62: Missing required fields (tested by DTO)
    * - INV-TC63: Permission denied (tested by guard)
    * - INV-TC64: No authentication (tested by guard)
+   * Edge cases:
+   * - Release entire reserved quantity
+   * - Release partial reservation
    */
   async releaseReservation(dto: ReleaseReservationDto) {
     // Basic existence validation
@@ -491,7 +512,7 @@ export class InventoryService {
 
   /**
    * Get Inventory by Location API
-   * Minimum test cases: 8
+   * Minimum test cases: 11
    * - INV-TC65: Get with valid location (200)
    * - INV-TC66: Location not found (404)
    * - INV-TC67: Invalid page number (400)
@@ -500,6 +521,10 @@ export class InventoryService {
    * - INV-TC70: Cache hit (200)
    * - INV-TC71: Permission denied (tested by guard)
    * - INV-TC72: No authentication (tested by guard)
+   * Edge cases:
+   * - Page = 0 (should reject)
+   * - Limit = 0 (should reject)
+   * - Limit > 100 (should reject)
    */
   async getInventoryByLocation(dto: QueryByLocationDto) {
     // Basic existence validation
@@ -599,7 +624,7 @@ export class InventoryService {
 
   /**
    * Update Inventory Quantity API
-   * Minimum test cases: 9
+   * Minimum test cases: 12
    * - INV-TC81: Update with valid data (200)
    * - INV-TC82: Product batch not found (404)
    * - INV-TC83: Location not found (404)
@@ -609,6 +634,10 @@ export class InventoryService {
    * - INV-TC87: Missing required fields (tested by DTO)
    * - INV-TC88: Permission denied (tested by guard)
    * - INV-TC89: No authentication (tested by guard)
+   * Edge cases:
+   * - Update both quantities to 0
+   * - Update only availableQty
+   * - Update with very large values (999,999,999)
    */
   async updateInventoryQuantity(
     productBatchId: string,
@@ -692,12 +721,16 @@ export class InventoryService {
 
   /**
    * Get Low Stock Alerts API
-   * Minimum test cases: 5
+   * Minimum test cases: 8
    * - INV-TC96: Get alerts with threshold (200)
    * - INV-TC97: Filter by location and product (200)
    * - INV-TC98: Invalid pagination (400)
    * - INV-TC99: Permission denied (tested by guard)
    * - INV-TC100: No authentication (tested by guard)
+   * Edge cases:
+   * - Get alerts with very high threshold (10,000)
+   * - Get alerts with negative page (should reject)
+   * - Get alerts without threshold (should use default 10)
    */
   async getLowStockAlerts(dto: AlertQueryDto) {
     // Validate pagination parameters

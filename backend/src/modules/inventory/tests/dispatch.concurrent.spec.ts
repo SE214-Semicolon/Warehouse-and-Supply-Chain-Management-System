@@ -1,4 +1,4 @@
-import { InventoryService } from './inventory.service';
+import { InventoryService } from '../services/inventory.service';
 import { InventoryRepository } from '../repositories/inventory.repository';
 import { BadRequestException } from '@nestjs/common';
 import { DispatchInventoryDto } from '../dto/dispatch-inventory.dto';

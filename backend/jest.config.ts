@@ -13,6 +13,8 @@ const config: Config = {
   collectCoverageFrom: ['src/**/*.(t|j)s'],
   coverageDirectory: 'coverage',
   testEnvironment: 'node',
+  testTimeout: 30000, // 30 seconds for e2e tests
+  setupFilesAfterEnv: ['<rootDir>/test/setup.ts'], // Load .env.test before tests
 };
 
 export default config;

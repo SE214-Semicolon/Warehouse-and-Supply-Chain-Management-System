@@ -29,8 +29,8 @@ export class ProductService {
   ) {}
 
   /**
-   * Create Product API
-   * Minimum test cases: 7
+   * Create Product API - Test Cases: 18
+   * Basic:
    * - PROD-TC01: Create with valid data (200)
    * - PROD-TC02: Duplicate SKU (409)
    * - PROD-TC03: Category not found (404)
@@ -38,6 +38,19 @@ export class ProductService {
    * - PROD-TC05: Missing required fields (tested by DTO)
    * - PROD-TC06: Permission denied (tested by guard)
    * - PROD-TC07: No authentication (tested by guard)
+
+   * Edge Cases:
+   * - PROD-TC08: Empty string SKU → 400
+   * - PROD-TC09: Whitespace only name → 400
+   * - PROD-TC10: SKU with special chars → 201
+   * - PROD-TC11: Very long SKU (>50 chars) → 400
+   * - PROD-TC12: Duplicate SKU case insensitive → 409
+   * - PROD-TC13: Create with null barcode → 201
+   * - PROD-TC14: Create with complex parameters → 201
+   * - PROD-TC15: Create with empty parameters → 201
+   * - PROD-TC16: Create without category → 201
+   * - PROD-TC17: Invalid category ID format → 404
+   * - PROD-TC18: SQL injection in SKU → sanitized
    */
   async create(createProductDto: CreateProductDto): Promise<ProductResponseDto> {
     this.logger.log(`Creating product with SKU: ${createProductDto.sku}`);
@@ -82,17 +95,35 @@ export class ProductService {
   }
 
   /**
-   * Get All Products API
-   * Minimum test cases: 9
-   * - PROD-TC08: Get all with default pagination (200)
-   * - PROD-TC09: Filter by search (200)
-   * - PROD-TC10: Filter by category (200)
-   * - PROD-TC11: Filter by barcode (200)
-   * - PROD-TC12: Pagination page 1 (200)
-   * - PROD-TC13: Pagination page 2 (200)
-   * - PROD-TC14: Sort by different fields (200)
-   * - PROD-TC15: Permission denied (tested by guard)
-   * - PROD-TC16: No authentication (tested by guard)
+   * Get All Products API - Test Cases: 25
+   * Basic:
+   * - PROD-TC19: Get all with default pagination (200)
+   * - PROD-TC20: Filter by search (200)
+   * - PROD-TC21: Filter by category (200)
+   * - PROD-TC22: Filter by barcode (200)
+   * - PROD-TC23: Pagination page 1 (200)
+   * - PROD-TC24: Pagination page 2 (200)
+   * - PROD-TC25: Sort by different fields (200)
+   * - PROD-TC26: Permission denied (tested by guard)
+   * - PROD-TC27: No authentication (tested by guard)
+
+   * Edge Cases:
+   * - PROD-TC28: Page = 0 → use default
+   * - PROD-TC29: Negative page → use default
+   * - PROD-TC30: Limit = 0 → use default
+   * - PROD-TC31: Very large limit (>1000) → cap
+   * - PROD-TC32: Search with empty string → all
+   * - PROD-TC33: Search with SQL injection → sanitized
+   * - PROD-TC34: Filter category + search → 200
+   * - PROD-TC35: Filter barcode + search → 200
+   * - PROD-TC36: All filters combined → 200
+   * - PROD-TC37: Invalid category ID → empty result
+   * - PROD-TC38: Sort by invalid field → default
+   * - PROD-TC39: Sort ascending → 200
+   * - PROD-TC40: Sort descending → 200
+   * - PROD-TC41: Case insensitive search → 200
+   * - PROD-TC42: Page beyond total → empty array
+   * - PROD-TC43: Special chars in search → handled
    */
   async findAll(query: QueryProductDto): Promise<ProductListResponseDto> {
     this.logger.log(`Finding all products with filters: ${JSON.stringify(query)}`);
@@ -280,17 +311,32 @@ export class ProductService {
   }
 
   /**
-   * Update Product API
-   * Minimum test cases: 9
-   * - PROD-TC38: Update with valid data (200)
-   * - PROD-TC39: Product not found (404)
-   * - PROD-TC40: Duplicate SKU (409)
-   * - PROD-TC41: Category not found (404)
-   * - PROD-TC42: Update with category (200)
-   * - PROD-TC43: Update SKU (200)
-   * - PROD-TC44: Invalid ID format (tested by DTO)
-   * - PROD-TC45: Permission denied (tested by guard)
-   * - PROD-TC46: No authentication (tested by guard)
+   * Update Product API - Test Cases: 22
+   * Basic:
+   * - PROD-TC44: Update with valid data (200)
+   * - PROD-TC45: Product not found (404)
+   * - PROD-TC46: Duplicate SKU (409)
+   * - PROD-TC47: Category not found (404)
+   * - PROD-TC48: Update with category (200)
+   * - PROD-TC49: Update SKU (200)
+   * - PROD-TC50: Invalid ID format (tested by DTO)
+   * - PROD-TC51: Permission denied (tested by guard)
+   * - PROD-TC52: No authentication (tested by guard)
+
+   * Edge Cases:
+   * - PROD-TC53: Update only name → 200
+   * - PROD-TC54: Update only SKU → 200
+   * - PROD-TC55: Update only unit → 200
+   * - PROD-TC56: Update only barcode → 200
+   * - PROD-TC57: Update only parameters → 200
+   * - PROD-TC58: Update all fields → 200
+   * - PROD-TC59: Update with empty object → 200
+   * - PROD-TC60: Update SKU to same value → 200
+   * - PROD-TC61: Duplicate SKU case insensitive → 409
+   * - PROD-TC62: Update barcode to null → 200
+   * - PROD-TC63: Update parameters to empty → 200
+   * - PROD-TC64: Update category to null → 200
+   * - PROD-TC65: Complex parameters update → 200
    */
   async update(id: string, updateProductDto: UpdateProductDto): Promise<ProductResponseDto> {
     this.logger.log(`Updating product: ${id}`);
@@ -346,15 +392,22 @@ export class ProductService {
   }
 
   /**
-   * Delete Product API
-   * Minimum test cases: 6
-   * - PROD-TC47: Delete product successfully (200)
-   * - PROD-TC48: Product not found (404)
-   * - PROD-TC49: Delete product with batches (400)
-   * - PROD-TC50: Invalid ID format (tested by DTO)
-   * - PROD-TC51: Permission denied (tested by guard)
-   * - PROD-TC52: No authentication (tested by guard)
-   * Total: 52 test cases for ProductService
+   * Delete Product API - Test Cases: 10
+   * Basic:
+   * - PROD-TC66: Delete product successfully (200)
+   * - PROD-TC67: Product not found (404)
+   * - PROD-TC68: Delete product with batches (400)
+   * - PROD-TC69: Invalid ID format (tested by DTO)
+   * - PROD-TC70: Permission denied (tested by guard)
+   * - PROD-TC71: No authentication (tested by guard)
+
+   * Edge Cases:
+   * - PROD-TC72: Delete with empty batches array → 200
+   * - PROD-TC73: Delete with zero quantity batches → 200
+   * - PROD-TC74: Concurrent delete → 404 second
+   * - PROD-TC75: Invalid ID format → 404
+
+   * Total: 75 test cases for ProductService
    */
   async remove(id: string): Promise<ProductDeleteResponseDto> {
     this.logger.log(`Deleting product: ${id}`);
