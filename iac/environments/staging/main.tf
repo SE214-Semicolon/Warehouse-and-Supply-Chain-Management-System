@@ -92,6 +92,11 @@ module "app_service" {
   # CORS Configuration
   cors_origin = var.cors_origin
 
+  # Docker Registry Credentials (for private ghcr.io)
+  docker_registry_url      = var.docker_registry_url
+  docker_registry_username = var.docker_registry_username
+  docker_registry_password = var.docker_registry_password
+
   # Monitoring
   application_insights_connection_string = module.monitoring.application_insights_connection_string
 

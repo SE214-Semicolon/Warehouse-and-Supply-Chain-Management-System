@@ -115,3 +115,23 @@ variable "grafana_admin_object_ids" {
   type        = list(string)
   default     = []
 }
+
+# Docker Registry Configuration (for private ghcr.io)
+variable "docker_registry_url" {
+  description = "Docker registry URL"
+  type        = string
+  default     = "https://ghcr.io"
+}
+
+variable "docker_registry_username" {
+  description = "Docker registry username (GitHub username for ghcr.io)"
+  type        = string
+  default     = ""
+}
+
+variable "docker_registry_password" {
+  description = "Docker registry password (GitHub PAT with read:packages scope)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

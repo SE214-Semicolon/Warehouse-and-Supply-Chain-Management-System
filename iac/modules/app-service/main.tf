@@ -62,6 +62,11 @@ resource "azurerm_linux_web_app" "backend" {
       DOCKER_ENABLE_CI   = "true"
       MIGRATE_ON_STARTUP = "true"
 
+      # Docker Registry Credentials (for private ghcr.io)
+      DOCKER_REGISTRY_SERVER_URL      = var.docker_registry_url
+      DOCKER_REGISTRY_SERVER_USERNAME = var.docker_registry_username
+      DOCKER_REGISTRY_SERVER_PASSWORD = var.docker_registry_password
+
       # Azure App Service Configuration
       APPLICATIONINSIGHTS_CONNECTION_STRING = var.application_insights_connection_string
       WEBSITES_ENABLE_APP_SERVICE_STORAGE   = "false"
@@ -136,6 +141,11 @@ resource "azurerm_linux_web_app" "frontend" {
 
       # Docker Configuration
       DOCKER_ENABLE_CI = "true"
+
+      # Docker Registry Credentials (for private ghcr.io)
+      DOCKER_REGISTRY_SERVER_URL      = var.docker_registry_url
+      DOCKER_REGISTRY_SERVER_USERNAME = var.docker_registry_username
+      DOCKER_REGISTRY_SERVER_PASSWORD = var.docker_registry_password
 
       APPLICATIONINSIGHTS_CONNECTION_STRING = var.application_insights_connection_string
       WEBSITES_ENABLE_APP_SERVICE_STORAGE   = "false"

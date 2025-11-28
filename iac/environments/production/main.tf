@@ -99,6 +99,11 @@ module "app_service" {
   jwt_access_secret  = var.jwt_access_secret
   jwt_refresh_secret = var.jwt_refresh_secret
 
+  # Docker Registry Credentials (for private ghcr.io)
+  docker_registry_url      = var.docker_registry_url
+  docker_registry_username = var.docker_registry_username
+  docker_registry_password = var.docker_registry_password
+
   # Monitoring
   application_insights_connection_string = module.monitoring.application_insights_connection_string
 

@@ -53,6 +53,10 @@ jobs:
       TF_VAR_enable_prometheus: ${{ secrets.ENABLE_PROMETHEUS_STAGING || 'false' }}
       TF_VAR_enable_grafana: ${{ secrets.ENABLE_GRAFANA_STAGING || 'false' }}
       TF_VAR_grafana_admin_object_ids: ${{ secrets.GRAFANA_ADMIN_OBJECT_IDS || '[]' }}
+      # Docker Registry Credentials for ghcr.io
+      TF_VAR_docker_registry_url: "https://ghcr.io"
+      TF_VAR_docker_registry_username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+      TF_VAR_docker_registry_password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
     defaults:
       run:
         working-directory: ./iac/environments/staging
@@ -122,6 +126,10 @@ jobs:
       TF_VAR_enable_prometheus: ${{ secrets.ENABLE_PROMETHEUS_PRODUCTION || 'true' }}
       TF_VAR_enable_grafana: ${{ secrets.ENABLE_GRAFANA_PRODUCTION || 'true' }}
       TF_VAR_grafana_admin_object_ids: ${{ secrets.GRAFANA_ADMIN_OBJECT_IDS || '[]' }}
+      # Docker Registry Credentials for ghcr.io
+      TF_VAR_docker_registry_url: "https://ghcr.io"
+      TF_VAR_docker_registry_username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+      TF_VAR_docker_registry_password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
     defaults:
       run:
         working-directory: ./iac/environments/production
