@@ -51,7 +51,6 @@ module "monitoring" {
   # Prometheus and Grafana Configuration
   enable_prometheus             = var.enable_prometheus
   enable_grafana                = var.enable_grafana
-  grafana_major_version         = "10"
   grafana_sku                   = "Standard"
   grafana_zone_redundancy       = false
   grafana_public_network_access = true

@@ -58,7 +58,6 @@ module "monitoring" {
   # Prometheus and Grafana Configuration for Production
   enable_prometheus                 = var.enable_prometheus
   enable_grafana                    = var.enable_grafana
-  grafana_major_version             = "10"
   grafana_sku                       = "Standard"
   grafana_zone_redundancy           = true # Enable zone redundancy for production
   grafana_deterministic_outbound_ip = true # Enable deterministic IP for production
