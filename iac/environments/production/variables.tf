@@ -96,3 +96,22 @@ variable "alert_email_addresses" {
     error_message = "At least one alert email address must be provided for production."
   }
 }
+
+# Prometheus and Grafana Configuration
+variable "enable_prometheus" {
+  description = "Enable Azure Monitor Workspace (Prometheus)"
+  type        = bool
+  default     = true # Enabled by default for production
+}
+
+variable "enable_grafana" {
+  description = "Enable Azure Managed Grafana"
+  type        = bool
+  default     = true # Enabled by default for production
+}
+
+variable "grafana_admin_object_ids" {
+  description = "List of Azure AD object IDs to grant Grafana Admin role"
+  type        = list(string)
+  default     = []
+}

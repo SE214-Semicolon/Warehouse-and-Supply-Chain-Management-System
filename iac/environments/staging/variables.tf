@@ -76,3 +76,22 @@ variable "alert_email_addresses" {
   type        = list(string)
   default     = []
 }
+
+# Prometheus and Grafana Configuration
+variable "enable_prometheus" {
+  description = "Enable Azure Monitor Workspace (Prometheus)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_grafana" {
+  description = "Enable Azure Managed Grafana"
+  type        = bool
+  default     = false
+}
+
+variable "grafana_admin_object_ids" {
+  description = "List of Azure AD object IDs to grant Grafana Admin role"
+  type        = list(string)
+  default     = []
+}
