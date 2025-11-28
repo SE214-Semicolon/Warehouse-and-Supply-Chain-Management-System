@@ -21,8 +21,10 @@ resource "azurerm_linux_web_app" "backend" {
     container_registry_use_managed_identity = false
 
     application_stack {
-      docker_image_name   = "ghcr.io/se214-semicolon/warehouse-and-supply-chain-management-system/backend:${var.environment == "production" ? "latest" : "develop"}"
-      docker_registry_url = "https://ghcr.io"
+      docker_image_name        = "ghcr.io/se214-semicolon/warehouse-and-supply-chain-management-system/backend:${var.environment == "production" ? "latest" : "develop"}"
+      docker_registry_url      = var.docker_registry_url
+      docker_registry_username = var.docker_registry_username
+      docker_registry_password = var.docker_registry_password
     }
 
     cors {
@@ -61,11 +63,6 @@ resource "azurerm_linux_web_app" "backend" {
       # Docker Configuration
       DOCKER_ENABLE_CI   = "true"
       MIGRATE_ON_STARTUP = "true"
-
-      # Docker Registry Credentials (for private ghcr.io)
-      DOCKER_REGISTRY_SERVER_URL      = var.docker_registry_url
-      DOCKER_REGISTRY_SERVER_USERNAME = var.docker_registry_username
-      DOCKER_REGISTRY_SERVER_PASSWORD = var.docker_registry_password
 
       # Azure App Service Configuration
       APPLICATIONINSIGHTS_CONNECTION_STRING = var.application_insights_connection_string
@@ -121,8 +118,10 @@ resource "azurerm_linux_web_app" "frontend" {
     container_registry_use_managed_identity = false
 
     application_stack {
-      docker_image_name   = "ghcr.io/se214-semicolon/warehouse-and-supply-chain-management-system/frontend:${var.environment == "production" ? "latest" : "develop"}"
-      docker_registry_url = "https://ghcr.io"
+      docker_image_name        = "ghcr.io/se214-semicolon/warehouse-and-supply-chain-management-system/frontend:${var.environment == "production" ? "latest" : "develop"}"
+      docker_registry_url      = var.docker_registry_url
+      docker_registry_username = var.docker_registry_username
+      docker_registry_password = var.docker_registry_password
     }
 
     # Enable VNet integration
@@ -141,11 +140,6 @@ resource "azurerm_linux_web_app" "frontend" {
 
       # Docker Configuration
       DOCKER_ENABLE_CI = "true"
-
-      # Docker Registry Credentials (for private ghcr.io)
-      DOCKER_REGISTRY_SERVER_URL      = var.docker_registry_url
-      DOCKER_REGISTRY_SERVER_USERNAME = var.docker_registry_username
-      DOCKER_REGISTRY_SERVER_PASSWORD = var.docker_registry_password
 
       APPLICATIONINSIGHTS_CONNECTION_STRING = var.application_insights_connection_string
       WEBSITES_ENABLE_APP_SERVICE_STORAGE   = "false"
