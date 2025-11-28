@@ -6,6 +6,9 @@ import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 
+// Prometheus metrics
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+
 // Core module imports
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
@@ -25,6 +28,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './common/controllers/health.controller';
 import { AuditContextInterceptor } from './common/interceptors/audit-context.interceptor';
+import { MetricsModule, MetricsInterceptor } from './common/metrics';
 
 @Module({
   imports: [
@@ -34,6 +38,17 @@ import { AuditContextInterceptor } from './common/interceptors/audit-context.int
       load: configuration,
       validationSchema,
     }),
+
+    // Prometheus metrics - exposes /metrics endpoint
+    PrometheusModule.register({
+      path: '/metrics',
+      defaultMetrics: {
+        enabled: true,
+      },
+    }),
+
+    // Custom metrics module
+    MetricsModule,
 
     // Core modules
     DatabaseModule,
@@ -55,6 +70,10 @@ import { AuditContextInterceptor } from './common/interceptors/audit-context.int
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditContextInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: MetricsInterceptor,
     },
   ],
 })

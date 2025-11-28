@@ -1,0 +1,270 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "gridPos": { "h": 2, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "content": "# 🏭 Warehouse Management System - Infrastructure Monitoring\n\nReal-time monitoring for HTTP requests, response times, and Node.js runtime metrics.",
+        "mode": "markdown"
+      },
+      "type": "text",
+      "title": ""
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 2 },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[5m])) * 60",
+          "legendFormat": "Requests/min"
+        }
+      ],
+      "title": "📊 Request Rate",
+      "type": "stat"
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 2 },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+          "legendFormat": "P95 Latency"
+        }
+      ],
+      "title": "⏱️ Response Time (P95)",
+      "type": "stat",
+      "fieldConfig": {
+        "defaults": { "unit": "ms", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 500 }, { "color": "red", "value": 1000 }] } }
+      }
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 2 },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m])) * 100",
+          "legendFormat": "Error Rate"
+        }
+      ],
+      "title": "❌ Error Rate",
+      "type": "stat",
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] } }
+      }
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 2 },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "sum(http_requests_total)",
+          "legendFormat": "Total Requests"
+        }
+      ],
+      "title": "📈 Total Requests",
+      "type": "stat"
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 6,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[5m])) by (path) * 60",
+          "legendFormat": "{{ path }}"
+        }
+      ],
+      "title": "📈 Request Rate by Endpoint",
+      "type": "timeseries",
+      "fieldConfig": { "defaults": { "unit": "reqpm" } }
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 7,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "P50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "P95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "P99"
+        }
+      ],
+      "title": "⏱️ Response Time Percentiles",
+      "type": "timeseries",
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 8,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[5m])) by (status_code) * 60",
+          "legendFormat": "{{ status_code }}"
+        }
+      ],
+      "title": "📊 Requests by Status Code",
+      "type": "timeseries",
+      "fieldConfig": { "defaults": { "unit": "reqpm" } }
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 9,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[5m])) by (path) * 60",
+          "legendFormat": "{{ path }}"
+        }
+      ],
+      "title": "❌ Errors by Endpoint",
+      "type": "timeseries",
+      "fieldConfig": { "defaults": { "unit": "reqpm" } }
+    },
+    {
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "id": 10,
+      "title": "🖥️ Node.js Runtime",
+      "type": "row"
+    },
+    {
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 23 },
+      "id": 11,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "expr": "rate(process_cpu_seconds_total[5m]) * 100",
+          "legendFormat": "CPU Usage"
+        }
+      ],
+      "title": "💻 CPU Usage",
+      "type": "timeseries",
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100 } }
+    },
+    {
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 23 },
+      "id": 12,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes / 1024 / 1024",
+          "legendFormat": "Resident Memory"
+        },
+        {
+          "expr": "nodejs_heap_size_used_bytes / 1024 / 1024",
+          "legendFormat": "Heap Used"
+        },
+        {
+          "expr": "nodejs_heap_size_total_bytes / 1024 / 1024",
+          "legendFormat": "Heap Total"
+        }
+      ],
+      "title": "🧠 Memory Usage",
+      "type": "timeseries",
+      "fieldConfig": { "defaults": { "unit": "decmbytes" } }
+    },
+    {
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 23 },
+      "id": 13,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "expr": "nodejs_eventloop_lag_seconds * 1000",
+          "legendFormat": "Event Loop Lag"
+        }
+      ],
+      "title": "🔄 Event Loop Lag",
+      "type": "timeseries",
+      "fieldConfig": { "defaults": { "unit": "ms", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 50 }, { "color": "red", "value": 100 }] } } }
+    },
+    {
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 29 },
+      "id": 14,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "expr": "nodejs_active_resources_total",
+          "legendFormat": "Active Resources"
+        }
+      ],
+      "title": "📌 Active Resources",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 29 },
+      "id": 15,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "expr": "process_open_fds",
+          "legendFormat": "Open FDs"
+        },
+        {
+          "expr": "process_max_fds",
+          "legendFormat": "Max FDs"
+        }
+      ],
+      "title": "📁 File Descriptors",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["infrastructure", "nodejs", "prometheus"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Warehouse Management - Infrastructure",
+  "uid": "warehouse-infra",
+  "version": 1,
+  "weekStart": ""
+}
