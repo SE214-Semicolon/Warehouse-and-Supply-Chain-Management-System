@@ -281,9 +281,16 @@ resource "azurerm_monitor_data_collection_rule" "prometheus" {
 # ==========================================
 # Azure Managed Grafana
 # ==========================================
+locals {
+  # Grafana name must be 2-23 characters, letters/numbers/dashes only
+  # Use fixed abbreviation for clarity: wh-scm-{env}-grafana
+  env_short    = var.environment == "production" ? "prod" : (var.environment == "staging" ? "stg" : substr(var.environment, 0, 3))
+  grafana_name = "wh-scm-${local.env_short}-grafana"
+}
+
 resource "azurerm_dashboard_grafana" "main" {
   count                             = var.enable_grafana ? 1 : 0
-  name                              = "${var.project_name}-${var.environment}-grafana"
+  name                              = local.grafana_name
   resource_group_name               = var.resource_group_name
   location                          = var.location
   grafana_major_version             = var.grafana_major_version
