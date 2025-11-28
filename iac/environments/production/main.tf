@@ -20,9 +20,9 @@ module "networking" {
   location            = var.location
   resource_group_name = azurerm_resource_group.main.name
 
-  vnet_address_space                = ["10.0.0.0/16"]
-  app_subnet_address_prefixes       = ["10.0.1.0/24"]
-  database_subnet_address_prefixes  = ["10.0.2.0/24"]
+  vnet_address_space               = ["10.0.0.0/16"]
+  app_subnet_address_prefixes      = ["10.0.1.0/24"]
+  database_subnet_address_prefixes = ["10.0.2.0/24"]
 
   tags = merge(var.tags, {
     Environment = var.environment
@@ -51,12 +51,23 @@ module "monitoring" {
   subscription_id     = data.azurerm_client_config.current.subscription_id
 
   # Monitoring Configuration for Production
-  log_analytics_retention_days = 90  # Longer retention for production
-  alert_email_addresses       = var.alert_email_addresses
-  create_dashboard           = true
+  log_analytics_retention_days = 90 # Longer retention for production
+  alert_email_addresses        = var.alert_email_addresses
+  create_dashboard             = true
+
+  # Prometheus and Grafana Configuration for Production
+  enable_prometheus                 = var.enable_prometheus
+  enable_grafana                    = var.enable_grafana
+  grafana_major_version             = "10"
+  grafana_sku                       = "Standard"
+  grafana_zone_redundancy           = true # Enable zone redundancy for production
+  grafana_deterministic_outbound_ip = true # Enable deterministic IP for production
+  grafana_public_network_access     = true
+  grafana_subscription_reader       = true
+  grafana_admin_object_ids          = var.grafana_admin_object_ids
 
   # Resource IDs will be set after app service creation
-  app_service_ids    = []
+  app_service_ids = []
   # No Azure databases - using external services
   # postgres_server_id = module.database.postgres_server_id
   # cosmos_db_id       = module.database.cosmos_db_id
@@ -78,12 +89,12 @@ module "app_service" {
   app_subnet_id = module.networking.app_subnet_id
 
   # App Service Configuration for Production (Budget-optimized)
-  app_service_plan_sku = "B1"   # Basic B1 for cost optimization
+  app_service_plan_sku  = "B1"  # Basic B1 for cost optimization
   app_service_always_on = false # Disable always on to save cost
 
   # External Database connections (Neon PostgreSQL + MongoDB Atlas)
-  postgres_connection_string         = var.external_postgres_url
-  cosmos_mongodb_connection_string   = var.external_mongodb_url
+  postgres_connection_string       = var.external_postgres_url
+  cosmos_mongodb_connection_string = var.external_mongodb_url
 
   # JWT Configuration
   jwt_access_secret  = var.jwt_access_secret
@@ -93,23 +104,23 @@ module "app_service" {
   application_insights_connection_string = module.monitoring.application_insights_connection_string
 
   # Production specific settings
-  enable_autoscaling      = true   # Enable autoscaling for production
-  enable_deployment_slots = true   # Enable deployment slots for blue-green deployment
+  enable_autoscaling      = true # Enable autoscaling for production
+  enable_deployment_slots = true # Enable deployment slots for blue-green deployment
 
   autoscale_capacity_default = 2
   autoscale_capacity_minimum = 1
   autoscale_capacity_maximum = 5
 
   backend_app_settings = {
-    WEBSITE_NODE_DEFAULT_VERSION = "20-lts"
+    WEBSITE_NODE_DEFAULT_VERSION   = "20-lts"
     SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
-    WEBSITE_RUN_FROM_PACKAGE = "1"
+    WEBSITE_RUN_FROM_PACKAGE       = "1"
   }
 
   frontend_app_settings = {
-    WEBSITE_NODE_DEFAULT_VERSION = "20-lts"
+    WEBSITE_NODE_DEFAULT_VERSION   = "20-lts"
     SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
-    WEBSITE_RUN_FROM_PACKAGE = "1"
+    WEBSITE_RUN_FROM_PACKAGE       = "1"
   }
 
   tags = merge(var.tags, {
@@ -146,7 +157,7 @@ resource "azurerm_cdn_endpoint" "frontend" {
   global_delivery_rule {
     cache_expiration_action {
       behavior = "Override"
-      duration = "1.00:00:00"  # 1 day
+      duration = "1.00:00:00" # 1 day
     }
 
     cache_key_query_string_action {
@@ -191,7 +202,7 @@ resource "azurerm_monitor_metric_alert" "app_service_cpu" {
     metric_name      = "CpuTime"
     aggregation      = "Total"
     operator         = "GreaterThan"
-    threshold        = 70  # Lower threshold for production
+    threshold        = 70 # Lower threshold for production
   }
 
   action {
@@ -218,7 +229,7 @@ resource "azurerm_monitor_metric_alert" "app_service_memory" {
     metric_name      = "MemoryPercentage"
     aggregation      = "Average"
     operator         = "GreaterThan"
-    threshold        = 70  # Lower threshold for production
+    threshold        = 70 # Lower threshold for production
   }
 
   action {

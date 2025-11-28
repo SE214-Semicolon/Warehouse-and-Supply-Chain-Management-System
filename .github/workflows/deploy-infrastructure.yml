@@ -50,6 +50,9 @@ jobs:
       TF_VAR_jwt_refresh_secret: ${{ secrets.JWT_REFRESH_SECRET_STAGING }}
       TF_VAR_cors_origin: ${{ secrets.CORS_ORIGIN_STAGING }}
       TF_VAR_alert_email_addresses: '["${{ secrets.ALERT_EMAIL_1 }}"]'
+      TF_VAR_enable_prometheus: ${{ secrets.ENABLE_PROMETHEUS_STAGING || 'false' }}
+      TF_VAR_enable_grafana: ${{ secrets.ENABLE_GRAFANA_STAGING || 'false' }}
+      TF_VAR_grafana_admin_object_ids: ${{ secrets.GRAFANA_ADMIN_OBJECT_IDS || '[]' }}
     defaults:
       run:
         working-directory: ./iac/environments/staging
@@ -107,6 +110,9 @@ jobs:
       TF_VAR_jwt_refresh_secret: ${{ secrets.JWT_REFRESH_SECRET_PRODUCTION }}
       TF_VAR_cors_origin: ${{ secrets.CORS_ORIGIN_PRODUCTION }}
       TF_VAR_alert_email_addresses: '["${{ secrets.ALERT_EMAIL_1 }}"]'
+      TF_VAR_enable_prometheus: ${{ secrets.ENABLE_PROMETHEUS_PRODUCTION || 'true' }}
+      TF_VAR_enable_grafana: ${{ secrets.ENABLE_GRAFANA_PRODUCTION || 'true' }}
+      TF_VAR_grafana_admin_object_ids: ${{ secrets.GRAFANA_ADMIN_OBJECT_IDS || '[]' }}
     defaults:
       run:
         working-directory: ./iac/environments/production

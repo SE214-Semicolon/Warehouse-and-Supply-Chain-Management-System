@@ -28,17 +28,17 @@ output "database_subnet_id" {
 # Database outputs (External databases for production)
 output "postgres_server_fqdn" {
   description = "External PostgreSQL server FQDN (Neon Database)"
-  value       = "external.neon.tech"  # Placeholder for external database
+  value       = "external.neon.tech" # Placeholder for external database
 }
 
 output "postgres_database_name" {
   description = "External PostgreSQL database name"
-  value       = "warehouse_mgmt_production"  # Extract from connection string if needed
+  value       = "warehouse_mgmt_production" # Extract from connection string if needed
 }
 
 output "cosmos_db_endpoint" {
   description = "External MongoDB endpoint (MongoDB Atlas)"
-  value       = "external.mongodb.net"  # Placeholder for external database
+  value       = "external.mongodb.net" # Placeholder for external database
   sensitive   = true
 }
 
@@ -117,4 +117,21 @@ output "cosmos_mongodb_connection_string" {
   description = "External MongoDB connection string"
   value       = var.external_mongodb_url
   sensitive   = true
+}
+
+# Prometheus outputs
+output "prometheus_workspace_id" {
+  description = "ID of the Azure Monitor Workspace (Prometheus)"
+  value       = module.monitoring.prometheus_workspace_id
+}
+
+output "prometheus_query_endpoint" {
+  description = "Query endpoint for Prometheus metrics"
+  value       = module.monitoring.prometheus_query_endpoint
+}
+
+# Grafana outputs
+output "grafana_endpoint" {
+  description = "Endpoint URL for Azure Managed Grafana"
+  value       = module.monitoring.grafana_endpoint
 }
