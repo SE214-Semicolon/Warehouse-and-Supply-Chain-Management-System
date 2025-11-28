@@ -1,0 +1,35 @@
+# Staging Environment Configuration - External Database Setup
+# Copy this file to terraform.tfvars and fill in your values
+
+# Basic Configuration
+project_name = "warehouse-mgmt"
+environment  = "staging"
+location     = "Southeast Asia"
+
+# External Database Configuration (using your team's databases)
+# Neon PostgreSQL Database
+external_postgres_url = "postgresql://neondb_owner:npg_Kirg6TH2xhtD@ep-shy-sun-a1gihjly-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+# MongoDB Atlas Database
+external_mongodb_url = "mongodb+srv://quocpro12334_db_user:N16obV0JlC2uuy5L@warehouse-mongodb-clust.szotwar.mongodb.net/?retryWrites=true&w=majority&appName=warehouse-mongodb-cluster"
+
+# JWT Configuration (same as your team's .env)
+jwt_access_secret  = "dev-access-secret"
+jwt_refresh_secret = "dev-refresh-secret"
+
+# CORS Configuration for development
+cors_origin = "http://localhost:5173"
+
+# Monitoring
+alert_email_addresses = [
+  "your-email@example.com"
+]
+
+# Tags
+tags = {
+  Project     = "Warehouse-Management-System"
+  Environment = "staging"
+  ManagedBy   = "Terraform"
+  Owner       = "Development Team"
+  CostCenter  = "Development"
+}

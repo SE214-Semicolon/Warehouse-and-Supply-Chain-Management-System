@@ -10,14 +10,14 @@ datasource db {
 // Auth: refresh tokens table references existing User model below
 
 model RefreshToken {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String   @db.Uuid
-  user       User     @relation(fields: [userId], references: [id])
-  userEmail  String
-  userRole   UserRole
-  createdAt  DateTime @default(now())
-  expiresAt  DateTime
-  revokedAt  DateTime?
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id])
+  userEmail String
+  userRole  UserRole
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
 }
 
 /**
@@ -48,6 +48,7 @@ enum StockMovementType {
   transfer_out
   returned
   reservation
+  release
   consumption
 }
 
@@ -125,12 +126,19 @@ model Product {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  category      ProductCategory?    @relation(fields: [categoryId], references: [id])
-  batches       ProductBatch[]
-  stockMoves    StockMovement[]
-  poItems       PurchaseOrderItem[]
-  soItems       SalesOrderItem[]
-  shipmentItems ShipmentItem[]
+  // Fields for alerts and demand planning
+  minStockLevel    Int? // Minimum stock level before an alert is triggered
+  reorderPoint     Int? // Stock level at which a new order should be placed
+  leadTimeDays     Int? // Expected number of days for a purchase order to arrive
+  safetyStockLevel Int? // Extra quantity of an item held in inventory
+
+  category        ProductCategory?    @relation(fields: [categoryId], references: [id])
+  batches         ProductBatch[]
+  stockMoves      StockMovement[]
+  poItems         PurchaseOrderItem[]
+  soItems         SalesOrderItem[]
+  shipmentItems   ShipmentItem[]
+  demandForecasts DemandForecast[]
 
   @@index([sku], name: "idx_product_sku")
 }
@@ -159,12 +167,13 @@ model ProductBatch {
 }
 
 model Inventory {
-  id             String   @id @default(uuid()) @db.Uuid
-  productBatchId String   @db.Uuid
-  locationId     String   @db.Uuid
-  availableQty   Int      @default(0)
-  reservedQty    Int      @default(0)
-  updatedAt      DateTime @updatedAt
+  id             String    @id @default(uuid()) @db.Uuid
+  productBatchId String    @db.Uuid
+  locationId     String    @db.Uuid
+  availableQty   Int       @default(0)
+  reservedQty    Int       @default(0)
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
 
   productBatch ProductBatch @relation(fields: [productBatchId], references: [id], onDelete: Cascade)
   location     Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
@@ -172,6 +181,7 @@ model Inventory {
   @@unique([productBatchId, locationId])
   @@index([locationId], name: "idx_inventory_location")
   @@index([productBatchId], name: "idx_inventory_product")
+  @@index([deletedAt], name: "idx_inventory_deleted_at")
 }
 
 model StockMovement {
@@ -235,6 +245,8 @@ model PurchaseOrder {
   items     PurchaseOrderItem[]
 
   @@index([status], name: "idx_po_status")
+  @@index([supplierId], name: "idx_po_supplier")
+  @@index([placedAt], name: "idx_po_placed_at")
 }
 
 model PurchaseOrderItem {
@@ -326,6 +338,20 @@ model ShipmentTrackingEvent {
   shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
 }
 
+model DemandForecast {
+  id                 String   @id @default(cuid())
+  productId          String   @db.Uuid
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  forecastDate       DateTime // The date for which the forecast is made
+  forecastedQuantity Int // The forecasted sales quantity
+  algorithmUsed      String   @default("SIMPLE_MOVING_AVERAGE") // The algorithm used for this forecast
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([productId, forecastDate])
+  @@index([productId], name: "idx_demandforecast_product")
+}
+
 model User {
   id           String   @id @default(uuid()) @db.Uuid
   username     String   @unique @db.VarChar(150)
@@ -343,23 +369,5 @@ model User {
   refreshTokens  RefreshToken[]
 }
 
-model AuditLog {
-  id          String   @id @default(uuid()) @db.Uuid
-  entityType  String?
-  entityId    String?
-  action      String?
-  payload     Json?
-  performedBy String?  @db.Uuid
-  performedAt DateTime @default(now())
-}
-
-model Alert {
-  id          String    @id @default(uuid()) @db.Uuid
-  type        String?
-  referenceId String?   @db.Uuid
-  payload     Json?
-  severity    String?
-  resolved    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  resolvedAt  DateTime?
-}
+// AuditLog moved to MongoDB collection 'audit_logs' (see MongoDBService)
+// Alert moved to MongoDB collection 'alerts' (see MongoDBService)

@@ -1,17 +1,7 @@
-import {
-  Warehouse,
-  LocationOn,
-  Inventory as InventoryIcon,
-  LocalShipping,
-  Moving,
-} from "@mui/icons-material";
-import BreakfastDiningIcon from '@mui/icons-material/BreakfastDining';
-
 export const menuItems = [
   {
     id: "warehouses",
     label: "Warehouses",
-    icon: <Warehouse />,
     columns: [
       { id: "stt", label: "STT" },
       { id: "code", label: "Mã kho" },
@@ -22,9 +12,16 @@ export const menuItems = [
     ],
   },
   {
+    id: "categories",
+    label: "Categories",
+    columns: [
+      { id: "stt", label: "STT" },
+      { id: "name", label: "Tên loại" }
+    ],
+  },
+  {
     id: "locations",
     label: "Locations",
-    icon: <LocationOn />,
     columns: [
       { id: "stt", label: "STT" },
       { id: "code", label: "Mã location" },
@@ -38,7 +35,6 @@ export const menuItems = [
   {
     id: "products",
     label: "Products",
-    icon: <BreakfastDiningIcon />,
     columns: [
       { id: "stt", label: "STT" },
       { id: "sku", label: "SKU" },
@@ -52,7 +48,6 @@ export const menuItems = [
   {
     id: "batches",
     label: "Batches",
-    icon: <LocalShipping />,
     columns: [
       { id: "stt", label: "STT" },
       { id: "batchNo", label: "Batch No" },
@@ -66,7 +61,6 @@ export const menuItems = [
   {
     id: "inventory",
     label: "Inventory",
-    icon: <InventoryIcon />,
     columns: [
       { id: "stt", label: "STT" },
       { id: "sku", label: "SKU" },
@@ -82,7 +76,6 @@ export const menuItems = [
   {
     id: "movements",
     label: "Stock Movements",
-    icon: <Moving />,
     columns: [
       { id: "stt", label: "STT" },
       { id: "date", label: "Ngày giờ" },

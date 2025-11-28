@@ -1,0 +1,34 @@
+# Production Environment Configuration - Azure Databases
+# Copy this file to terraform.tfvars and fill in your values
+
+project_name = "warehouse-mgmt"
+environment  = "production"
+location     = "Southeast Asia"
+
+# Azure Database Configuration (Budget-optimized)
+postgres_admin_username = "warehouse_admin"
+# postgres_admin_password = "YourSecureProductionPassword123!"  # Set via GitHub Secrets
+
+# JWT Configuration (Strong secrets for production)
+# jwt_access_secret  = "generate-with-openssl-rand-base64-32"    # Set via GitHub Secrets
+# jwt_refresh_secret = "generate-with-openssl-rand-base64-32"    # Set via GitHub Secrets
+
+# CORS Origin (will be auto-generated based on Azure frontend URL)
+cors_origin = "https://warehouse-mgmt-production-frontend.azurewebsites.net"
+
+# Monitoring Configuration
+alert_email_addresses = [
+  "your-email@example.com"
+]
+
+tags = {
+  Project        = "Warehouse-Management-System"
+  Environment    = "production"
+  ManagedBy      = "Terraform"
+  CostCenter     = "Production"
+  Owner          = "DevOps Team"
+  BusinessUnit   = "Operations"
+  Compliance     = "Required"
+  DataClass      = "Confidential"
+  BackupRequired = "Yes"
+}

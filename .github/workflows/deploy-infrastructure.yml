@@ -1,0 +1,152 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'iac/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'iac/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      action:
+        description: 'Terraform action'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+        - plan
+        - apply
+        - destroy
+
+env:
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+jobs:
+  terraform-staging:
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      TF_VAR_external_postgres_url: ${{ secrets.EXTERNAL_POSTGRES_URL }}
+      TF_VAR_external_mongodb_url: ${{ secrets.EXTERNAL_MONGODB_URL }}
+      TF_VAR_jwt_access_secret: ${{ secrets.JWT_ACCESS_SECRET_STAGING }}
+      TF_VAR_jwt_refresh_secret: ${{ secrets.JWT_REFRESH_SECRET_STAGING }}
+      TF_VAR_cors_origin: ${{ secrets.CORS_ORIGIN_STAGING }}
+      TF_VAR_alert_email_addresses: '["${{ secrets.ALERT_EMAIL_1 }}"]'
+    defaults:
+      run:
+        working-directory: ./iac/environments/staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ~1.5
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Validate
+      run: terraform validate
+
+    - name: Terraform Plan
+      run: terraform plan -out=tfplan
+      
+    - name: Upload Plan Artifact
+      if: github.event_name == 'pull_request'
+      uses: actions/upload-artifact@v4
+      with:
+        name: staging-tfplan
+        path: ./iac/environments/staging/tfplan
+
+    - name: Terraform Apply
+      if: |
+        (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+      run: terraform apply -auto-approve tfplan
+
+    - name: Terraform Destroy
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+      run: terraform destroy -auto-approve
+
+  terraform-production:
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      TF_VAR_external_postgres_url: ${{ secrets.EXTERNAL_POSTGRES_URL_PROD }}
+      TF_VAR_external_mongodb_url: ${{ secrets.EXTERNAL_MONGODB_URL_PROD }}
+      TF_VAR_jwt_access_secret: ${{ secrets.JWT_ACCESS_SECRET_PRODUCTION }}
+      TF_VAR_jwt_refresh_secret: ${{ secrets.JWT_REFRESH_SECRET_PRODUCTION }}
+      TF_VAR_cors_origin: ${{ secrets.CORS_ORIGIN_PRODUCTION }}
+      TF_VAR_alert_email_addresses: '["${{ secrets.ALERT_EMAIL_1 }}"]'
+    defaults:
+      run:
+        working-directory: ./iac/environments/production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with: 
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ~1.5
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Validate
+      run: terraform validate
+
+    - name: Terraform Plan
+      run: terraform plan -out=tfplan
+      
+    - name: Upload Plan Artifact
+      if: github.event_name == 'pull_request'
+      uses: actions/upload-artifact@v4
+      with:
+        name: production-tfplan
+        path: ./iac/environments/production/tfplan
+
+    - name: Terraform Apply
+      if: |
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+      run: terraform apply -auto-approve tfplan
+
+    - name: Terraform Destroy
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+      run: terraform destroy -auto-approve

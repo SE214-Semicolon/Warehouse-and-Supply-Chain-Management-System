@@ -1,0 +1,240 @@
+import ProductCategories from "@/services/category.service";
+
+const buildExtraInfo = (row) =>
+  `Người tạo: ${row.createdBy || "Không rõ"}
+  Ngày tạo: ${row.createdAt || "N/A"}
+  Ghi chú: ${row.note || "Không có ghi chú"}
+`;
+
+export const warehousesData = [
+  {
+    id: 1,
+    code: "WH001",
+    name: "Kho Trung Tâm",
+    address: "123 Nguyễn Văn Linh, Q7",
+    quantity: 150,
+    createdAt: "2024-01-15",
+  },
+  {
+    id: 2,
+    code: "WH002",
+    name: "Kho Miền Bắc",
+    address: "456 Láng Hạ, Hà Nội",
+    quantity: 200,
+    createdAt: "2024-02-20",
+  },
+  {
+    id: 3,
+    code: "WH003",
+    name: "Kho Miền Trung",
+    address: "789 Lê Duẩn, Đà Nẵng",
+    quantity: 80,
+    createdAt: "2024-03-10",
+  },
+].map((item) => ({ ...item, extraInfo: buildExtraInfo(item) }));
+
+export const locationsData = [
+  {
+    id: 1,
+    code: "A-01-01",
+    name: "Kệ A - Tầng 1 - Ô 1",
+    type: "Kệ",
+    capacity: 1000,
+    warehouse: "Kho Trung Tâm",
+    createdAt: "2024-01-16",
+  },
+  {
+    id: 2,
+    code: "B-02-03",
+    name: "Kệ B - Tầng 2 - Ô 3",
+    type: "Kệ",
+    capacity: 800,
+    warehouse: "Kho Trung Tâm",
+    createdAt: "2024-01-17",
+  },
+  {
+    id: 3,
+    code: "C-01-05",
+    name: "Kệ C - Tầng 1 - Ô 5",
+    type: "Pallet",
+    capacity: 1500,
+    warehouse: "Kho Miền Bắc",
+    createdAt: "2024-02-21",
+  },
+];
+
+export const productsData = [
+  {
+    id: 1,
+    sku: "PROD001",
+    name: "Sản phẩm A",
+    category: "Điện tử",
+    unit: "Cái",
+    barcode: "1234567890",
+    createdAt: "2024-01-10",
+  },
+  {
+    id: 2,
+    sku: "PROD002",
+    name: "Sản phẩm B",
+    category: "Thực phẩm",
+    unit: "Kg",
+    barcode: "0987654321",
+    createdAt: "2024-01-12",
+  },
+  {
+    id: 3,
+    sku: "PROD003",
+    name: "Sản phẩm C",
+    category: "Dệt may",
+    unit: "Bộ",
+    barcode: "1122334455",
+    createdAt: "2024-01-15",
+  },
+];
+
+export const batchesData = [
+  {
+    id: 1,
+    batchNo: "BATCH001",
+    product: "Sản phẩm A",
+    quantity: 100,
+    mfgDate: "2024-01-05",
+    expDate: "2025-01-05",
+    createdAt: "2024-01-10",
+  },
+  {
+    id: 2,
+    batchNo: "BATCH002",
+    product: "Sản phẩm B",
+    quantity: 200,
+    mfgDate: "2024-02-01",
+    expDate: "2024-08-01",
+    createdAt: "2024-02-05",
+  },
+  {
+    id: 3,
+    batchNo: "BATCH003",
+    product: "Sản phẩm C",
+    quantity: 150,
+    mfgDate: "2024-03-01",
+    expDate: "2026-03-01",
+    createdAt: "2024-03-05",
+  },
+];
+
+export const inventoryData = [
+  {
+    id: 1,
+    sku: "PROD001",
+    product: "Sản phẩm A",
+    batch: "BATCH001",
+    warehouse: "Kho Trung Tâm",
+    location: "A-01-01",
+    available: 80,
+    reserved: 20,
+    createdAt: "2024-01-16",
+  },
+  {
+    id: 2,
+    sku: "PROD002",
+    product: "Sản phẩm B",
+    batch: "BATCH002",
+    warehouse: "Kho Miền Bắc",
+    location: "C-01-05",
+    available: 180,
+    reserved: 20,
+    createdAt: "2024-02-21",
+  },
+  {
+    id: 3,
+    sku: "PROD003",
+    product: "Sản phẩm C",
+    batch: "BATCH003",
+    warehouse: "Kho Trung Tâm",
+    location: "B-02-03",
+    available: 140,
+    reserved: 10,
+    createdAt: "2024-03-10",
+  },
+];
+
+export const movementsData = [
+  {
+    id: 1,
+    date: "2024-03-20",
+    type: "Nhập kho",
+    product: "Sản phẩm A",
+    batch: "BATCH001",
+    from: "Nhà cung cấp",
+    to: "A-01-01",
+    qty: 50,
+    reference: "PO-001",
+  },
+  {
+    id: 2,
+    date: "2024-03-21",
+    type: "Chuyển kho",
+    product: "Sản phẩm B",
+    batch: "BATCH002",
+    from: "A-01-01",
+    to: "C-01-05",
+    qty: 30,
+    reference: "TRANS-001",
+  },
+  {
+    id: 3,
+    date: "2024-03-22",
+    type: "Xuất kho",
+    product: "Sản phẩm C",
+    batch: "BATCH003",
+    from: "B-02-03",
+    to: "Khách hàng",
+    qty: 20,
+    reference: "SO-001",
+  },
+];
+
+// Call api
+
+export const fetchCategoriesData = async () => {
+  try {
+    const res = await ProductCategories.getAllCategories();
+    console.log("Danh mục từ API:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi fetch categories:", error);
+    return [];
+  }
+};
+
+// Data provider
+
+export const dataProvider = async (menu) => {
+  switch (menu) {
+    case "warehouses":
+      return warehousesData;
+
+    case "categories":
+      return await fetchCategoriesData();
+
+    case "locations":
+      return locationsData;
+
+    case "products":
+      return productsData;
+
+    case "batches":
+      return batchesData;
+
+    case "inventory":
+      return inventoryData;
+
+    case "movements":
+      return movementsData;
+
+    default:
+      console.warn("Chưa có dữ liệu cho menu:", menu);
+      return [];
+  }
+};

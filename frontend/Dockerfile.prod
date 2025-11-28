@@ -1,0 +1,57 @@
+## Frontend production multi-stage build
+
+# ---- build stage ----
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# small runtime deps sometimes required by native packages
+RUN apk add --no-cache libc6-compat
+
+# copy package files first to leverage Docker layer cache
+COPY package*.json ./
+
+# install all deps (including devDependencies needed for build)
+# use npm install when package-lock.json is missing
+RUN npm install --no-audit --no-fund
+
+# copy source and build
+COPY . .
+
+ARG VITE_BASE_URL
+ENV VITE_BASE_URL=$VITE_BASE_URL
+
+ENV NODE_ENV=production
+RUN npm run build
+
+# ---- production stage ----
+FROM nginx:alpine AS runner
+
+# add curl for healthcheck (tiny) and remove other unnecessary packages
+RUN apk add --no-cache curl
+
+# copy built static files
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# copy custom nginx configuration if present
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# create a non-root user and make nginx serve as that user
+RUN adduser -D -s /bin/sh nginxuser \
+  && chown -R nginxuser:nginxuser /usr/share/nginx/html \
+  && chown -R nginxuser:nginxuser /var/cache/nginx \
+  && chown -R nginxuser:nginxuser /var/log/nginx \
+  && chown -R nginxuser:nginxuser /etc/nginx/conf.d \
+  && touch /var/run/nginx.pid \
+  && chown -R nginxuser:nginxuser /var/run/nginx.pid
+
+USER nginxuser
+
+# expose port (keep 8080 if your nginx.conf listens on 8080)
+EXPOSE 8080
+
+# lightweight healthcheck using curl
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8080/ || exit 1
+
+# start nginx in foreground
+CMD ["nginx", "-g", "daemon off;"]

@@ -7,6 +7,8 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "clean": "rm -rf dist",
+    "clean:dist": "rm -rf dist",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -18,10 +20,15 @@
     "test:watch": "jest --watch --config jest.config.ts",
     "test:cov": "jest --coverage --config jest.config.ts",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand --config jest.config.ts",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "ci": "npm run format:check && npm run lint && npm run build && npm test",
+    "tokens": "node scripts/generate-tokens.js",
+    "rbac:test": "powershell -ExecutionPolicy Bypass -File ./scripts/rbac-tests.ps1",
+    "rbac:full": "powershell -ExecutionPolicy Bypass -File ./scripts/rbac-comprehensive.ps1",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "db:migrate": "./scripts/run-migrations.sh",
+    "db:migrate:prod": "NODE_ENV=production ./scripts/run-migrations.sh"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -58,6 +65,7 @@
     "@types/node": "^22.10.7",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^6.0.2",
+    "dotenv": "^17.2.3",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
@@ -68,6 +76,7 @@
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
+    "tsx": "^4.19.2",
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",

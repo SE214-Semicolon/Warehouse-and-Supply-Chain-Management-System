@@ -1,15 +1,36 @@
 FROM node:20-alpine
 
+# Thiết lập biến môi trường (Giữ nguyên)
+ENV PRISMA_CLIENT_ENGINE_TYPE="binary"
+ENV PRISMA_FORCE_NAPI="false"
+
 WORKDIR /app
 
 RUN npm install -g @nestjs/cli prisma
 
 COPY package*.json ./
+# --------------------
+# THAY ĐỔI QUAN TRỌNG:
+# SAO CHÉP THƯ MỤC PRISMA VÀO TRƯỚC!
+COPY prisma ./prisma/
+# --------------------
 
-RUN npm install
+# Prepare permissions and install as non-root so node_modules is writable
+RUN mkdir -p /app/node_modules && chown -R node:node /app
+USER node
 
+# Bây giờ, npx prisma generate sẽ tìm thấy schema.prisma trong /app/prisma/
+# (Bạn có thể bỏ || true nếu muốn lỗi kết nối DB dừng build)
+RUN npm install && npx prisma generate 
+
+USER root
+
+# SAO CHÉP PHẦN CÒN LẠI CỦA DỰ ÁN
 COPY . .
 
 EXPOSE 3000
+
+# Run as non-root to avoid root-owned dist on host
+USER node
 
 CMD ["npm", "run", "start:dev"]

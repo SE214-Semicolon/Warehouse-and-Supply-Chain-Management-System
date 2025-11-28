@@ -1,24 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import DataTable from '@/components/DataTable';
 import SearchBar from '@/components/SearchBar';
 import ActionButtons from '@/components/ActionButton';
-import SupplierToolbar from './components/SupplierToolbar';
+import Toolbar from '../../components/Toolbar';
 import FormDialog from './components/FormDialog';
-import ViewDialog from './components/ViewDialog';
 import { menuItems } from './components/MenuConfig';
+import SupplierService from '../../services/supplier.service';
+import mockData from './mockData';
+import { useNavigate } from 'react-router-dom';
 
 export default function Supplier() {
-  const [selectedMenu, setSelectedMenu] = useState('supplier');
-  const [openDialog, setOpenDialog] = useState(false);
+  const selectedMenu = 'supplier';
+  const [searchTerm, setSearchTerm] = useState('');
+
   const [dialogMode, setDialogMode] = useState(null);
   const [selectedRow, setSelectedRow] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  // const [formData, setFormData] = useState(selectedRow || {});
-
-  // const handleChange = (fieldId, value) => {
-  //   setFormData({ ...formData, [fieldId]: value });
-  // };
+  const [openDialog, setOpenDialog] = useState(false);
 
   const handleAdd = () => {
     setDialogMode('add');
@@ -32,10 +30,10 @@ export default function Supplier() {
     setOpenDialog(true);
   };
 
+  const navigate = useNavigate();
+
   const handleView = (row) => {
-    setDialogMode('view');
-    setSelectedRow(row);
-    setOpenDialog(true);
+    navigate('/supplier/detail', { state: { id: row.id, row } });
   };
 
   const handleDelete = (row) => {
@@ -52,35 +50,43 @@ export default function Supplier() {
     onDelete: handleDelete,
   };
 
-  const data = [
-    {
-      id: 1,
-      code: 'SUP001',
-      name: 'Công ty TNHH ABC',
-      phone: '0123456789',
-      email: 'abc.company@gmail.com',
-      contactPerson: 'Nguyễn Văn A',
-      address: '123 Đường Lê Lợi, Quận 1, TP.HCM',
-    },
-    {
-      id: 2,
-      code: 'SUP002',
-      name: 'Công ty TNHH XYZ',
-      phone: '0987654321',
-      email: 'xyz.company@gmail.com',
-      contactPerson: 'Trần Thị B',
-      address: '456 Đường Trần Hưng Đạo, Quận 5, TP.HCM',
-    },
-  ];
+  const [suppliers, setSuppliers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const dataWithNo = data.map((item, index) => ({ ...item, no: index + 1 }));
+  useEffect(() => {
+    setLoading(true);
+    SupplierService.getSuppliers()
+      .then((res) => {
+        setSuppliers(res.data || mockData);
+      })
+      .catch(() => {
+        setSuppliers(mockData);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <Box textAlign="center" py={5}>
+        <Typography>Loading...</Typography>
+      </Box>
+    );
+  }
+
+  if (suppliers.length === 0) {
+    return (
+      <Box textAlign="center" py={5}>
+        <Typography color="text.secondary">Không có supplier nào.</Typography>
+      </Box>
+    );
+  }
 
   const dataTables = {
     supplier: (
       <DataTable
         title="Supplier"
         columns={menuItems[0].columns}
-        data={dataWithNo}
+        data={suppliers}
         {...commonProps}
       />
     ),
@@ -88,11 +94,7 @@ export default function Supplier() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <SupplierToolbar
-        menuItems={menuItems}
-        selectedMenu={selectedMenu}
-        onMenuChange={setSelectedMenu}
-      />
+      <Toolbar menuItems={menuItems} selectedMenu={selectedMenu} />
 
       <Box
         sx={{
@@ -114,7 +116,7 @@ export default function Supplier() {
 
       <Box>
         {dataTables[selectedMenu] || (
-          <Typography>Module khác đang phát triển...</Typography>
+          <Typography>Module đang phát triển...</Typography>
         )}
       </Box>
 
@@ -124,15 +126,6 @@ export default function Supplier() {
           onClose={() => setOpenDialog(false)}
           mode={dialogMode}
           selectedRow={dialogMode === 'edit' ? selectedRow : null}
-        />
-      )}
-
-      {dialogMode === 'view' && selectedRow && (
-        <ViewDialog
-          open={openDialog}
-          onClose={() => setOpenDialog(false)}
-          selectedMenu={selectedMenu}
-          selectedRow={selectedRow}
         />
       )}
     </Box>
