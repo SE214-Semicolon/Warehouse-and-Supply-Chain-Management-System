@@ -101,9 +101,9 @@ variable "enable_grafana" {
 }
 
 variable "grafana_major_version" {
-  description = "Major version of Grafana (9 or 10)"
+  description = "Major version of Grafana (11)"
   type        = string
-  default     = "10"
+  default     = "11"
 }
 
 variable "grafana_sku" {

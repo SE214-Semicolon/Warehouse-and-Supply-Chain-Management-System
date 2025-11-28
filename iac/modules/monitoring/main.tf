@@ -1,3 +1,14 @@
+# ==========================================
+# Resource Provider Registration
+# ==========================================
+resource "azurerm_resource_provider_registration" "monitor" {
+  name = "Microsoft.Monitor"
+}
+
+resource "azurerm_resource_provider_registration" "dashboard" {
+  name = "Microsoft.Dashboard"
+}
+
 # Log Analytics Workspace
 resource "azurerm_log_analytics_workspace" "main" {
   name                = "${var.project_name}-${var.environment}-logs"
@@ -234,6 +245,8 @@ resource "azurerm_monitor_workspace" "prometheus" {
   location            = var.location
 
   tags = var.tags
+
+  depends_on = [azurerm_resource_provider_registration.monitor]
 }
 
 # Data Collection Endpoint for Prometheus
@@ -307,6 +320,8 @@ resource "azurerm_dashboard_grafana" "main" {
   azure_monitor_workspace_integrations {
     resource_id = var.enable_prometheus ? azurerm_monitor_workspace.prometheus[0].id : null
   }
+
+  depends_on = [azurerm_resource_provider_registration.dashboard]
 
   tags = var.tags
 }
