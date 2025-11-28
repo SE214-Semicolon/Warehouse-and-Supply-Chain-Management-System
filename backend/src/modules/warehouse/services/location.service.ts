@@ -32,7 +32,7 @@ export class LocationService {
    * LOC-TC04: Invalid data → 400 (tested by DTO)
    * LOC-TC05: No permission → 403 (tested by guard)
    * LOC-TC06: No auth → 401 (tested by guard)
-   * 
+   *
    * Edge Cases:
    * LOC-TC07: Empty string code → 400
    * LOC-TC08: Whitespace only name → 400
@@ -100,7 +100,7 @@ export class LocationService {
    * LOC-TC23: Pagination page 1 → 200
    * LOC-TC24: Pagination page 2 → 200
    * LOC-TC25: No auth → 401 (tested by guard)
-   * 
+   *
    * Edge Cases:
    * LOC-TC26: Page = 0 → default to 1 or 400
    * LOC-TC27: Negative page → default to 1 or 400
@@ -167,7 +167,7 @@ export class LocationService {
    * LOC-TC45: Not found → 404
    * LOC-TC46: Cache hit on repeated call → 200
    * LOC-TC47: No auth → 401 (tested by guard)
-   * 
+   *
    * Edge Cases:
    * LOC-TC48: Invalid UUID format → 400 or 404
    * LOC-TC49: Empty string ID → 400
@@ -206,7 +206,7 @@ export class LocationService {
    * LOC-TC53: Not found → 404
    * LOC-TC54: Cache hit on repeated call → 200
    * LOC-TC55: No auth → 401 (tested by guard)
-   * 
+   *
    * Edge Cases:
    * LOC-TC56: Invalid warehouse ID → 404
    * LOC-TC57: Case insensitive code → 200
@@ -248,7 +248,7 @@ export class LocationService {
    * LOC-TC63: Warehouse not found → 404
    * LOC-TC64: Cache hit on repeated call → 200
    * LOC-TC65: No auth → 401 (tested by guard)
-   * 
+   *
    * Edge Cases:
    * LOC-TC66: Warehouse with no locations → empty array
    * LOC-TC67: Warehouse with many locations → all returned
@@ -292,7 +292,7 @@ export class LocationService {
    * LOC-TC72: Warehouse not found → 404
    * LOC-TC73: Empty result → 200 with empty array
    * LOC-TC74: No auth → 401 (tested by guard)
-   * 
+   *
    * Edge Cases:
    * LOC-TC75: minCapacity = 0 → return all available
    * LOC-TC76: Negative minCapacity → ignore or 400
@@ -339,7 +339,7 @@ export class LocationService {
    * LOC-TC84: Not found → 404
    * LOC-TC85: No permission → 403 (tested by guard)
    * LOC-TC86: No auth → 401 (tested by guard)
-   * 
+   *
    * Edge Cases:
    * LOC-TC87: Update only name → 200
    * LOC-TC88: Update only code → 200
@@ -408,7 +408,7 @@ export class LocationService {
    * LOC-TC106: Has inventory with stock → 400
    * LOC-TC107: No permission → 403 (tested by guard)
    * LOC-TC108: No auth → 401 (tested by guard)
-   * 
+   *
    * Edge Cases:
    * LOC-TC109: Has inventory with zero qty → 200
    * LOC-TC110: Has reserved qty only → 400
@@ -464,7 +464,7 @@ export class LocationService {
    * LOC-TC114: Get stats for valid location → 200
    * LOC-TC115: Not found → 404
    * LOC-TC116: No auth → 401 (tested by guard)
-   * 
+   *
    * Edge Cases:
    * LOC-TC117: Location with no inventory → stats with zeros
    * LOC-TC118: Location with full capacity → 100% utilization

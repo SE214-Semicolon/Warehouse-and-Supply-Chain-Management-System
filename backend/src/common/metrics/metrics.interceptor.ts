@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-} from '@nestjs/common';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
@@ -32,20 +27,14 @@ export class MetricsInterceptor implements NestInterceptor {
           const duration = (Date.now() - startTime) / 1000;
 
           this.requestCounter.inc({ method, path, status_code: statusCode });
-          this.requestDuration.observe(
-            { method, path, status_code: statusCode },
-            duration,
-          );
+          this.requestDuration.observe({ method, path, status_code: statusCode }, duration);
         },
         error: (error) => {
           const statusCode = error.status?.toString() || '500';
           const duration = (Date.now() - startTime) / 1000;
 
           this.requestCounter.inc({ method, path, status_code: statusCode });
-          this.requestDuration.observe(
-            { method, path, status_code: statusCode },
-            duration,
-          );
+          this.requestDuration.observe({ method, path, status_code: statusCode }, duration);
         },
       }),
     );

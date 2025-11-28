@@ -1,9 +1,5 @@
 import { Module } from '@nestjs/common';
-import {
-  makeCounterProvider,
-  makeHistogramProvider,
-  makeGaugeProvider,
-} from '@willsoto/nestjs-prometheus';
+import { makeCounterProvider, makeHistogramProvider } from '@willsoto/nestjs-prometheus';
 
 /**
  * Metrics Module
@@ -46,28 +42,24 @@ const businessMetricsProviders = [
   //   help: 'Total number of orders created',
   //   labelNames: ['status', 'warehouse'],
   // }),
-
   // Uncomment nếu cần track inventory
   // makeCounterProvider({
   //   name: 'inventory_movements_total',
   //   help: 'Total inventory movements',
   //   labelNames: ['type', 'warehouse', 'product'],
   // }),
-
   // Uncomment nếu cần track stock levels
   // makeGaugeProvider({
   //   name: 'inventory_stock_level',
   //   help: 'Current stock level by product and warehouse',
   //   labelNames: ['warehouse', 'product'],
   // }),
-
   // Uncomment nếu cần track alerts
   // makeGaugeProvider({
   //   name: 'active_alerts_count',
   //   help: 'Number of active alerts',
   //   labelNames: ['severity', 'type'],
   // }),
-
   // Uncomment nếu cần track DB performance
   // makeHistogramProvider({
   //   name: 'database_query_duration_seconds',
