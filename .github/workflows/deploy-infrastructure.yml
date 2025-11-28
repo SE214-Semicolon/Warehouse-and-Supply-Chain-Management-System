@@ -66,6 +66,15 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+    - name: Register Azure Resource Providers
+      run: |
+        echo "Registering required Azure resource providers..."
+        az provider register --namespace Microsoft.Monitor --wait || true
+        az provider register --namespace Microsoft.Dashboard --wait || true
+        echo "Verifying registration status..."
+        az provider show -n Microsoft.Monitor --query "registrationState" -o tsv
+        az provider show -n Microsoft.Dashboard --query "registrationState" -o tsv
+
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
@@ -125,6 +134,15 @@ jobs:
       uses: azure/login@v1
       with: 
         creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Register Azure Resource Providers
+      run: |
+        echo "Registering required Azure resource providers..."
+        az provider register --namespace Microsoft.Monitor --wait || true
+        az provider register --namespace Microsoft.Dashboard --wait || true
+        echo "Verifying registration status..."
+        az provider show -n Microsoft.Monitor --query "registrationState" -o tsv
+        az provider show -n Microsoft.Dashboard --query "registrationState" -o tsv
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3

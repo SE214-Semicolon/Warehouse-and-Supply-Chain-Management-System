@@ -1,13 +1,15 @@
 # ==========================================
-# Resource Provider Registration
+# Prerequisites: Azure Resource Providers
 # ==========================================
-resource "azurerm_resource_provider_registration" "monitor" {
-  name = "Microsoft.Monitor"
-}
-
-resource "azurerm_resource_provider_registration" "dashboard" {
-  name = "Microsoft.Dashboard"
-}
+# The following providers must be registered before deploying:
+#   - Microsoft.Monitor (for Prometheus/Azure Monitor Workspace)
+#   - Microsoft.Dashboard (for Azure Managed Grafana)
+#
+# These are automatically registered by CI/CD pipeline.
+# For local development, run:
+#   az provider register --namespace Microsoft.Monitor --wait
+#   az provider register --namespace Microsoft.Dashboard --wait
+# ==========================================
 
 # Log Analytics Workspace
 resource "azurerm_log_analytics_workspace" "main" {
@@ -245,8 +247,6 @@ resource "azurerm_monitor_workspace" "prometheus" {
   location            = var.location
 
   tags = var.tags
-
-  depends_on = [azurerm_resource_provider_registration.monitor]
 }
 
 # Data Collection Endpoint for Prometheus
@@ -320,8 +320,6 @@ resource "azurerm_dashboard_grafana" "main" {
   azure_monitor_workspace_integrations {
     resource_id = var.enable_prometheus ? azurerm_monitor_workspace.prometheus[0].id : null
   }
-
-  depends_on = [azurerm_resource_provider_registration.dashboard]
 
   tags = var.tags
 }
