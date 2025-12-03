@@ -32,7 +32,7 @@ export class LocationController {
   constructor(private readonly locationService: LocationService) {}
 
   @Post()
-  @Roles(UserRole.admin, UserRole.manager, UserRole.warehouse_staff)
+  @Roles(UserRole.admin, UserRole.manager)
   @ApiOperation({ summary: 'Create a new location' })
   @ApiResponse({ status: 201, description: 'Location created successfully.' })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
@@ -113,7 +113,7 @@ export class LocationController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.admin, UserRole.manager, UserRole.warehouse_staff)
+  @Roles(UserRole.admin, UserRole.manager)
   @ApiOperation({ summary: 'Update a location' })
   @ApiResponse({ status: 200, description: 'Location updated successfully.' })
   @ApiResponse({ status: 404, description: 'Location not found.' })

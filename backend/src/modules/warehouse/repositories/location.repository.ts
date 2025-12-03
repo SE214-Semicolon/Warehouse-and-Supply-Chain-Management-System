@@ -163,11 +163,16 @@ export class LocationRepository implements ILocationRepository {
     excludeId?: string,
   ): Promise<boolean> {
     try {
-      this.logger.debug(`Checking if location code ${code} exists in warehouse ${warehouseId}`);
+      this.logger.debug(
+        `Checking if location code ${code} exists in warehouse ${warehouseId} (case-insensitive)`,
+      );
       const count = await this.prisma.location.count({
         where: {
           warehouseId,
-          code,
+          code: {
+            equals: code,
+            mode: 'insensitive',
+          },
           id: excludeId ? { not: excludeId } : undefined,
         },
       });
