@@ -65,7 +65,9 @@ enum UserRole {
   manager
   warehouse_staff
   procurement
+  sales
   logistics
+  analyst
   partner
 }
 

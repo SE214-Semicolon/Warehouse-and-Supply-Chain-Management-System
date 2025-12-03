@@ -102,7 +102,7 @@ The schema defines 5 enums for controlled vocabularies:
 - `PoStatus`: draft, ordered, received, partial, cancelled
 - `StockMovementType`: purchase_receipt, sale_issue, adjustment, transfer_in, transfer_out, returned, reservation, release, consumption
 - `ShipmentStatus`: preparing, in_transit, delivered, delayed, cancelled
-- `UserRole`: admin, manager, warehouse_staff, procurement, logistics, partner
+- `UserRole`: admin, manager, warehouse_staff, procurement, sales, logistics, analyst, partner
 
 ## MongoDB Collections (Operational Data)
 
@@ -210,7 +210,9 @@ Database schema evolves through Prisma migrations:
 | `20251004102841_add_stockmovement_idempotency`           | 2025-10-04 | Added idempotencyKey to StockMovement                                                                          |
 | `20251009110000_supplier_contactinfo_gin`                | 2025-10-09 | Added GIN index for Supplier.contactInfo JSON queries                                                          |
 | `20251013102405_add_inventory_deleted_at`                | 2025-10-13 | Added soft delete support for Inventory                                                                        |
+| `20251110030000_drop_auditlog_alert_legacy`              | 2025-11-10 | Dropped legacy AuditLog and Alert tables (moved to MongoDB)                                                    |
 | `20251119075108_feat_demand_planning_and_alerts_support` | 2025-11-19 | Added DemandForecast table, Product alert fields (minStockLevel, reorderPoint, leadTimeDays, safetyStockLevel) |
+| `20251203000000_add_sales_analyst_roles`                 | 2025-12-03 | Added `sales` and `analyst` roles to UserRole enum                                                             |
 
 **Migration Commands**:
 
