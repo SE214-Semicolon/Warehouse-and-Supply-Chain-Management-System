@@ -93,10 +93,15 @@ export class ProductRepository implements IProductRepository {
 
   async findBySku(sku: string): Promise<Product | null> {
     try {
-      this.logger.log(`Finding product by SKU: ${sku}`);
+      this.logger.log(`Finding product by SKU: ${sku} (case-insensitive)`);
 
-      const product = await this.prisma.product.findUnique({
-        where: { sku },
+      const product = await this.prisma.product.findFirst({
+        where: {
+          sku: {
+            equals: sku,
+            mode: 'insensitive',
+          },
+        },
         include: {
           category: true,
         },
@@ -171,11 +176,14 @@ export class ProductRepository implements IProductRepository {
 
   async checkSkuExists(sku: string, excludeId?: string): Promise<boolean> {
     try {
-      this.logger.log(`Checking if SKU exists: ${sku}`);
+      this.logger.log(`Checking if SKU exists: ${sku} (case-insensitive)`);
 
       const count = await this.prisma.product.count({
         where: {
-          sku,
+          sku: {
+            equals: sku,
+            mode: 'insensitive',
+          },
           id: excludeId ? { not: excludeId } : undefined,
         },
       });

@@ -37,7 +37,7 @@ export class ProductBatchController {
   constructor(private readonly batchService: ProductBatchService) {}
 
   @Post()
-  @Roles(UserRole.admin, UserRole.manager, UserRole.warehouse_staff, UserRole.procurement)
+  @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
   @ApiOperation({ summary: 'Create a new product batch' })
   @ApiResponse({
     status: 201,
@@ -127,7 +127,7 @@ export class ProductBatchController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.admin, UserRole.manager, UserRole.warehouse_staff)
+  @Roles(UserRole.admin, UserRole.manager)
   @ApiOperation({ summary: 'Update a product batch' })
   @ApiResponse({
     status: 200,

@@ -116,12 +116,17 @@ export class ProductBatchRepository implements IProductBatchRepository {
 
   async findByBatchNo(productId: string, batchNo: string): Promise<ProductBatch | null> {
     try {
-      this.logger.log(`Finding batch by product ${productId} and batch number: ${batchNo}`);
+      this.logger.log(
+        `Finding batch by product ${productId} and batch number: ${batchNo} (case-insensitive)`,
+      );
 
       const batch = await this.prisma.productBatch.findFirst({
         where: {
           productId,
-          batchNo,
+          batchNo: {
+            equals: batchNo,
+            mode: 'insensitive',
+          },
         },
         include: {
           product: true,
