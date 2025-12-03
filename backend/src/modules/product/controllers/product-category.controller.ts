@@ -13,6 +13,9 @@ import { ProductCategoryService } from '../services/product-category.service';
 import { CreateCategoryDto } from '../dto/create-category.dto';
 import { UpdateCategoryDto } from '../dto/update-category.dto';
 import { JwtAuthGuard } from '../../../auth/jwt.guard';
+import { RolesGuard } from '../../../auth/roles.guard';
+import { Roles } from '../../../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   ProductCategoryResponseDto,
@@ -22,7 +25,7 @@ import {
 
 @ApiTags('product-categories')
 @Controller('product-categories')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class ProductCategoryController {
   private readonly logger = new Logger(ProductCategoryController.name);
@@ -30,6 +33,7 @@ export class ProductCategoryController {
   constructor(private readonly productCategoryService: ProductCategoryService) {}
 
   @Post()
+  @Roles(UserRole.admin, UserRole.manager)
   @ApiOperation({ summary: 'Create a new product category' })
   @ApiResponse({
     status: 201,
@@ -68,6 +72,7 @@ export class ProductCategoryController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.admin, UserRole.manager)
   @ApiOperation({ summary: 'Update a product category' })
   @ApiResponse({
     status: 200,
@@ -84,6 +89,7 @@ export class ProductCategoryController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.admin, UserRole.manager)
   @ApiOperation({ summary: 'Delete a product category' })
   @ApiResponse({
     status: 200,

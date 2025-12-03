@@ -7,6 +7,7 @@ import {
   IsInt,
   IsDateString,
   Min,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -22,9 +23,11 @@ export class CreateProductBatchDto {
   @ApiPropertyOptional({
     example: 'BATCH-2024-001',
     description: 'Batch number/code',
+    maxLength: 50,
   })
   @IsOptional()
   @IsString()
+  @MaxLength(50)
   batchNo?: string;
 
   @ApiProperty({

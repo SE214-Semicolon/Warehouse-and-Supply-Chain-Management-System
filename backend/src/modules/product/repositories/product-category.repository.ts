@@ -1,4 +1,9 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma/prisma.service';
 import { Prisma, ProductCategory } from '@prisma/client';
 import { IProductCategoryRepository } from '../interfaces/product-category-repository.interface';
@@ -16,6 +21,11 @@ export class ProductCategoryRepository implements IProductCategoryRepository {
       this.logger.log(`Product category created successfully: ${category.id}`);
       return category;
     } catch (error) {
+      // CAT-BUG-04: Handle Prisma unique constraint error (P2002)
+      if (error.code === 'P2002') {
+        this.logger.warn(`Duplicate category name: ${data.name}`);
+        throw new ConflictException(`Category with name "${data.name}" already exists`);
+      }
       this.logger.error(`Failed to create product category: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Failed to create product category');
     }
