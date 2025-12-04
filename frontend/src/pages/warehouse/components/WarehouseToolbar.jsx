@@ -1,6 +1,6 @@
 import { Stack, Button } from "@mui/material";
 
-export default function InventoryToolbar({
+export default function WarehouseToolbar({
   menuItems,
   selectedMenu,
   onSelect,

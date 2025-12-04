@@ -27,20 +27,17 @@ export const fieldConfigs = {
       component: FormInput,
     },
   ],
+
   categories: [
     {
       id: "name",
       label: "Name",
       type: "text",
       component: FormInput,
-    },
-    {
-      id: "parentId",
-      label: "Parent Category",
-      type: "text",
-      component: FormInput,
+      required: true,
     },
   ],
+  
   locations: [
     {
       id: "code",

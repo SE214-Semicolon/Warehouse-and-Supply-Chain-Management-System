@@ -33,6 +33,7 @@ const inputComponents = {
           textField: {
             fullWidth: true,
             size: "medium",
+            required: props.required,
             sx: { ...focusedStyles, ...sx },
             ...props,
           },
@@ -69,6 +70,7 @@ const inputComponents = {
           textField: {
             fullWidth: true,
             size: "medium",
+            required: props.required,
             sx: { ...focusedStyles, ...sx },
             ...props,
           },
@@ -95,7 +97,12 @@ const inputComponents = {
   ),
 
   select: ({ label, value, onChange, options, sx, ...props }) => (
-    <FormControl fullWidth size="medium" sx={{ ...focusedStyles, ...sx }}>
+    <FormControl
+      fullWidth
+      size="medium"
+      required={props.required}
+      sx={{ ...focusedStyles, ...sx }}
+    >
       <InputLabel>{label}</InputLabel>
       <Select value={value} onChange={onChange} label={label} {...props}>
         {options.map((option) => (

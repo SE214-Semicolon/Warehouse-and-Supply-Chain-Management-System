@@ -127,8 +127,7 @@ export const batchesData = [
 
 export const fetchCategoriesData = async () => {
   try {
-    const res = await ProductCategories.getAllCategories();
-    console.log("Danh mục từ API:", res.data);
+    const res = await ProductCategories.getAll();
     return res.data;
   } catch (error) {
     console.error("Lỗi khi fetch categories:", error);
@@ -154,7 +153,7 @@ export const dataProvider = async (menu) => {
 
     case "batches":
       return batchesData;
-      
+
     default:
       console.warn("Chưa có dữ liệu cho menu:", menu);
       return [];

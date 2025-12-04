@@ -3,7 +3,8 @@ import { Box, Typography } from "@mui/material";
 import DataTable from "@/components/DataTable";
 import SearchBar from "@/components/SearchBar";
 import ActionButtons from "@/components/ActionButton";
-import InventoryToolbar from "./components/WarehouseToolbar";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import WarehouseToolbar from "./components/WarehouseToolbar";
 import FormDialog from "./components/FormDialog";
 import ViewDialog from "./components/ViewDialog";
 import { menuItems } from "./components/MenuConfig";
@@ -14,8 +15,9 @@ import {
   batchesData,
   fetchCategoriesData,
 } from "./components/data_service";
+import ProductCategories from "@/services/category.service";
 
-const Inventory = () => {
+const Warehouse = () => {
   const [selectedMenu, setSelectedMenu] = useState("warehouses");
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState(null);
@@ -23,6 +25,7 @@ const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoriesData, setCategoriesData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
   useEffect(() => {
     if (selectedMenu === "categories") {
@@ -55,18 +58,51 @@ const Inventory = () => {
   };
 
   const handleDelete = (row) => {
-    alert(`Xóa: ${row.name || row.code || row.batchNo || row.sku || row.id}`);
+    setSelectedRow(row);
+    setOpenDeleteDialog(true);
   };
 
-  const handleSave = () => console.log("Đã lưu");
+  const confirmDelete = async () => {
+    if (!selectedRow?.id) return;
+
+    if (selectedMenu === "categories") {
+      const res = await ProductCategories.deletey(selectedRow.id);
+      if (res) {
+        const reload = await fetchCategoriesData();
+        setCategoriesData(reload);
+      }
+    }
+
+    setOpenDeleteDialog(false);
+  };
+
+  const handleSave = async (formData) => {
+    if (selectedMenu === "categories") {
+      let res;
+      if (dialogMode === "edit" && selectedRow?.id) {
+        res = await ProductCategories.update(selectedRow.id, formData);
+      } else {
+        res = await ProductCategories.create(formData);
+      }
+      if (res) {
+        const reload = await fetchCategoriesData();
+        setCategoriesData(reload);
+      }
+    }
+
+    setOpenDialog(false);
+  };
+
   const handleImport = () => console.log("Import clicked");
   const handleExport = () => console.log("Export clicked");
   const handlePrint = () => console.log("Print clicked");
 
+  const currentMenuConfig = menuItems.find((menu) => menu.id === selectedMenu);
+
   const commonProps = {
     onEdit: handleEdit,
-    onView: handleView,
     onDelete: handleDelete,
+    onView: currentMenuConfig?.allowView === false ? undefined : handleView,
   };
 
   const datasetMap = {
@@ -99,7 +135,7 @@ const Inventory = () => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <InventoryToolbar
+      <WarehouseToolbar
         menuItems={menuItems}
         selectedMenu={selectedMenu}
         onSelect={setSelectedMenu}
@@ -124,9 +160,7 @@ const Inventory = () => {
       </Box>
 
       <Box>
-        {dataTables[selectedMenu] || (
-          <Typography>Module khác đang phát triển...</Typography>
-        )}
+        {dataTables[selectedMenu] || <Typography>In progress...</Typography>}
       </Box>
 
       {(dialogMode === "add" || dialogMode === "edit") && (
@@ -148,8 +182,15 @@ const Inventory = () => {
           selectedRow={selectedRow}
         />
       )}
+
+      <ConfirmDeleteDialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        onConfirm={confirmDelete}
+        selectedRow={selectedRow}
+      />
     </Box>
   );
 };
 
-export default Inventory;
+export default Warehouse;

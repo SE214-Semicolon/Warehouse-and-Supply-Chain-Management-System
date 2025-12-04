@@ -11,15 +11,17 @@ export const menuItems = [
       { id: "createdAt", label: "Ngày cập nhật" },
     ],
   },
+
   {
     id: "categories",
     label: "Categories",
+    allowView: false,
     columns: [
       { id: "stt", label: "No" },
       { id: "name", label: "Category" },
-      { id: "parentId", label: "Parent Category"}
     ],
   },
+  
   {
     id: "locations",
     label: "Locations",

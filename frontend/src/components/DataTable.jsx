@@ -194,7 +194,7 @@ export default function DataTable({
                   fontWeight: "bold",
                 }}
               >
-                Thao tác
+                Action
               </TableCell>
             </TableRow>
           </TableHead>
