@@ -1,2 +1,2 @@
-import WarehouseManagement from "./Inventory";
-export default WarehouseManagement;
+import Inventory from "./Inventory";
+export default Inventory;

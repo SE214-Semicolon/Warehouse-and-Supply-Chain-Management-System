@@ -1,8 +1,8 @@
 import api from "../utils/axiosInstance";
 
-const BASE = "/product-categories";
+const BASE = "/products";
 
-const ProductCategories = {
+const Products = {
   getAll: () => api.get(BASE),
 
   create: async (data) => {
@@ -33,4 +33,4 @@ const ProductCategories = {
   },
 };
 
-export default ProductCategories;
+export default Products;

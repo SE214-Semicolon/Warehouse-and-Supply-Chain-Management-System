@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Box, Typography } from "@mui/material";
 import DataTable from "@/components/DataTable";
 import SearchBar from "@/components/SearchBar";
@@ -7,36 +7,14 @@ import InventoryToolbar from "./components/InventoryToolbar";
 import FormDialog from "./components/FormDialog";
 import ViewDialog from "./components/ViewDialog";
 import { menuItems } from "./components/MenuConfig";
-import {
-  warehousesData,
-  locationsData,
-  productsData,
-  batchesData,
-  inventoryData,
-  movementsData,
-  fetchCategoriesData,
-} from "./components/data_service";
+import { inventoryData, movementsData } from "./components/data_service";
 
-const WarehouseManagement = () => {
+const Inventory = () => {
   const [selectedMenu, setSelectedMenu] = useState("warehouses");
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState(null);
   const [selectedRow, setSelectedRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoriesData, setCategoriesData] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (selectedMenu === "categories") {
-      const loadCategories = async () => {
-        setLoading(true);
-        const data = await fetchCategoriesData();
-        setCategoriesData(data);
-        setLoading(false);
-      };
-      loadCategories();
-    }
-  }, [selectedMenu]);
 
   const handleAdd = () => {
     setDialogMode("add");
@@ -71,66 +49,29 @@ const WarehouseManagement = () => {
     onDelete: handleDelete,
   };
 
-  // Các bảng dữ liệu
-  const dataTables = {
-    warehouses: (
-      <DataTable
-        title="Warehouses"
-        columns={menuItems[0].columns}
-        data={warehousesData}
-        {...commonProps}
-      />
-    ),
-    categories: (
-      <DataTable
-        title="Categories"
-        columns={menuItems[1].columns}
-        data={categoriesData}
-        loading={loading}
-        {...commonProps}
-      />
-    ),
-    locations: (
-      <DataTable
-        title="Locations"
-        columns={menuItems[2].columns}
-        data={locationsData}
-        {...commonProps}
-      />
-    ),
-    products: (
-      <DataTable
-        title="Products"
-        columns={menuItems[3].columns}
-        data={productsData}
-        {...commonProps}
-      />
-    ),
-    batches: (
-      <DataTable
-        title="Batches"
-        columns={menuItems[4].columns}
-        data={batchesData}
-        {...commonProps}
-      />
-    ),
-    inventory: (
-      <DataTable
-        title="Inventory"
-        columns={menuItems[5].columns}
-        data={inventoryData}
-        {...commonProps}
-      />
-    ),
-    movements: (
-      <DataTable
-        title="Stock Movements"
-        columns={menuItems[6].columns}
-        data={movementsData}
-        {...commonProps}
-      />
-    ),
+  const datasetMap = {
+    inventory: inventoryData,
+    movements: movementsData,
   };
+
+  const dataTables = Object.fromEntries(
+    menuItems.map((menu) => [
+      menu.id,
+      <DataTable
+        key={menu.id}
+        title={menu.label}
+        columns={menu.columns}
+        data={
+          Array.isArray(datasetMap[menu.id])
+            ? datasetMap[menu.id]
+            : Array.isArray(datasetMap[menu.id]?.data)
+            ? datasetMap[menu.id].data
+            : []
+        }
+        {...commonProps}
+      />,
+    ])
+  );
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -187,4 +128,4 @@ const WarehouseManagement = () => {
   );
 };
 
-export default WarehouseManagement;
+export default Inventory;
