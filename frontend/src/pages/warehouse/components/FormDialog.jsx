@@ -1,68 +1,10 @@
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  Box,
-  TextField,
-  Typography,
-  Alert,
-} from "@mui/material";
+import { useState, useEffect } from "react";
+import { Dialog, DialogTitle, DialogContent, Box, Alert } from "@mui/material";
 import DialogButtons from "@/components/DialogButtons";
 import { menuItems } from "./MenuConfig";
 import { fieldConfigs } from "./FieldConfig";
-import { useState, useEffect } from "react";
-
-const renderField = (
-  field,
-  selectedRow,
-  isEditMode,
-  formData,
-  setFormData,
-  errors
-) => {
-  const value =
-    formData[field.id] ?? (isEditMode ? selectedRow?.[field.id] ?? "" : "");
-
-  const handleChange = (newValue) => {
-    setFormData((prev) => ({ ...prev, [field.id]: newValue }));
-  };
-
-  const hasError = errors.includes(field.id);
-
-  if (field.component) {
-    const CustomComponent = field.component;
-    return (
-      <CustomComponent
-        key={field.id}
-        label={field.label}
-        value={value}
-        type={field.type}
-        options={field.options}
-        fullWidth
-        required={field.required}
-        onChange={(val) => handleChange(val)}
-        error={hasError}
-        helperText={hasError ? `${field.label} is require` : ""}
-        {...field.componentProps}
-      />
-    );
-  }
-
-  return (
-    <TextField
-      key={field.id}
-      label={field.label}
-      value={value}
-      fullWidth
-      type={field.type}
-      required={field.required}
-      size="medium"
-      onChange={(e) => handleChange(e.target.value)}
-      error={hasError}
-      helperText={hasError ? `${field.label} is require` : ""}
-    />
-  );
-};
+import FormInput from "@/components/FormInput";
+import ProductCategories from "@/services/category.service";
 
 const FormDialog = ({
   open,
@@ -74,34 +16,61 @@ const FormDialog = ({
 }) => {
   const currentMenu = menuItems.find((item) => item.id === selectedMenu);
   const isEditMode = mode === "edit";
-  const fields = fieldConfigs[selectedMenu];
+  const baseFields = fieldConfigs[selectedMenu] || [];
 
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState([]);
   const [showAlert, setShowAlert] = useState(false);
+  const [categoryOptions, setCategoryOptions] = useState([]);
+
+  useEffect(() => {
+    if (selectedMenu === "products" && open) {
+      const loadCategories = async () => {
+        try {
+          const res = await ProductCategories.getAll();
+
+          const dataArray = Array.isArray(res.data.data) ? res.data.data : [];
+          const options = dataArray.map((cat) => ({
+            label: cat.name,
+            value: cat.id,
+          }));
+
+          setCategoryOptions(options);
+        } catch (err) {
+          console.error("Failed to load categories", err);
+        }
+      };
+      loadCategories();
+    }
+  }, [selectedMenu, open]);
 
   useEffect(() => {
     if (open) {
       const initial = {};
-      fields?.forEach((f) => {
+      baseFields.forEach((f) => {
         initial[f.id] = isEditMode ? selectedRow?.[f.id] ?? "" : "";
       });
       setFormData(initial);
       setErrors([]);
       setShowAlert(false);
     }
-  }, [open, mode, selectedMenu, selectedRow]);
+  }, [open, selectedRow, isEditMode, baseFields]);
+
+  const fields = baseFields.map((field) => {
+    if (field.id === "category" && selectedMenu === "products") {
+      return {
+        ...field,
+        options: categoryOptions,
+      };
+    }
+    return field;
+  });
 
   const handleSubmit = () => {
-    const requiredFields = fields?.filter((f) => f.required) || [];
-    const emptyFields = [];
-
-    for (const field of requiredFields) {
-      const value = formData[field.id];
-      if (!value || String(value).trim() === "") {
-        emptyFields.push(field.id);
-      }
-    }
+    const requiredFields = fields.filter((f) => f.required);
+    const emptyFields = requiredFields
+      .filter((f) => !formData[f.id] || String(formData[f.id]).trim() === "")
+      .map((f) => f.id);
 
     if (emptyFields.length > 0) {
       setErrors(emptyFields);
@@ -114,33 +83,44 @@ const FormDialog = ({
     onAction(formData);
   };
 
-  const renderFields = () => {
-    if (isEditMode && !selectedRow) {
-      return <Typography>No data</Typography>;
-    }
+  const renderField = (field) => {
+    let value =
+      formData[field.id] ?? (isEditMode ? selectedRow?.[field.id] ?? "" : "");
+    const hasError = errors.includes(field.id);
+    const helperText = hasError ? `${field.label} là bắt buộc` : "";
 
-    if (!fields) {
-      return <Typography>Wrong tab</Typography>;
-    }
+    const handleChange = (val) => {
+      setFormData((prev) => ({ ...prev, [field.id]: val }));
+    };
+
+    const handleKeyDown = (e) => {
+      if (field.id === "barcode") {
+        const allowedKeys = [
+          "Backspace",
+          "Delete",
+          "ArrowLeft",
+          "ArrowRight",
+          "Tab",
+        ];
+        if (!/[0-9]/.test(e.key) && !allowedKeys.includes(e.key)) {
+          e.preventDefault();
+        }
+      }
+    };
 
     return (
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {showAlert && (
-          <Alert severity="error" onClose={() => setShowAlert(false)}>
-            Please enter all required information
-          </Alert>
-        )}
-        {fields.map((field) =>
-          renderField(
-            field,
-            selectedRow,
-            isEditMode,
-            formData,
-            setFormData,
-            errors
-          )
-        )}
-      </Box>
+      <FormInput
+        key={field.id}
+        label={field.label}
+        type={field.type || "text"}
+        value={value}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        options={field.options || []}
+        required={field.required}
+        error={hasError}
+        helperText={helperText}
+      />
     );
   };
 
@@ -148,29 +128,24 @@ const FormDialog = ({
     <Dialog
       open={open}
       onClose={onClose}
-      PaperProps={{
-        sx: {
-          width: "450px",
-          height: "auto",
-          maxHeight: "90vh",
-        },
-      }}
+      PaperProps={{ sx: { width: "500px", maxHeight: "90vh" } }}
     >
-      <DialogTitle
-        sx={{
-          fontWeight: 700,
-          background: "#7F408E",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          textTransform: "capitalize",
-          letterSpacing: 0.5,
-        }}
-      >
-        {mode === "add" && `Add ${currentMenu?.label}`}
-        {mode === "edit" && `Edit ${selectedRow?.name || ""}`}
+      <DialogTitle sx={{ bgcolor: "#7F408E", color: "white", fontWeight: 700 }}>
+        {mode === "add"
+          ? `Add ${currentMenu?.label}`
+          : `Edit ${selectedRow?.name || ""}`}
       </DialogTitle>
 
-      <DialogContent dividers>{renderFields()}</DialogContent>
+      <DialogContent dividers>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+          {showAlert && (
+            <Alert severity="error" onClose={() => setShowAlert(false)}>
+              Please enter all required information!
+            </Alert>
+          )}
+          {fields.map(renderField)}
+        </Box>
+      </DialogContent>
 
       <DialogButtons onClose={onClose} onAction={handleSubmit} />
     </Dialog>

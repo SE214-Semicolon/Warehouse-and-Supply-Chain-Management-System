@@ -1,4 +1,5 @@
 import ProductCategories from "@/services/category.service";
+import Products from "@/services/product.service";
 
 const buildExtraInfo = (row) =>
   `Người tạo: ${row.createdBy || "Không rõ"}
@@ -63,36 +64,6 @@ export const locationsData = [
   },
 ];
 
-export const productsData = [
-  {
-    id: 1,
-    sku: "PROD001",
-    name: "Sản phẩm A",
-    category: "Điện tử",
-    unit: "Cái",
-    barcode: "1234567890",
-    createdAt: "2024-01-10",
-  },
-  {
-    id: 2,
-    sku: "PROD002",
-    name: "Sản phẩm B",
-    category: "Thực phẩm",
-    unit: "Kg",
-    barcode: "0987654321",
-    createdAt: "2024-01-12",
-  },
-  {
-    id: 3,
-    sku: "PROD003",
-    name: "Sản phẩm C",
-    category: "Dệt may",
-    unit: "Bộ",
-    barcode: "1122334455",
-    createdAt: "2024-01-15",
-  },
-];
-
 export const batchesData = [
   {
     id: 1,
@@ -135,6 +106,16 @@ export const fetchCategoriesData = async () => {
   }
 };
 
+export const fetchProductsData = async () => {
+  try {
+    const res = await Products.getAll();
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi fetch products:", error);
+    return [];
+  }
+};
+
 // Data provider
 
 export const dataProvider = async (menu) => {
@@ -155,7 +136,7 @@ export const dataProvider = async (menu) => {
       return batchesData;
 
     default:
-      console.warn("Chưa có dữ liệu cho menu:", menu);
+      console.warn("No data:", menu);
       return [];
   }
 };

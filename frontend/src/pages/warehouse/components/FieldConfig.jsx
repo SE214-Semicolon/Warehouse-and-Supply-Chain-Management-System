@@ -37,7 +37,7 @@ export const fieldConfigs = {
       required: true,
     },
   ],
-  
+
   locations: [
     {
       id: "code",
@@ -67,34 +67,46 @@ export const fieldConfigs = {
       component: FormInput,
     },
   ],
+
   products: [
     {
       id: "sku",
       label: "SKU",
       type: "text",
+      component: FormInput,
+      required: true,
     },
     {
       id: "name",
-      label: "Tên sản phẩm",
+      label: "Name",
       type: "text",
+      component: FormInput,
+      required: true,
     },
     {
       id: "category",
       label: "Category",
       type: "select",
-      options: ["Điện tử", "Thực phẩm", "Dệt may"],
+      options: [],
+      component: FormInput,
+      required: true,
     },
     {
       id: "unit",
-      label: "Đơn vị",
+      label: "Unit",
       type: "text",
+      component: FormInput,
+      required: true,
     },
     {
       id: "barcode",
       label: "Barcode",
       type: "text",
+      component: FormInput,
+      required: true,
     },
   ],
+
   batches: [
     {
       id: "batchNo",

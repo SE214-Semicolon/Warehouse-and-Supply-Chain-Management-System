@@ -1,3 +1,5 @@
+import { formatDate } from "@/utils/formatDate";
+
 export const menuItems = [
   {
     id: "warehouses",
@@ -21,7 +23,7 @@ export const menuItems = [
       { id: "name", label: "Category" },
     ],
   },
-  
+
   {
     id: "locations",
     label: "Locations",
@@ -35,19 +37,30 @@ export const menuItems = [
       { id: "createdAt", label: "Ngày cập nhật" },
     ],
   },
+
   {
     id: "products",
     label: "Products",
+    allowView: false,
     columns: [
       { id: "stt", label: "STT" },
       { id: "sku", label: "SKU" },
-      { id: "name", label: "Tên sản phẩm" },
-      { id: "category", label: "Category" },
-      { id: "unit", label: "Đơn vị" },
+      { id: "name", label: "Name" },
+      {
+        id: "category",
+        label: "Category",
+        render: (_, row) => row.category?.name ?? "-",
+      },
+      { id: "unit", label: "Unit" },
       { id: "barcode", label: "Barcode" },
-      { id: "createdAt", label: "Ngày cập nhật" },
+      {
+        id: "updatedAt",
+        label: "Update Date",
+        render: (_, row) => formatDate(row.updatedAt),
+      },
     ],
   },
+
   {
     id: "batches",
     label: "Batches",

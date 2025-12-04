@@ -19,6 +19,7 @@ export default function DialogButtons({
         onClick={onClose}
         variant="outlined"
         sx={{
+          width: "90px",
           borderColor: "#7F408E",
           color: "#7F408E",
           "&:hover": {
@@ -33,6 +34,7 @@ export default function DialogButtons({
         variant="contained"
         onClick={onAction}
         sx={{
+          width: "90px",
           background: "#7F408E",
           color: "#fff",
           "&:hover": {

@@ -11,11 +11,35 @@ import { menuItems } from "./components/MenuConfig";
 import {
   warehousesData,
   locationsData,
-  productsData,
   batchesData,
   fetchCategoriesData,
+  fetchProductsData,
 } from "./components/data_service";
 import ProductCategories from "@/services/category.service";
+import ProductService from "@/services/product.service";
+
+const menuConfig = {
+  categories: {
+    fetchData: fetchCategoriesData,
+    service: ProductCategories,
+  },
+  products: {
+    fetchData: fetchProductsData,
+    service: ProductService,
+  },
+  // warehouses: {
+  //   fetchData: fetchWarehousesData,
+  //   service: WarehouseService,
+  // },
+  // locations: {
+  //   fetchData: fetchLocationsData,
+  //   service: LocationService,
+  // },
+  // batches: {
+  //   fetchData: fetchBatchesData,
+  //   service: BatchService,
+  // },
+};
 
 const Warehouse = () => {
   const [selectedMenu, setSelectedMenu] = useState("warehouses");
@@ -23,19 +47,28 @@ const Warehouse = () => {
   const [dialogMode, setDialogMode] = useState(null);
   const [selectedRow, setSelectedRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoriesData, setCategoriesData] = useState([]);
+
+  const [dynamicData, setDynamicData] = useState({});
   const [loading, setLoading] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
+  const staticData = {
+    warehouses: warehousesData,
+    locations: locationsData,
+    batches: batchesData,
+  };
+
   useEffect(() => {
-    if (selectedMenu === "categories") {
-      const loadCategories = async () => {
+    const config = menuConfig[selectedMenu];
+
+    if (config?.fetchData) {
+      const loadData = async () => {
         setLoading(true);
-        const data = await fetchCategoriesData();
-        setCategoriesData(data);
+        const data = await config.fetchData();
+        setDynamicData((prev) => ({ ...prev, [selectedMenu]: data }));
         setLoading(false);
       };
-      loadCategories();
+      loadData();
     }
   }, [selectedMenu]);
 
@@ -65,11 +98,12 @@ const Warehouse = () => {
   const confirmDelete = async () => {
     if (!selectedRow?.id) return;
 
-    if (selectedMenu === "categories") {
-      const res = await ProductCategories.deletey(selectedRow.id);
+    const config = menuConfig[selectedMenu];
+    if (config?.service) {
+      const res = await config.service.delete(selectedRow.id);
       if (res) {
-        const reload = await fetchCategoriesData();
-        setCategoriesData(reload);
+        const reload = await config.fetchData();
+        setDynamicData((prev) => ({ ...prev, [selectedMenu]: reload }));
       }
     }
 
@@ -77,16 +111,19 @@ const Warehouse = () => {
   };
 
   const handleSave = async (formData) => {
-    if (selectedMenu === "categories") {
+    const config = menuConfig[selectedMenu];
+
+    if (config?.service) {
       let res;
       if (dialogMode === "edit" && selectedRow?.id) {
-        res = await ProductCategories.update(selectedRow.id, formData);
+        res = await config.service.update(selectedRow.id, formData);
       } else {
-        res = await ProductCategories.create(formData);
+        res = await config.service.create(formData);
       }
+
       if (res) {
-        const reload = await fetchCategoriesData();
-        setCategoriesData(reload);
+        const reload = await config.fetchData();
+        setDynamicData((prev) => ({ ...prev, [selectedMenu]: reload }));
       }
     }
 
@@ -105,32 +142,26 @@ const Warehouse = () => {
     onView: currentMenuConfig?.allowView === false ? undefined : handleView,
   };
 
-  const datasetMap = {
-    warehouses: warehousesData,
-    categories: categoriesData,
-    locations: locationsData,
-    products: productsData,
-    batches: batchesData,
+  const getCurrentData = (menuId) => {
+    return dynamicData[menuId] || staticData[menuId] || [];
   };
 
   const dataTables = Object.fromEntries(
-    menuItems.map((menu) => [
-      menu.id,
-      <DataTable
-        key={menu.id}
-        title={menu.label}
-        columns={menu.columns}
-        data={
-          Array.isArray(datasetMap[menu.id])
-            ? datasetMap[menu.id]
-            : Array.isArray(datasetMap[menu.id]?.data)
-            ? datasetMap[menu.id].data
-            : []
-        }
-        loading={menu.id === "categories" ? loading : undefined}
-        {...commonProps}
-      />,
-    ])
+    menuItems.map((menu) => {
+      const data = getCurrentData(menu.id);
+
+      return [
+        menu.id,
+        <DataTable
+          key={menu.id}
+          title={menu.label}
+          columns={menu.columns}
+          data={Array.isArray(data) ? data : data?.data || []}
+          loading={menuConfig[menu.id] ? loading : undefined}
+          {...commonProps}
+        />,
+      ];
+    })
   );
 
   return (
