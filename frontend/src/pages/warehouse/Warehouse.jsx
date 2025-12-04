@@ -3,11 +3,17 @@ import { Box, Typography } from "@mui/material";
 import DataTable from "@/components/DataTable";
 import SearchBar from "@/components/SearchBar";
 import ActionButtons from "@/components/ActionButton";
-import InventoryToolbar from "./components/InventoryToolbar";
+import InventoryToolbar from "./components/WarehouseToolbar";
 import FormDialog from "./components/FormDialog";
 import ViewDialog from "./components/ViewDialog";
 import { menuItems } from "./components/MenuConfig";
-import { inventoryData, movementsData } from "./components/data_service";
+import {
+  warehousesData,
+  locationsData,
+  productsData,
+  batchesData,
+  fetchCategoriesData,
+} from "./components/data_service";
 
 const Inventory = () => {
   const [selectedMenu, setSelectedMenu] = useState("warehouses");
@@ -15,6 +21,20 @@ const Inventory = () => {
   const [dialogMode, setDialogMode] = useState(null);
   const [selectedRow, setSelectedRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [categoriesData, setCategoriesData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (selectedMenu === "categories") {
+      const loadCategories = async () => {
+        setLoading(true);
+        const data = await fetchCategoriesData();
+        setCategoriesData(data);
+        setLoading(false);
+      };
+      loadCategories();
+    }
+  }, [selectedMenu]);
 
   const handleAdd = () => {
     setDialogMode("add");
@@ -50,8 +70,11 @@ const Inventory = () => {
   };
 
   const datasetMap = {
-    inventory: inventoryData,
-    movements: movementsData,
+    warehouses: warehousesData,
+    categories: categoriesData,
+    locations: locationsData,
+    products: productsData,
+    batches: batchesData,
   };
 
   const dataTables = Object.fromEntries(
@@ -68,6 +91,7 @@ const Inventory = () => {
             ? datasetMap[menu.id].data
             : []
         }
+        loading={menu.id === "categories" ? loading : undefined}
         {...commonProps}
       />,
     ])

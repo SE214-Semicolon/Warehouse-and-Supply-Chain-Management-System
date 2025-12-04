@@ -1,7 +1,9 @@
-import api from "./api";
+import api from "../utils/axiosInstance";
+
+const BASE = "/product-categories";
 
 const ProductCategories = {
-  getAllCategories: () => api.get("/product-categories"),
+  getAllCategories: () => api.get(BASE),
 
   createCategories: async (data) => {
     try {
