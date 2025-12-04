@@ -17,16 +17,7 @@ const ConfirmDeleteDialog = ({ open, onClose, onConfirm, selectedRow }) => {
         },
       }}
     >
-      <DialogTitle
-        sx={{
-          fontWeight: 700,
-          background: "#7F408E",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          textTransform: "capitalize",
-          letterSpacing: 0.5,
-        }}
-      >
+      <DialogTitle sx={{ bgcolor: "#D32F2F", color: "white", fontWeight: 600 }}>
         Delete Confirmation
       </DialogTitle>
 
@@ -40,6 +31,8 @@ const ConfirmDeleteDialog = ({ open, onClose, onConfirm, selectedRow }) => {
         onClose={onClose}
         onAction={onConfirm}
         labelAction="Delete"
+        colorAction="#D32F2F"
+        colorCancel="#D32F2F"
       />
     </Dialog>
   );

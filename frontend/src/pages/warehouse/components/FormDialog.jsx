@@ -28,14 +28,19 @@ const FormDialog = ({
       const loadCategories = async () => {
         try {
           const res = await ProductCategories.getAll();
-
           const dataArray = Array.isArray(res.data.data) ? res.data.data : [];
           const options = dataArray.map((cat) => ({
             label: cat.name,
             value: cat.id,
           }));
-
           setCategoryOptions(options);
+
+          if (isEditMode && selectedRow) {
+            setFormData((prev) => ({
+              ...prev,
+              categoryId: selectedRow.category?.id || "",
+            }));
+          }
         } catch (err) {
           console.error("Failed to load categories", err);
         }
@@ -57,7 +62,7 @@ const FormDialog = ({
   }, [open, selectedRow, isEditMode, baseFields]);
 
   const fields = baseFields.map((field) => {
-    if (field.id === "category" && selectedMenu === "products") {
+    if (field.id === "categoryId" && selectedMenu === "products") {
       return {
         ...field,
         options: categoryOptions,
@@ -87,21 +92,28 @@ const FormDialog = ({
     let value =
       formData[field.id] ?? (isEditMode ? selectedRow?.[field.id] ?? "" : "");
     const hasError = errors.includes(field.id);
-    const helperText = hasError ? `${field.label} là bắt buộc` : "";
+    const helperText = hasError ? `${field.label} is required` : "";
 
     const handleChange = (val) => {
       setFormData((prev) => ({ ...prev, [field.id]: val }));
     };
 
     const handleKeyDown = (e) => {
+      const allowedKeys = [
+        "Backspace",
+        "Delete",
+        "ArrowLeft",
+        "ArrowRight",
+        "Tab",
+      ];
+
+      if (field.id === "unit") {
+        if (/[0-9]/.test(e.key) && !allowedKeys.includes(e.key)) {
+          e.preventDefault();
+        }
+      }
+
       if (field.id === "barcode") {
-        const allowedKeys = [
-          "Backspace",
-          "Delete",
-          "ArrowLeft",
-          "ArrowRight",
-          "Tab",
-        ];
         if (!/[0-9]/.test(e.key) && !allowedKeys.includes(e.key)) {
           e.preventDefault();
         }
@@ -130,7 +142,7 @@ const FormDialog = ({
       onClose={onClose}
       PaperProps={{ sx: { width: "500px", maxHeight: "90vh" } }}
     >
-      <DialogTitle sx={{ bgcolor: "#7F408E", color: "white", fontWeight: 700 }}>
+      <DialogTitle sx={{ bgcolor: "#7F408E", color: "white", fontWeight: 600 }}>
         {mode === "add"
           ? `Add ${currentMenu?.label}`
           : `Edit ${selectedRow?.name || ""}`}

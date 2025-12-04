@@ -84,7 +84,7 @@ export const fieldConfigs = {
       required: true,
     },
     {
-      id: "category",
+      id: "categoryId",
       label: "Category",
       type: "select",
       options: [],

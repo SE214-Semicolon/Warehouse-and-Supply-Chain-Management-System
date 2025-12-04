@@ -4,7 +4,13 @@ export default function DialogButtons({
   onClose,
   onAction,
   labelAction = "Save",
+  color = "#7F408E",
+  colorAction,
+  colorCancel,
 }) {
+  const primary = colorAction || color;
+  const secondary = colorCancel || color;
+
   return (
     <Box
       sx={{
@@ -20,10 +26,10 @@ export default function DialogButtons({
         variant="outlined"
         sx={{
           width: "90px",
-          borderColor: "#7F408E",
-          color: "#7F408E",
+          borderColor: secondary,
+          color: secondary,
           "&:hover": {
-            color: "#672f75ff",
+            color: secondary + "cc",
           },
         }}
       >
@@ -35,10 +41,10 @@ export default function DialogButtons({
         onClick={onAction}
         sx={{
           width: "90px",
-          background: "#7F408E",
+          background: primary,
           color: "#fff",
           "&:hover": {
-            background: "#6a2f7d",
+            background: primary + "cc",
           },
         }}
       >

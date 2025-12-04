@@ -47,7 +47,7 @@ export const menuItems = [
       { id: "sku", label: "SKU" },
       { id: "name", label: "Name" },
       {
-        id: "category",
+        id: "categoryId",
         label: "Category",
         render: (_, row) => row.category?.name ?? "-",
       },
