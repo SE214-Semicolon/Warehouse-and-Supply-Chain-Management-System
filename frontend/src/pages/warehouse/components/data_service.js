@@ -115,28 +115,3 @@ export const fetchProductsData = async () => {
     return [];
   }
 };
-
-// Data provider
-
-export const dataProvider = async (menu) => {
-  switch (menu) {
-    case "warehouses":
-      return warehousesData;
-
-    case "categories":
-      return await fetchCategoriesData();
-
-    case "locations":
-      return locationsData;
-
-    case "products":
-      return await fetchProductsData();
-
-    case "batches":
-      return batchesData;
-
-    default:
-      console.warn("No data:", menu);
-      return [];
-  }
-};
