@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Box, Typography } from "@mui/material";
 import DataTable from "@/components/DataTable";
 import SearchBar from "@/components/SearchBar";

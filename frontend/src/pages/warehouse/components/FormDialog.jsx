@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogTitle, DialogContent, Box, Alert } from "@mui/material";
 import DialogButtons from "@/components/DialogButtons";
 import { menuItems } from "./MenuConfig";
@@ -16,7 +16,10 @@ const FormDialog = ({
 }) => {
   const currentMenu = menuItems.find((item) => item.id === selectedMenu);
   const isEditMode = mode === "edit";
-  const baseFields = fieldConfigs[selectedMenu] || [];
+  const baseFields = useMemo(
+    () => fieldConfigs[selectedMenu] || [],
+    [selectedMenu]
+  );
 
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState([]);
@@ -47,7 +50,7 @@ const FormDialog = ({
       };
       loadCategories();
     }
-  }, [selectedMenu, open]);
+  }, [selectedMenu, open, isEditMode, selectedRow]);
 
   useEffect(() => {
     if (open) {
@@ -59,7 +62,7 @@ const FormDialog = ({
       setErrors([]);
       setShowAlert(false);
     }
-  }, [open, selectedRow, isEditMode, baseFields]);
+  }, [open, baseFields, isEditMode, selectedRow]);
 
   const fields = baseFields.map((field) => {
     if (field.id === "categoryId" && selectedMenu === "products") {

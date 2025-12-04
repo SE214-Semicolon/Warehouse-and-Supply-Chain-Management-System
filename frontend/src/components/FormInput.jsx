@@ -31,7 +31,6 @@ const inputComponents = {
     error,
     helperText,
     sx,
-    ...props
   }) => (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enUS}>
       <DatePicker
@@ -61,7 +60,6 @@ const inputComponents = {
     error,
     helperText,
     sx,
-    ...props
   }) => (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enUS}>
       <DateTimePicker
@@ -93,7 +91,6 @@ const inputComponents = {
     error,
     helperText,
     sx,
-    ...rest
   }) => (
     <FormControl
       fullWidth

@@ -130,7 +130,7 @@ export const dataProvider = async (menu) => {
       return locationsData;
 
     case "products":
-      return productsData;
+      return await fetchProductsData();
 
     case "batches":
       return batchesData;
