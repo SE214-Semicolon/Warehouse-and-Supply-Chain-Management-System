@@ -27,7 +27,7 @@ variable "app_subnet_id" {
 variable "app_service_plan_sku" {
   description = "SKU for the App Service Plan"
   type        = string
-  default     = "B1"  # Basic 1 for staging
+  default     = "B1" # Basic 1 for staging
 }
 
 variable "app_service_always_on" {
@@ -124,4 +124,24 @@ variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)
   default     = {}
+}
+
+# Docker Registry Configuration (for private registries like ghcr.io)
+variable "docker_registry_url" {
+  description = "Docker registry URL"
+  type        = string
+  default     = "https://ghcr.io"
+}
+
+variable "docker_registry_username" {
+  description = "Docker registry username (GitHub username for ghcr.io)"
+  type        = string
+  default     = ""
+}
+
+variable "docker_registry_password" {
+  description = "Docker registry password (GitHub PAT for ghcr.io)"
+  type        = string
+  sensitive   = true
+  default     = ""
 }

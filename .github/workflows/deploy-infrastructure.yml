@@ -50,6 +50,13 @@ jobs:
       TF_VAR_jwt_refresh_secret: ${{ secrets.JWT_REFRESH_SECRET_STAGING }}
       TF_VAR_cors_origin: ${{ secrets.CORS_ORIGIN_STAGING }}
       TF_VAR_alert_email_addresses: '["${{ secrets.ALERT_EMAIL_1 }}"]'
+      TF_VAR_enable_prometheus: ${{ secrets.ENABLE_PROMETHEUS_STAGING || 'false' }}
+      TF_VAR_enable_grafana: ${{ secrets.ENABLE_GRAFANA_STAGING || 'false' }}
+      TF_VAR_grafana_admin_object_ids: ${{ secrets.GRAFANA_ADMIN_OBJECT_IDS || '[]' }}
+      # Docker Registry Credentials for ghcr.io
+      TF_VAR_docker_registry_url: "https://ghcr.io"
+      TF_VAR_docker_registry_username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+      TF_VAR_docker_registry_password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
     defaults:
       run:
         working-directory: ./iac/environments/staging
@@ -62,6 +69,15 @@ jobs:
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Register Azure Resource Providers
+      run: |
+        echo "Registering required Azure resource providers..."
+        az provider register --namespace Microsoft.Monitor --wait || true
+        az provider register --namespace Microsoft.Dashboard --wait || true
+        echo "Verifying registration status..."
+        az provider show -n Microsoft.Monitor --query "registrationState" -o tsv
+        az provider show -n Microsoft.Dashboard --query "registrationState" -o tsv
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
@@ -107,6 +123,13 @@ jobs:
       TF_VAR_jwt_refresh_secret: ${{ secrets.JWT_REFRESH_SECRET_PRODUCTION }}
       TF_VAR_cors_origin: ${{ secrets.CORS_ORIGIN_PRODUCTION }}
       TF_VAR_alert_email_addresses: '["${{ secrets.ALERT_EMAIL_1 }}"]'
+      TF_VAR_enable_prometheus: ${{ secrets.ENABLE_PROMETHEUS_PRODUCTION || 'true' }}
+      TF_VAR_enable_grafana: ${{ secrets.ENABLE_GRAFANA_PRODUCTION || 'true' }}
+      TF_VAR_grafana_admin_object_ids: ${{ secrets.GRAFANA_ADMIN_OBJECT_IDS || '[]' }}
+      # Docker Registry Credentials for ghcr.io
+      TF_VAR_docker_registry_url: "https://ghcr.io"
+      TF_VAR_docker_registry_username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+      TF_VAR_docker_registry_password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
     defaults:
       run:
         working-directory: ./iac/environments/production
@@ -119,6 +142,15 @@ jobs:
       uses: azure/login@v1
       with: 
         creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Register Azure Resource Providers
+      run: |
+        echo "Registering required Azure resource providers..."
+        az provider register --namespace Microsoft.Monitor --wait || true
+        az provider register --namespace Microsoft.Dashboard --wait || true
+        echo "Verifying registration status..."
+        az provider show -n Microsoft.Monitor --query "registrationState" -o tsv
+        az provider show -n Microsoft.Dashboard --query "registrationState" -o tsv
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3

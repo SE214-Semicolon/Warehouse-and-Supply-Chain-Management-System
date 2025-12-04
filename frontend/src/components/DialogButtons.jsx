@@ -1,11 +1,16 @@
-import React from "react";
 import { Button, Box } from "@mui/material";
 
 export default function DialogButtons({
   onClose,
   onAction,
-  labelAction = "Lưu",
+  labelAction = "Save",
+  color = "#7F408E",
+  colorAction,
+  colorCancel,
 }) {
+  const primary = colorAction || color;
+  const secondary = colorCancel || color;
+
   return (
     <Box
       sx={{
@@ -20,24 +25,26 @@ export default function DialogButtons({
         onClick={onClose}
         variant="outlined"
         sx={{
-          borderColor: "#7F408E",
-          color: "#7F408E",
+          width: "90px",
+          borderColor: secondary,
+          color: secondary,
           "&:hover": {
-            color: "#672f75ff",
+            color: secondary + "cc",
           },
         }}
       >
-        Hủy
+        Cancel
       </Button>
 
       <Button
         variant="contained"
         onClick={onAction}
         sx={{
-          background: "#7F408E",
+          width: "90px",
+          background: primary,
           color: "#fff",
           "&:hover": {
-            background: "#6a2f7d",
+            background: primary + "cc",
           },
         }}
       >

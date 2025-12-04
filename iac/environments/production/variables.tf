@@ -96,3 +96,42 @@ variable "alert_email_addresses" {
     error_message = "At least one alert email address must be provided for production."
   }
 }
+
+# Prometheus and Grafana Configuration
+variable "enable_prometheus" {
+  description = "Enable Azure Monitor Workspace (Prometheus)"
+  type        = bool
+  default     = true # Enabled by default for production
+}
+
+variable "enable_grafana" {
+  description = "Enable Azure Managed Grafana"
+  type        = bool
+  default     = true # Enabled by default for production
+}
+
+variable "grafana_admin_object_ids" {
+  description = "List of Azure AD object IDs to grant Grafana Admin role"
+  type        = list(string)
+  default     = []
+}
+
+# Docker Registry Configuration (for private ghcr.io)
+variable "docker_registry_url" {
+  description = "Docker registry URL"
+  type        = string
+  default     = "https://ghcr.io"
+}
+
+variable "docker_registry_username" {
+  description = "Docker registry username (GitHub username for ghcr.io)"
+  type        = string
+  default     = ""
+}
+
+variable "docker_registry_password" {
+  description = "Docker registry password (GitHub PAT with read:packages scope)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

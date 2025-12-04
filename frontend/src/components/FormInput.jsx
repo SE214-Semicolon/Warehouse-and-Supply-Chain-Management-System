@@ -5,11 +5,12 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  FormHelperText,
 } from "@mui/material";
 import {
   LocalizationProvider,
-  DateTimePicker,
   DatePicker,
+  DateTimePicker,
 } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { enUS } from "date-fns/locale";
@@ -22,100 +23,124 @@ const focusedStyles = {
 };
 
 const inputComponents = {
-  date: ({ label, value, onChange, sx, ...props }) => (
+  date: ({
+    label,
+    value,
+    onChange,
+    required,
+    error,
+    helperText,
+    sx,
+  }) => (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enUS}>
       <DatePicker
         label={label}
         format="dd/MM/yyyy"
         value={value ? new Date(value) : null}
-        onChange={(date) => onChange(date)}
+        onChange={onChange}
         slotProps={{
           textField: {
             fullWidth: true,
             size: "medium",
+            required,
+            error,
+            helperText,
             sx: { ...focusedStyles, ...sx },
-            ...props,
-          },
-          popper: {
-            placement: "bottom-start",
-            modifiers: [
-              {
-                name: "preventOverflow",
-                enabled: true,
-                options: {
-                  boundary: "clippingParents",
-                  altAxis: true,
-                },
-              },
-              {
-                name: "flip",
-                enabled: true,
-              },
-            ],
           },
         }}
       />
     </LocalizationProvider>
   ),
 
-  datetime: ({ label, value, onChange, sx, ...props }) => (
+  datetime: ({
+    label,
+    value,
+    onChange,
+    required,
+    error,
+    helperText,
+    sx,
+  }) => (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enUS}>
       <DateTimePicker
         label={label}
         format="dd/MM/yyyy HH:mm"
         value={value ? new Date(value) : null}
-        onChange={(date) => onChange(date)}
+        onChange={onChange}
         slotProps={{
           textField: {
             fullWidth: true,
             size: "medium",
+            required,
+            error,
+            helperText,
             sx: { ...focusedStyles, ...sx },
-            ...props,
-          },
-          popper: {
-            placement: "bottom-start",
-            modifiers: [
-              {
-                name: "preventOverflow",
-                enabled: true,
-                options: {
-                  boundary: "clippingParents",
-                  altAxis: true,
-                },
-              },
-              {
-                name: "flip",
-                enabled: true,
-              },
-            ],
           },
         }}
       />
     </LocalizationProvider>
   ),
 
-  select: ({ label, value, onChange, options, sx, ...props }) => (
-    <FormControl fullWidth size="medium" sx={{ ...focusedStyles, ...sx }}>
+  // PHIÊN BẢN SELECT HOÀN HẢO – KHÔNG LỖI, CÓ ERROR + HELPERTEXT
+  select: ({
+    label,
+    value,
+    onChange,
+    options = [],
+    required,
+    error,
+    helperText,
+    sx,
+  }) => (
+    <FormControl
+      fullWidth
+      size="medium"
+      error={error}
+      required={required}
+      sx={{ ...focusedStyles, ...sx }}
+    >
       <InputLabel>{label}</InputLabel>
-      <Select value={value} onChange={onChange} label={label} {...props}>
-        {options.map((option) => (
-          <MenuItem key={option} value={option}>
-            {option}
-          </MenuItem>
-        ))}
+      <Select
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        label={label}
+      >
+        {options.map((opt) => {
+          const isObject = typeof opt === "object" && opt !== null;
+          const val = isObject ? opt.value : opt;
+          const lbl = isObject ? opt.label : opt;
+          return (
+            <MenuItem key={val} value={val}>
+              {lbl}
+            </MenuItem>
+          );
+        })}
       </Select>
+      {helperText && <FormHelperText>{helperText}</FormHelperText>}
     </FormControl>
   ),
 
-  text: ({ label, value, placeholder, onChange, type, sx, ...props }) => (
+  text: ({
+    label,
+    value,
+    onChange,
+    type = "text",
+    required,
+    error,
+    helperText,
+    sx,
+    ...props
+  }) => (
     <TextField
       label={label}
       value={value}
-      placeholder={placeholder}
-      onChange={onChange}
+      onChange={(e) => onChange(e.target.value)}
       type={type}
       fullWidth
       size="medium"
+      required={required}
+      error={error}
+      helperText={helperText}
       sx={{ ...focusedStyles, ...sx }}
       {...props}
     />
@@ -126,42 +151,36 @@ export default function FormInput({
   label,
   type = "text",
   value: controlledValue,
-  defaultValue = "",
   onChange,
   options = [],
+  required,
+  error,
+  helperText,
   sx = {},
   ...props
 }) {
-  const [value, setValue] = React.useState(defaultValue);
+  const [value, setValue] = React.useState(controlledValue ?? "");
 
   React.useEffect(() => {
-    if (controlledValue !== undefined) {
-      setValue(controlledValue);
-    }
+    setValue(controlledValue ?? "");
   }, [controlledValue]);
 
-  const handleChange = (eventOrDate) => {
-    let newValue;
-
-    if (type === "date" || type === "datetime") {
-      newValue = eventOrDate;
-    } else {
-      newValue = eventOrDate?.target?.value ?? "";
-    }
-
+  const handleChange = (newValue) => {
     setValue(newValue);
     onChange?.(newValue);
   };
 
-  const InputComponent = inputComponents[type] || inputComponents.text;
+  const Component = inputComponents[type] || inputComponents.text;
 
   return (
-    <InputComponent
+    <Component
       label={label}
       value={value}
       onChange={handleChange}
       options={options}
-      type={type}
+      required={required}
+      error={error}
+      helperText={helperText}
       sx={sx}
       {...props}
     />

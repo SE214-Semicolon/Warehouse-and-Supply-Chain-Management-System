@@ -81,3 +81,63 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# ==========================================
+# Prometheus Configuration
+# ==========================================
+variable "enable_prometheus" {
+  description = "Enable Azure Monitor Workspace (Prometheus)"
+  type        = bool
+  default     = false
+}
+
+# ==========================================
+# Grafana Configuration
+# ==========================================
+variable "enable_grafana" {
+  description = "Enable Azure Managed Grafana"
+  type        = bool
+  default     = false
+}
+
+variable "grafana_major_version" {
+  description = "Major version of Grafana (11)"
+  type        = string
+  default     = "11"
+}
+
+variable "grafana_sku" {
+  description = "SKU for Azure Managed Grafana (Standard or Essential)"
+  type        = string
+  default     = "Standard"
+}
+
+variable "grafana_zone_redundancy" {
+  description = "Enable zone redundancy for Grafana"
+  type        = bool
+  default     = false
+}
+
+variable "grafana_deterministic_outbound_ip" {
+  description = "Enable deterministic outbound IP for Grafana"
+  type        = bool
+  default     = false
+}
+
+variable "grafana_public_network_access" {
+  description = "Enable public network access for Grafana"
+  type        = bool
+  default     = true
+}
+
+variable "grafana_subscription_reader" {
+  description = "Grant Grafana Monitoring Reader access to entire subscription"
+  type        = bool
+  default     = false
+}
+
+variable "grafana_admin_object_ids" {
+  description = "List of Azure AD object IDs to grant Grafana Admin role"
+  type        = list(string)
+  default     = []
+}

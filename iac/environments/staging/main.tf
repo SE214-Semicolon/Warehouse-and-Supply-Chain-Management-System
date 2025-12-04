@@ -20,9 +20,9 @@ module "networking" {
   location            = var.location
   resource_group_name = azurerm_resource_group.main.name
 
-  vnet_address_space                = ["10.1.0.0/16"]
-  app_subnet_address_prefixes       = ["10.1.1.0/24"]
-  database_subnet_address_prefixes  = ["10.1.2.0/24"]
+  vnet_address_space               = ["10.1.0.0/16"]
+  app_subnet_address_prefixes      = ["10.1.1.0/24"]
+  database_subnet_address_prefixes = ["10.1.2.0/24"]
 
   tags = merge(var.tags, {
     Environment = var.environment
@@ -45,11 +45,20 @@ module "monitoring" {
 
   # Monitoring Configuration for Staging
   log_analytics_retention_days = 30
-  alert_email_addresses       = var.alert_email_addresses
-  create_dashboard           = true
+  alert_email_addresses        = var.alert_email_addresses
+  create_dashboard             = true
+
+  # Prometheus and Grafana Configuration
+  enable_prometheus             = var.enable_prometheus
+  enable_grafana                = var.enable_grafana
+  grafana_sku                   = "Standard"
+  grafana_zone_redundancy       = false
+  grafana_public_network_access = true
+  grafana_subscription_reader   = true
+  grafana_admin_object_ids      = var.grafana_admin_object_ids
 
   # Resource IDs will be set after app service creation
-  app_service_ids    = []
+  app_service_ids = []
   # No Azure databases - using external services
 
   tags = merge(var.tags, {
@@ -69,34 +78,39 @@ module "app_service" {
   app_subnet_id = module.networking.app_subnet_id
 
   # App Service Configuration for Staging (Basic tier)
-  app_service_plan_sku = "B1"  # Basic 1 for staging
-  app_service_always_on = false  # Can be false for staging to save costs
+  app_service_plan_sku  = "B1"  # Basic 1 for staging
+  app_service_always_on = false # Can be false for staging to save costs
 
   # External Database connections (Neon PostgreSQL + MongoDB Atlas)
-  postgres_connection_string         = var.external_postgres_url
-  cosmos_mongodb_connection_string   = var.external_mongodb_url
+  postgres_connection_string       = var.external_postgres_url
+  cosmos_mongodb_connection_string = var.external_mongodb_url
 
   # JWT Configuration
   jwt_access_secret  = var.jwt_access_secret
   jwt_refresh_secret = var.jwt_refresh_secret
-  
+
   # CORS Configuration
   cors_origin = var.cors_origin
+
+  # Docker Registry Credentials (for private ghcr.io)
+  docker_registry_url      = var.docker_registry_url
+  docker_registry_username = var.docker_registry_username
+  docker_registry_password = var.docker_registry_password
 
   # Monitoring
   application_insights_connection_string = module.monitoring.application_insights_connection_string
 
   # Staging specific settings
-  enable_autoscaling      = false  # No autoscaling for staging
-  enable_deployment_slots = false  # No deployment slots for staging
+  enable_autoscaling      = false # No autoscaling for staging
+  enable_deployment_slots = false # No deployment slots for staging
 
   backend_app_settings = {
-    WEBSITE_NODE_DEFAULT_VERSION = "20-lts"
+    WEBSITE_NODE_DEFAULT_VERSION   = "20-lts"
     SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
   }
 
   frontend_app_settings = {
-    WEBSITE_NODE_DEFAULT_VERSION = "20-lts"
+    WEBSITE_NODE_DEFAULT_VERSION   = "20-lts"
     SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
   }
 
@@ -121,7 +135,7 @@ resource "azurerm_monitor_metric_alert" "app_service_cpu" {
     metric_name      = "CpuTime"
     aggregation      = "Total"
     operator         = "GreaterThan"
-    threshold        = 90  # Higher threshold for staging
+    threshold        = 90 # Higher threshold for staging
   }
 
   action {
