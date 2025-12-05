@@ -9,20 +9,21 @@ import FormDialog from "./components/FormDialog";
 import ViewDialog from "./components/ViewDialog";
 import { menuItems } from "./components/MenuConfig";
 import {
-  locationsData,
   batchesData,
   fetchCategoriesData,
   fetchProductsData,
   fetchWarehousesData,
+  fetchLocationsData
 } from "./components/data_service";
-import ProductCategories from "@/services/category.service";
+import ProductCategoryService from "@/services/category.service";
 import ProductService from "@/services/product.service";
 import WarehouseService from "@/services/warehouse.service";
+import LocationService from "@/services/location.service";
 
 const menuConfig = {
   categories: {
     fetchData: fetchCategoriesData,
-    service: ProductCategories,
+    service: ProductCategoryService,
   },
   products: {
     fetchData: fetchProductsData,
@@ -32,10 +33,10 @@ const menuConfig = {
     fetchData: fetchWarehousesData,
     service: WarehouseService,
   },
-  // locations: {
-  //   fetchData: fetchLocationsData,
-  //   service: LocationService,
-  // },
+  locations: {
+    fetchData: fetchLocationsData,
+    service: LocationService,
+  },
   // batches: {
   //   fetchData: fetchBatchesData,
   //   service: BatchService,
@@ -54,7 +55,6 @@ const Warehouse = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
   const staticData = {
-    locations: locationsData,
     batches: batchesData,
   };
 

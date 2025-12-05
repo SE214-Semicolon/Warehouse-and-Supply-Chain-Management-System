@@ -30,6 +30,7 @@ const inputComponents = {
     required,
     error,
     helperText,
+    disabled,
     sx,
   }) => (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enUS}>
@@ -38,6 +39,7 @@ const inputComponents = {
         format="dd/MM/yyyy"
         value={value ? new Date(value) : null}
         onChange={onChange}
+        disabled={disabled}
         slotProps={{
           textField: {
             fullWidth: true,
@@ -59,6 +61,7 @@ const inputComponents = {
     required,
     error,
     helperText,
+    disabled,
     sx,
   }) => (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enUS}>
@@ -67,6 +70,7 @@ const inputComponents = {
         format="dd/MM/yyyy HH:mm"
         value={value ? new Date(value) : null}
         onChange={onChange}
+        disabled={disabled}
         slotProps={{
           textField: {
             fullWidth: true,
@@ -81,7 +85,6 @@ const inputComponents = {
     </LocalizationProvider>
   ),
 
-  // PHIÊN BẢN SELECT HOÀN HẢO – KHÔNG LỖI, CÓ ERROR + HELPERTEXT
   select: ({
     label,
     value,
@@ -90,6 +93,7 @@ const inputComponents = {
     required,
     error,
     helperText,
+    disabled,
     sx,
   }) => (
     <FormControl
@@ -97,6 +101,7 @@ const inputComponents = {
       size="medium"
       error={error}
       required={required}
+      disabled={disabled}
       sx={{ ...focusedStyles, ...sx }}
     >
       <InputLabel>{label}</InputLabel>
@@ -128,12 +133,14 @@ const inputComponents = {
     required,
     error,
     helperText,
+    disabled,
     sx,
     ...props
   }) => (
     <TextField
       label={label}
       value={value}
+      disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
       type={type}
       fullWidth
@@ -156,6 +163,7 @@ export default function FormInput({
   required,
   error,
   helperText,
+  disabled,
   sx = {},
   ...props
 }) {
@@ -179,6 +187,8 @@ export default function FormInput({
       onChange={handleChange}
       options={options}
       required={required}
+      disabled={disabled}
+      type={type}
       error={error}
       helperText={helperText}
       sx={sx}

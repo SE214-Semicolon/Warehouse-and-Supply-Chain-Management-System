@@ -1,36 +1,7 @@
-import ProductCategories from "@/services/category.service";
-import Products from "@/services/product.service";
-import Warehouses from "@/services/warehouse.service";
-
-export const locationsData = [
-  {
-    id: 1,
-    code: "A-01-01",
-    name: "Kệ A - Tầng 1 - Ô 1",
-    type: "Kệ",
-    capacity: 1000,
-    warehouse: "Kho Trung Tâm",
-    createdAt: "2024-01-16",
-  },
-  {
-    id: 2,
-    code: "B-02-03",
-    name: "Kệ B - Tầng 2 - Ô 3",
-    type: "Kệ",
-    capacity: 800,
-    warehouse: "Kho Trung Tâm",
-    createdAt: "2024-01-17",
-  },
-  {
-    id: 3,
-    code: "C-01-05",
-    name: "Kệ C - Tầng 1 - Ô 5",
-    type: "Pallet",
-    capacity: 1500,
-    warehouse: "Kho Miền Bắc",
-    createdAt: "2024-02-21",
-  },
-];
+import ProductCategoryService from "@/services/category.service";
+import ProductService from "@/services/product.service";
+import WarehouseService from "@/services/warehouse.service";
+import LocationService from "@/services/location.service";
 
 export const batchesData = [
   {
@@ -66,7 +37,7 @@ export const batchesData = [
 
 export const fetchCategoriesData = async () => {
   try {
-    const res = await ProductCategories.getAll();
+    const res = await ProductCategoryService.getAll();
     return res.data?.data ?? [];
   } catch (error) {
     console.error("Lỗi khi fetch categories:", error);
@@ -76,7 +47,7 @@ export const fetchCategoriesData = async () => {
 
 export const fetchProductsData = async () => {
   try {
-    const res = await Products.getAll();
+    const res = await ProductService.getAll();
     return res.data?.data ?? [];
   } catch (error) {
     console.error("Lỗi khi fetch products:", error);
@@ -86,10 +57,20 @@ export const fetchProductsData = async () => {
 
 export const fetchWarehousesData = async () => {
   try {
-    const res = await Warehouses.getAll();
+    const res = await WarehouseService.getAll();
     return res.data?.warehouses ?? res.data?.data?.warehouses ?? [];
   } catch (error) {
     console.error("Lỗi khi fetch warehouses:", error);
+    return [];
+  }
+};
+
+export const fetchLocationsData = async () => {
+  try {
+    const res = await LocationService.getAll();
+    return res.data?.locations ?? res.data?.data?.locations ?? [];
+  } catch (error) {
+    console.error("Lỗi khi fetch locations:", error);
     return [];
   }
 };
