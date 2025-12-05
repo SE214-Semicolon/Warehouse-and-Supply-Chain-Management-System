@@ -1,0 +1,114 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import request from 'supertest';
+import { AppModule } from '../../../../app.module';
+import { PrismaService } from '../../../../database/prisma/prisma.service';
+import { JwtService } from '@nestjs/jwt';
+import { UserRole } from '@prisma/client';
+
+/**
+ * SMOKE TEST - Product Module
+ * Critical path testing for basic CRUD operations
+ */
+describe('Product Module - Smoke Tests', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let jwtService: JwtService;
+  let adminToken: string;
+
+  beforeAll(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
+    await app.init();
+
+    prisma = moduleFixture.get<PrismaService>(PrismaService);
+    jwtService = moduleFixture.get<JwtService>(JwtService);
+
+    await prisma.product.deleteMany({});
+    await prisma.user.deleteMany({});
+
+    const adminUser = await prisma.user.create({
+      data: {
+        username: 'admin-product-smoke',
+        email: 'admin-product-smoke@test.com',
+        fullName: 'Admin Product Smoke',
+        passwordHash: '$2b$10$validhashedpassword',
+        role: UserRole.admin,
+        active: true,
+      },
+    });
+
+    adminToken = `Bearer ${jwtService.sign({
+      sub: adminUser.id,
+      email: adminUser.email,
+      role: adminUser.role,
+    })}`;
+  }, 30000);
+
+  afterAll(async () => {
+    await app.close();
+  }, 30000);
+
+  describe('SMOKE-PROD-01: CRUD Operations', () => {
+    let productId: string;
+
+    it('should CREATE product', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/products')
+        .set('Authorization', adminToken)
+        .send({
+          sku: 'SMOKE-PROD-001',
+          name: 'Smoke Test Product',
+          unit: 'pcs',
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      productId = response.body.data.id;
+    });
+
+    it('should READ products', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/products')
+        .set('Authorization', adminToken)
+        .expect(200);
+
+      expect(Array.isArray(response.body.data)).toBe(true);
+    });
+
+    it('should UPDATE product', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/products/${productId}`)
+        .set('Authorization', adminToken)
+        .send({
+          name: 'Updated Smoke Product',
+        })
+        .expect(200);
+
+      expect(response.body.data.name).toBe('Updated Smoke Product');
+    });
+
+    it('should DELETE product', async () => {
+      await request(app.getHttpServer())
+        .delete(`/products/${productId}`)
+        .set('Authorization', adminToken)
+        .expect(200);
+    });
+  });
+
+  describe('SMOKE-PROD-02: Authentication Check', () => {
+    it('should reject requests without authentication', async () => {
+      await request(app.getHttpServer()).get('/products').expect(401);
+    });
+  });
+});

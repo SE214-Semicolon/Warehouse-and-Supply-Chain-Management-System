@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { WarehouseService } from '../services/warehouse.service';
-import { WarehouseRepository } from '../repositories/warehouse.repository';
-import { CacheService } from '../../../cache/cache.service';
+import { WarehouseService } from '../../services/warehouse.service';
+import { WarehouseRepository } from '../../repositories/warehouse.repository';
+import { CacheService } from '../../../../cache/cache.service';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
 describe('WarehouseService', () => {
