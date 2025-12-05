@@ -203,7 +203,7 @@ export default function DataTable({
             {paginatedData.map((row, index) => (
               <TableRow key={row.id} hover>
                 {columns.map((col) => (
-                  <TableCell key={col.id} align="center">
+                  <TableCell key={col.id} align={col.align || "center"}>
                     {renderCellContent(col, row, index)}
                   </TableCell>
                 ))}

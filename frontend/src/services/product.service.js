@@ -2,7 +2,7 @@ import api from "../utils/axiosInstance";
 
 const BASE = "/products";
 
-const Products = {
+const ProductService = {
   getAll: () => api.get(BASE),
 
   create: async (data) => {
@@ -10,7 +10,7 @@ const Products = {
       const response = await api.post(BASE, data);
       return response.data;
     } catch (err) {
-      console.log(err);
+      console.log(err?.response?.data);
     }
   },
 
@@ -19,7 +19,7 @@ const Products = {
       const response = await api.patch(`${BASE}/${id}`, data);
       return response.data;
     } catch (err) {
-      console.log(err);
+      console.log(err?.response?.data);
     }
   },
 
@@ -28,9 +28,9 @@ const Products = {
       const response = await api.delete(`${BASE}/${id}`);
       return response.data;
     } catch (err) {
-      console.log(err);
+      console.log(err?.response?.data);
     }
   },
 };
 
-export default Products;
+export default ProductService;

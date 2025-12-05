@@ -5,12 +5,20 @@ export const menuItems = [
     id: "warehouses",
     label: "Warehouses",
     columns: [
-      { id: "stt", label: "STT" },
-      { id: "code", label: "Mã kho" },
-      { id: "name", label: "Tên kho" },
-      { id: "address", label: "Địa chỉ" },
-      { id: "quantity", label: "Số lượng location" },
-      { id: "createdAt", label: "Ngày cập nhật" },
+      { id: "stt", label: "No" },
+      { id: "code", label: "Code" },
+      { id: "name", label: "Name", align: "left" },
+      { id: "address", label: "Address", align: "left" },
+      {
+        id: "totalArea",
+        label: "Area",
+        render: (_, row) => row.metadata?.totalArea ?? "-",
+      },
+      {
+        id: "updatedAt",
+        label: "Update Date",
+        render: (_, row) => formatDate(row.updatedAt),
+      },
     ],
   },
 
@@ -28,20 +36,28 @@ export const menuItems = [
     id: "locations",
     label: "Locations",
     columns: [
-      { id: "stt", label: "STT" },
-      { id: "code", label: "Mã location" },
-      { id: "name", label: "Tên" },
-      { id: "type", label: "Loại" },
-      { id: "capacity", label: "Sức chứa" },
-      { id: "warehouse", label: "Thuộc kho" },
-      { id: "createdAt", label: "Ngày cập nhật" },
+      { id: "stt", label: "No" },
+      { id: "code", label: "Code" },
+      { id: "name", label: "Name", align: "left" },
+      { id: "type", label: "Type" },
+      { id: "capacity", label: "Capacity" },
+      {
+        id: "warehouseId",
+        label: "Warehouse",
+        align: "left",
+        render: (_, row) => row.warehouse?.name ?? "-",
+      },
+      {
+        id: "updatedAt",
+        label: "Update Date",
+        render: (_, row) => formatDate(row.updatedAt),
+      },
     ],
   },
 
   {
     id: "products",
     label: "Products",
-    allowView: false,
     columns: [
       { id: "stt", label: "STT" },
       { id: "sku", label: "SKU" },
