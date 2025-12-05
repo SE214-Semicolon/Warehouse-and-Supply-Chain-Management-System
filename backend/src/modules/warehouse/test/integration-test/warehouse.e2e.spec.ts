@@ -704,7 +704,11 @@ describe('Warehouse Integration Tests (e2e)', () => {
     it('WH-INT-39: Should return 409 for duplicate code with different case', async () => {
       const uniqueCode = `WH-CASE-${Date.now()}`;
       const createDto1 = { code: uniqueCode, name: 'Test Warehouse 1', address: '123 Test St' };
-      const createDto2 = { code: uniqueCode.toLowerCase(), name: 'Test Warehouse 2', address: '456 Test Ave' };
+      const createDto2 = {
+        code: uniqueCode.toLowerCase(),
+        name: 'Test Warehouse 2',
+        address: '456 Test Ave',
+      };
 
       await request(app.getHttpServer())
         .post('/warehouses')

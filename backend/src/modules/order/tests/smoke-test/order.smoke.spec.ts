@@ -112,7 +112,6 @@ describe('Order Module - Smoke Tests', () => {
 
       expect(response.body.status).toBe('ordered');
     });
-
   });
 
   describe('SMOKE-ORDER-02: Authentication Check', () => {

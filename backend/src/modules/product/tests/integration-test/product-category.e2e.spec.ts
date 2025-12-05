@@ -301,7 +301,9 @@ describe('Product Category Module (e2e)', () => {
     it('CAT-INT-14: Should allow duplicate name in same parent', async () => {
       // Ensure rootCategoryId exists
       let parentId = rootCategoryId;
-      const categoryExists = await prisma.productCategory.findUnique({ where: { id: rootCategoryId } });
+      const categoryExists = await prisma.productCategory.findUnique({
+        where: { id: rootCategoryId },
+      });
       if (!categoryExists) {
         const newCategory = await prisma.productCategory.create({
           data: { name: `Root-${Date.now()}` },

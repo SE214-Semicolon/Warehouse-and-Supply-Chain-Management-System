@@ -901,7 +901,11 @@ describe('Product Batch Module (e2e)', () => {
       const productExists = await prisma.product.findUnique({ where: { id: testProductId } });
       if (!productExists) {
         const newProduct = await prisma.product.create({
-          data: { sku: `PROD-DELETE-BATCH-${Date.now()}`, name: 'Delete Batch Product', unit: 'pcs' },
+          data: {
+            sku: `PROD-DELETE-BATCH-${Date.now()}`,
+            name: 'Delete Batch Product',
+            unit: 'pcs',
+          },
         });
         productId = newProduct.id;
       }
