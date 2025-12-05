@@ -103,6 +103,7 @@ model ProductBatch {
   id               String              @id @default(uuid()) @db.Uuid
   productId        String              @db.Uuid
   batchNo          String?
+  quantity         Int                 @default(0)
   manufactureDate  DateTime?
   expiryDate       DateTime?
   barcodeOrQr      String?

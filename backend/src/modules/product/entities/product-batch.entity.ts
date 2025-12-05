@@ -10,7 +10,7 @@ export class ProductBatchEntity {
   @ApiPropertyOptional({ description: 'Batch number/code' })
   batchNo?: string | null;
 
-  @ApiProperty({ description: 'Quantity in batch' })
+  @ApiProperty({ description: 'Quantity in batch', default: 0 })
   quantity: number;
 
   @ApiPropertyOptional({ description: 'Manufacture date' })
