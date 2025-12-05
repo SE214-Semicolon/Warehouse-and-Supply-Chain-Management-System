@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Box } from "@mui/material";
 import FormInput from "@/components/FormInput";
 import DialogButtons from "@/components/DialogButtons";
@@ -19,7 +19,9 @@ export default function FormFieldsRenderer({
   onCancel,
 }) {
   const isEdit = mode === "edit";
-  const baseFields = fieldConfigs[selectedMenu] || [];
+  const baseFields = useMemo(() => {
+    return fieldConfigs[selectedMenu] || [];
+  }, [selectedMenu]);
 
   const { options: dynamicOptions, initialValue: dynamicInitial } =
     useDynamicOptions(selectedMenu, true, selectedRow);
@@ -111,13 +113,15 @@ export default function FormFieldsRenderer({
     const value = formData[fieldId] || "";
     const max = MAX_LENGTHS[fieldId];
 
+    const label =
+      fieldConfigs[selectedMenu].find((f) => f.id === fieldId)?.label ||
+      fieldId;
+
     if (max && value.length > max) {
-      return `${
-        fieldConfigs[selectedMenu].find((f) => f.id === fieldId)?.label ||
-        fieldId
-      } must not exceed ${max} characters`;
+      return `${label} must not exceed ${max} characters`;
     }
-    return "This field is required";
+
+    return `${label} is required`;
   };
 
   return (
@@ -153,7 +157,6 @@ export default function FormFieldsRenderer({
               error={hasError}
               helperText={getHelperText(field.id)}
               disabled={disabled}
-              autoFocus={field.id === "name"} // bonus UX nhỏ
             />
           );
         })}
