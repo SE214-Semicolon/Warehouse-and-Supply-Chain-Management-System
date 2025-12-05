@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { PrismaService } from '../database/prisma/prisma.service';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import { QueryInviteDto } from './dto/query-invite.dto';
 import { UserInvite, UserRole, Prisma } from '@prisma/client';
