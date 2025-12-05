@@ -107,7 +107,8 @@ export class LocationRepository implements ILocationRepository {
   async findByCode(warehouseId: string, code: string): Promise<Location | null> {
     try {
       this.logger.debug(`Finding location by code: ${code} in warehouse: ${warehouseId}`);
-      return await this.prisma.location.findUnique({
+      // Try exact match first
+      let location = await this.prisma.location.findUnique({
         where: {
           warehouseId_code: {
             warehouseId,
@@ -118,6 +119,24 @@ export class LocationRepository implements ILocationRepository {
           warehouse: true,
         },
       });
+
+      // If not found, try case-insensitive search
+      if (!location) {
+        location = await this.prisma.location.findFirst({
+          where: {
+            warehouseId,
+            code: {
+              equals: code,
+              mode: 'insensitive',
+            },
+          },
+          include: {
+            warehouse: true,
+          },
+        });
+      }
+
+      return location;
     } catch (error) {
       this.logger.error(`Error finding location by code ${code}:`, error);
       throw error;
