@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsDateString, IsNumber, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsDateString,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 class CreateSOItemDto {
@@ -45,4 +53,3 @@ export class CreateSalesOrderDto {
   @Type(() => CreateSOItemDto)
   items?: CreateSOItemDto[];
 }
-

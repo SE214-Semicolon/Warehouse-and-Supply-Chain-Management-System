@@ -12,7 +12,12 @@ export class InviteService {
   /**
    * Tạo invite token mới
    */
-  async createInvite(dto: CreateInviteDto, createdById: string): Promise<UserInvite & { createdBy: { id: string; email: string | null; fullName: string | null } | null }> {
+  async createInvite(
+    dto: CreateInviteDto,
+    createdById: string,
+  ): Promise<
+    UserInvite & { createdBy: { id: string; email: string | null; fullName: string | null } | null }
+  > {
     // Check if email already has a pending (unused, not expired) invite
     const existingPending = await this.prisma.userInvite.findFirst({
       where: {
@@ -74,7 +79,9 @@ export class InviteService {
         email: null,
         fullName: null,
       },
-    } as UserInvite & { createdBy: { id: string; email: string | null; fullName: string | null } | null };
+    } as UserInvite & {
+      createdBy: { id: string; email: string | null; fullName: string | null } | null;
+    };
   }
 
   /**
@@ -287,4 +294,3 @@ export class InviteService {
     return where;
   }
 }
-

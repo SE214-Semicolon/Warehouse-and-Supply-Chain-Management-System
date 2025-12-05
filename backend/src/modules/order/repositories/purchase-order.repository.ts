@@ -148,7 +148,10 @@ export class PurchaseOrderRepository {
     });
   }
 
-  async addItems(poId: string, items: Omit<Prisma.PurchaseOrderItemCreateManyInput, 'purchaseOrderId'>[]) {
+  async addItems(
+    poId: string,
+    items: Omit<Prisma.PurchaseOrderItemCreateManyInput, 'purchaseOrderId'>[],
+  ) {
     await this.prisma.purchaseOrderItem.createMany({
       data: items.map((it) => ({
         purchaseOrderId: poId,

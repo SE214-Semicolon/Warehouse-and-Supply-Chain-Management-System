@@ -6,4 +6,3 @@ export class SubmitSalesOrderDto {
   @IsUUID()
   userId!: string;
 }
-

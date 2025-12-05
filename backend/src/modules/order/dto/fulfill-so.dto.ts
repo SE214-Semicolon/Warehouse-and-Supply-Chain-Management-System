@@ -40,4 +40,3 @@ export class FulfillSalesOrderDto {
   @IsString()
   note?: string;
 }
-

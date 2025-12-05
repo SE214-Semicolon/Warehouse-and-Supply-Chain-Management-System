@@ -21,10 +21,7 @@ export class SalesOrderController {
   @Post()
   @ApiOperation({ summary: 'Tạo Sales Order (pending)' })
   @Roles(UserRole.admin, UserRole.manager, UserRole.logistics)
-  create(
-    @Body() dto: CreateSalesOrderDto,
-    @Req() req: { user: { userId: string } },
-  ) {
+  create(@Body() dto: CreateSalesOrderDto, @Req() req: { user: { userId: string } }) {
     return this.svc.createSalesOrder(dto, req.user.userId);
   }
 
@@ -70,4 +67,3 @@ export class SalesOrderController {
     return this.svc.cancelSalesOrder(id);
   }
 }
-

@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/jwt.guard';
 import { RolesGuard } from '../../auth/roles.guard';
@@ -24,10 +35,7 @@ export class OrderController {
   @Post()
   @ApiOperation({ summary: 'Tạo PO (draft)' })
   @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
-  create(
-    @Body() dto: CreatePurchaseOrderDto,
-    @Req() req: { user: { userId: string } },
-  ) {
+  create(@Body() dto: CreatePurchaseOrderDto, @Req() req: { user: { userId: string } }) {
     return this.svc.createPurchaseOrder(dto, req.user.userId);
   }
 
@@ -70,7 +78,7 @@ export class OrderController {
   @ApiOperation({ summary: 'Hủy PO' })
   @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
   cancel(@Param('id') id: string, @Body() dto: CancelPurchaseOrderDto) {
-    return this.svc.cancelPurchaseOrder(id);
+    return this.svc.cancelPurchaseOrder(id, dto);
   }
 
   @Post(':id/items')

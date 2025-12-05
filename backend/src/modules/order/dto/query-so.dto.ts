@@ -48,4 +48,3 @@ export class QuerySalesOrderDto {
   @IsString()
   sort?: string;
 }
-

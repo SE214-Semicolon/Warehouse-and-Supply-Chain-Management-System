@@ -6,4 +6,3 @@ export class LogoutDto {
   @IsString()
   refreshToken!: string;
 }
-

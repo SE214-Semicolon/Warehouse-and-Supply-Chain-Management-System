@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsDateString, IsUUID, ValidateNested, IsArray } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsDateString,
+  IsUUID,
+  ValidateNested,
+  IsArray,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 class UpdatePOItemDto {
@@ -55,4 +62,3 @@ export class UpdatePurchaseOrderDto {
   @Type(() => UpdatePOItemDto)
   items?: UpdatePOItemDto[];
 }
-

@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-  Query,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from './jwt.guard';
 import { RolesGuard } from './roles.guard';
@@ -28,10 +18,7 @@ export class InviteController {
   @Post()
   @Roles(UserRole.admin, UserRole.manager)
   @ApiOperation({ summary: 'Tạo invite token (admin/manager only)' })
-  async createInvite(
-    @Body() dto: CreateInviteDto,
-    @Req() req: { user: { userId: string } },
-  ) {
+  async createInvite(@Body() dto: CreateInviteDto, @Req() req: { user: { userId: string } }) {
     return this.inviteService.createInvite(dto, req.user.userId);
   }
 
@@ -52,10 +39,7 @@ export class InviteController {
   @Post(':id/resend')
   @Roles(UserRole.admin, UserRole.manager)
   @ApiOperation({ summary: 'Resend invite (tạo token mới)' })
-  async resendInvite(
-    @Param('id') id: string,
-    @Req() req: { user: { userId: string } },
-  ) {
+  async resendInvite(@Param('id') id: string, @Req() req: { user: { userId: string } }) {
     return this.inviteService.resendInvite(id, req.user.userId);
   }
 
@@ -75,4 +59,3 @@ export class InviteController {
     return { message: `Cleaned up ${count} expired invites` };
   }
 }
-

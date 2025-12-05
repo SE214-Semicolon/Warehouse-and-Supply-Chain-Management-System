@@ -3,17 +3,17 @@ import { IsEmail, IsEnum, IsOptional, IsInt, Min, Max } from 'class-validator';
 import { UserRole } from '@prisma/client';
 
 export class CreateInviteDto {
-  @ApiProperty({ 
+  @ApiProperty({
     example: 'newuser@example.com',
-    description: 'Email của người được mời'
+    description: 'Email của người được mời',
   })
   @IsEmail()
   email!: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     enum: UserRole,
     example: UserRole.manager,
-    description: 'Role sẽ được gán khi user signup'
+    description: 'Role sẽ được gán khi user signup',
   })
   @IsEnum(UserRole)
   role!: UserRole;
@@ -31,4 +31,3 @@ export class CreateInviteDto {
   @Max(30)
   expiryDays?: number;
 }
-

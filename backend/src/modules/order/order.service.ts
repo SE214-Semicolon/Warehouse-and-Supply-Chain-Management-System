@@ -41,11 +41,14 @@ export class OrderService {
    * - PO-TC08: Permission denied role warehouse_staff (403, tested by guard)
    * - PO-TC09: Create with placedAt in past (201, edge case allowed)
    * - PO-TC10: expectedArrival must be >= placedAt (400, fixed with @IsDateAfterOrEqual validator)
-   * 
+   *
    * Security: createdById is extracted from JWT token in controller (Bug c.2 fix),
    * not from DTO to prevent user impersonation.
    */
-  async createPurchaseOrder(dto: CreatePurchaseOrderDto, createdById: string): Promise<PurchaseOrder> {
+  async createPurchaseOrder(
+    dto: CreatePurchaseOrderDto,
+    createdById: string,
+  ): Promise<PurchaseOrder> {
     const poNo = this.generatePoNo();
     const items: Omit<Prisma.PurchaseOrderItemCreateManyInput, 'purchaseOrderId'>[] = (
       dto.items ?? []
@@ -291,7 +294,8 @@ export class OrderService {
           if (item.qtyOrdered !== undefined) itemUpdateData.qtyOrdered = item.qtyOrdered;
           if (item.unitPrice !== undefined) {
             itemUpdateData.unitPrice = item.unitPrice;
-            itemUpdateData.lineTotal = item.unitPrice * (item.qtyOrdered ?? existingItem.qtyOrdered);
+            itemUpdateData.lineTotal =
+              item.unitPrice * (item.qtyOrdered ?? existingItem.qtyOrdered);
           }
           if (item.remark !== undefined) itemUpdateData.remark = item.remark;
 
@@ -306,12 +310,20 @@ export class OrderService {
     return updated;
   }
 
-  async cancelPurchaseOrder(id: string) {
+  async cancelPurchaseOrder(id: string, dto: { userId: string; reason?: string }) {
+    // Validate userId is provided (required by DTO)
+    if (!dto.userId) {
+      throw new BadRequestException('userId is required');
+    }
+
     const po = await this.poRepo.findById(id);
     if (!po) throw new NotFoundException('PO not found');
     if (po.status === PoStatus.received || po.status === PoStatus.cancelled) {
       throw new BadRequestException(`Cannot cancel PO with status: ${po.status}`);
     }
+
+    // Reason is optional but validated by DTO if provided
+    // Audit trail is handled by audit-log middleware
 
     await this.poRepo.cancel(id);
     const updated = await this.poRepo.findById(id);
@@ -329,15 +341,14 @@ export class OrderService {
       throw new BadRequestException('Can only add items to draft PO');
     }
 
-    const itemsToAdd: Omit<Prisma.PurchaseOrderItemCreateManyInput, 'purchaseOrderId'>[] = items.map(
-      (it) => ({
+    const itemsToAdd: Omit<Prisma.PurchaseOrderItemCreateManyInput, 'purchaseOrderId'>[] =
+      items.map((it) => ({
         productId: it.productId,
         qtyOrdered: it.qtyOrdered,
         unitPrice: it.unitPrice ?? null,
         lineTotal: it.unitPrice ? it.unitPrice * it.qtyOrdered : null,
         remark: it.remark ?? null,
-      }),
-    );
+      }));
 
     await this.poRepo.addItems(id, itemsToAdd);
     await this.poRepo.updateTotals(id);

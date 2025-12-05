@@ -36,4 +36,3 @@ export class QueryInviteDto {
   @Transform(({ value }) => (value ? parseInt(value, 10) : 20))
   pageSize?: number;
 }
-

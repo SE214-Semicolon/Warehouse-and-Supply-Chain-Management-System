@@ -7,4 +7,3 @@ export class RemovePurchaseOrderItemsDto {
   @IsUUID('4', { each: true })
   itemIds!: string[];
 }
-

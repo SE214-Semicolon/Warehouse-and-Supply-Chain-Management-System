@@ -108,10 +108,7 @@ export class SalesOrderService {
     return { data, total, page, pageSize };
   }
 
-  async updateSalesOrder(
-    id: string,
-    dto: UpdateSalesOrderDto,
-  ) {
+  async updateSalesOrder(id: string, dto: UpdateSalesOrderDto) {
     const so = await this.soRepo.findById(id);
     if (!so) throw new NotFoundException('SO not found');
     if (so.status !== OrderStatus.pending) {
@@ -228,4 +225,3 @@ export class SalesOrderService {
     return updated;
   }
 }
-
