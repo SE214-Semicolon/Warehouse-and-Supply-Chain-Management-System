@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/jwt.guard';
 import { RolesGuard } from '../../auth/roles.guard';
@@ -9,6 +9,10 @@ import { CreatePurchaseOrderDto } from './dto/create-po.dto';
 import { SubmitPurchaseOrderDto } from './dto/submit-po.dto';
 import { ReceivePurchaseOrderDto } from './dto/receive-po.dto';
 import { QueryPurchaseOrderDto } from './dto/query-po.dto';
+import { UpdatePurchaseOrderDto } from './dto/update-po.dto';
+import { CancelPurchaseOrderDto } from './dto/cancel-po.dto';
+import { AddPurchaseOrderItemsDto } from './dto/add-po-items.dto';
+import { RemovePurchaseOrderItemsDto } from './dto/remove-po-items.dto';
 
 @ApiTags('purchase-orders')
 @Controller('purchase-orders')
@@ -20,8 +24,11 @@ export class OrderController {
   @Post()
   @ApiOperation({ summary: 'Tạo PO (draft)' })
   @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
-  create(@Body() dto: CreatePurchaseOrderDto) {
-    return this.svc.createPurchaseOrder(dto);
+  create(
+    @Body() dto: CreatePurchaseOrderDto,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.svc.createPurchaseOrder(dto, req.user.userId);
   }
 
   @Post(':id/submit')
@@ -50,5 +57,33 @@ export class OrderController {
   @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
   async receive(@Param('id') id: string, @Body() dto: ReceivePurchaseOrderDto) {
     return this.svc.receivePurchaseOrder(id, dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Cập nhật draft PO' })
+  @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
+  update(@Param('id') id: string, @Body() dto: UpdatePurchaseOrderDto) {
+    return this.svc.updatePurchaseOrder(id, dto);
+  }
+
+  @Post(':id/cancel')
+  @ApiOperation({ summary: 'Hủy PO' })
+  @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
+  cancel(@Param('id') id: string, @Body() dto: CancelPurchaseOrderDto) {
+    return this.svc.cancelPurchaseOrder(id);
+  }
+
+  @Post(':id/items')
+  @ApiOperation({ summary: 'Thêm items vào draft PO' })
+  @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
+  addItems(@Param('id') id: string, @Body() dto: AddPurchaseOrderItemsDto) {
+    return this.svc.addPurchaseOrderItems(id, dto.items);
+  }
+
+  @Delete(':id/items')
+  @ApiOperation({ summary: 'Xóa items khỏi draft PO' })
+  @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
+  removeItems(@Param('id') id: string, @Body() dto: RemovePurchaseOrderItemsDto) {
+    return this.svc.removePurchaseOrderItems(id, dto.itemIds);
   }
 }

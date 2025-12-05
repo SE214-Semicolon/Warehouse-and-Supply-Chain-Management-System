@@ -4,6 +4,8 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { LogoutDto } from './dto/logout.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from './jwt.guard';
 
 @ApiTags('auth')
@@ -14,7 +16,7 @@ export class AuthController {
   @Post('signup')
   @ApiOperation({ summary: 'Đăng ký tài khoản' })
   async signup(@Body() dto: SignupDto) {
-    return this.auth.signup(dto.email, dto.password, dto.fullName);
+    return this.auth.signup(dto.email, dto.password, dto.fullName, dto.inviteToken);
   }
 
   @Post('login')
@@ -29,6 +31,25 @@ export class AuthController {
   @ApiOperation({ summary: 'Lấy access token mới từ refresh token' })
   async refresh(@Body() dto: RefreshDto) {
     return this.auth.refreshWithToken(dto.refreshToken);
+  }
+
+  @Post('logout')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Đăng xuất và revoke refresh token' })
+  async logout(@Body() dto: LogoutDto) {
+    return this.auth.logout(dto.refreshToken);
+  }
+
+  @Post('change-password')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Đổi mật khẩu (requires JWT)' })
+  async changePassword(
+    @Req() req: { user: { userId: string; email: string; role: string } },
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.auth.changePassword(req.user.userId, dto.currentPassword, dto.newPassword);
   }
 
   @Get('me')

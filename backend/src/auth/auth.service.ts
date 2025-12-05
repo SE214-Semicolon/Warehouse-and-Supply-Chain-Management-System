@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import bcryptjs from 'bcryptjs';
 import { PrismaService } from 'src/database/prisma/prisma.service';
 import { UserRole } from '@prisma/client';
+import { InviteService } from './invite.service';
 
 @Injectable()
 export class AuthService {
@@ -11,13 +12,49 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly inviteService: InviteService,
   ) {}
 
-  async signup(email: string, password: string, fullName?: string) {
+  async signup(email: string, password: string, fullName?: string, inviteToken?: string) {
     const existing = await this.usersService.findByEmail(email);
     if (existing) throw new UnauthorizedException('Email already registered');
+
     const passwordHash = await bcryptjs.hash(password, 10);
-    const user = await this.usersService.createUser({ email, passwordHash, fullName });
+
+    // Determine role based on invite token
+    let role: UserRole | undefined;
+    if (inviteToken) {
+      // Validate invite token (will throw if invalid/expired/used)
+      // Note: We'll mark as used after user creation succeeds
+      const invite = await this.inviteService.getInviteByToken(inviteToken);
+      if (!invite) {
+        throw new UnauthorizedException('Invalid invite token');
+      }
+      if (invite.usedAt) {
+        throw new UnauthorizedException('Invite token already used');
+      }
+      if (new Date() > invite.expiresAt) {
+        throw new UnauthorizedException('Invite token expired');
+      }
+      if (invite.email.toLowerCase() !== email.toLowerCase()) {
+        throw new UnauthorizedException('Invite token is for a different email');
+      }
+      role = invite.role;
+    }
+
+    // Create user with role from invite (or default warehouse_staff)
+    const user = await this.usersService.createUser({
+      email,
+      passwordHash,
+      fullName,
+      role,
+    });
+
+    // If invite was used, mark it as consumed
+    if (inviteToken) {
+      await this.inviteService.validateAndConsumeInvite(inviteToken, user.id);
+    }
+
     return this.issueTokens(user.id, user.email!, user.role);
   }
 
@@ -35,6 +72,12 @@ export class AuthService {
     if (!token || token.userId !== userId || token.revokedAt) {
       throw new UnauthorizedException('Invalid refresh token');
     }
+    
+    // Check if refresh token has expired
+    if (new Date() > token.expiresAt) {
+      throw new UnauthorizedException('Refresh token has expired');
+    }
+    
     const user = await this.usersService.findById(userId);
     if (!user?.active) throw new UnauthorizedException('Account is disabled');
     return this.issueTokens(user.id, user.email!, user.role);
@@ -69,6 +112,55 @@ export class AuthService {
       },
     );
     return { accessToken, refreshToken };
+  }
+
+  async logout(refreshToken: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync<{ sub: string; jti: string }>(
+        refreshToken,
+        {
+          secret: process.env.JWT_REFRESH_SECRET as string,
+        },
+      );
+
+      const token = await this.prisma.refreshToken.findUnique({ where: { id: payload.jti } });
+      if (!token) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      await this.prisma.refreshToken.update({
+        where: { id: payload.jti },
+        data: { revokedAt: new Date() },
+      });
+
+      return { message: 'Logged out successfully' };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new UnauthorizedException('User not found');
+
+    const isPasswordValid = await bcryptjs.compare(currentPassword, user.passwordHash ?? '');
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const newPasswordHash = await bcryptjs.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    // Revoke all existing refresh tokens to force re-login
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    return { message: 'Password changed successfully. Please login again.' };
   }
 
   private parseTtl(ttl: string): number {
