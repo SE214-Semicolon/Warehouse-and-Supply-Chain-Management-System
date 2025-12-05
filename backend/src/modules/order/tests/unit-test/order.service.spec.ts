@@ -108,7 +108,7 @@ describe('OrderService', () => {
       poRepo.updateTotals.mockResolvedValue(mockPurchaseOrder);
       poRepo.findById.mockResolvedValue(mockPurchaseOrder);
 
-      const result = await service.createPurchaseOrder(createDto);
+      const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
       expect(result).toEqual(mockPurchaseOrder);
       expect(result.status).toBe(PoStatus.draft);
@@ -138,7 +138,7 @@ describe('OrderService', () => {
       poRepo.updateTotals.mockResolvedValue(poWithoutSupplier);
       poRepo.findById.mockResolvedValue(poWithoutSupplier);
 
-      const result = await service.createPurchaseOrder(createDto);
+      const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
       expect(result.supplierId).toBeNull();
     });
@@ -156,7 +156,7 @@ describe('OrderService', () => {
       poRepo.updateTotals.mockResolvedValue(poWithoutItems);
       poRepo.findById.mockResolvedValue(poWithoutItems);
 
-      const result = await service.createPurchaseOrder(createDto);
+      const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
       expect((result as any).items).toEqual([]);
       expect(result.totalAmount).toBe(0);
@@ -190,7 +190,7 @@ describe('OrderService', () => {
       poRepo.updateTotals.mockResolvedValue(poWithNullPrice);
       poRepo.findById.mockResolvedValue(poWithNullPrice);
 
-      const result = await service.createPurchaseOrder(createDto);
+      const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
       expect((result as any).items[0].unitPrice).toBeNull();
       expect((result as any).items[0].lineTotal).toBeNull();
@@ -234,7 +234,7 @@ describe('OrderService', () => {
       poRepo.updateTotals.mockResolvedValue(poWithMultipleItems);
       poRepo.findById.mockResolvedValue(poWithMultipleItems);
 
-      const result = await service.createPurchaseOrder(createDto);
+      const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
       expect((result as any).items).toHaveLength(2);
       expect(result.totalAmount).toBe(1100);
@@ -263,7 +263,7 @@ describe('OrderService', () => {
       poRepo.updateTotals.mockResolvedValue(poWithPastDate);
       poRepo.findById.mockResolvedValue(poWithPastDate);
 
-      const result = await service.createPurchaseOrder(createDto);
+      const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
       expect(result.placedAt).toEqual(new Date('2020-01-15T10:00:00Z'));
     });
@@ -289,7 +289,7 @@ describe('OrderService', () => {
       poRepo.updateTotals.mockResolvedValue(poWithInvalidDates);
       poRepo.findById.mockResolvedValue(poWithInvalidDates);
 
-      const result = await service.createPurchaseOrder(createDto);
+      const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
       expect(result.expectedArrival!.getTime()).toBeLessThan(result.placedAt!.getTime());
       // TODO: Should add validation to prevent this
