@@ -84,7 +84,14 @@ const FormDialog = ({
   const handleSubmit = () => {
     const requiredFields = fields.filter((f) => f.required);
     const emptyFields = requiredFields
-      .filter((f) => !formData[f.id] || String(formData[f.id]).trim() === "")
+      .filter((f) => {
+        const val = formData[f.id];
+
+        if (val === null || val === undefined) return true;
+        if (typeof val === "string") return val.trim() === "";
+        if (typeof val === "number") return false;
+        return false;
+      })
       .map((f) => f.id);
 
     if (emptyFields.length > 0) {
