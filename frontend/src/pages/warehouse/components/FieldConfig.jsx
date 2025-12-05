@@ -4,27 +4,31 @@ export const fieldConfigs = {
   warehouses: [
     {
       id: "code",
-      label: "Mã kho",
+      label: "Code",
       type: "text",
       component: FormInput,
+      required: true,
     },
     {
       id: "name",
-      label: "Tên kho",
+      label: "Name",
       type: "text",
       component: FormInput,
+      required: true,
     },
     {
       id: "address",
-      label: "Địa chỉ",
+      label: "Address",
       type: "text",
       component: FormInput,
+      required: true,
     },
     {
-      id: "quantity",
-      label: "Số lượng location",
-      type: "number",
+      id: "totalArea",
+      label: "Area",
+      type: "text",
       component: FormInput,
+      required: true,
     },
   ],
 

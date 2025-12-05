@@ -5,12 +5,20 @@ export const menuItems = [
     id: "warehouses",
     label: "Warehouses",
     columns: [
-      { id: "stt", label: "STT" },
-      { id: "code", label: "Mã kho" },
-      { id: "name", label: "Tên kho" },
-      { id: "address", label: "Địa chỉ" },
-      { id: "quantity", label: "Số lượng location" },
-      { id: "createdAt", label: "Ngày cập nhật" },
+      { id: "stt", label: "No" },
+      { id: "code", label: "Code" },
+      { id: "name", label: "Name", align: "left" },
+      { id: "address", label: "Address", align: "left" },
+      {
+        id: "totalArea",
+        label: "Area",
+        render: (_, row) => row.metadata?.totalArea ?? "-",
+      },
+      {
+        id: "updatedAt",
+        label: "Update Date",
+        render: (_, row) => formatDate(row.updatedAt),
+      },
     ],
   },
 
@@ -41,7 +49,6 @@ export const menuItems = [
   {
     id: "products",
     label: "Products",
-    allowView: false,
     columns: [
       { id: "stt", label: "STT" },
       { id: "sku", label: "SKU" },

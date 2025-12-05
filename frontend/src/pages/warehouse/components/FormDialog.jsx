@@ -55,9 +55,16 @@ const FormDialog = ({
   useEffect(() => {
     if (open) {
       const initial = {};
+
       baseFields.forEach((f) => {
-        initial[f.id] = isEditMode ? selectedRow?.[f.id] ?? "" : "";
+        initial[f.id] =
+          selectedRow && selectedRow[f.id] !== undefined
+            ? selectedRow[f.id]
+            : "";
       });
+
+      initial.totalArea = selectedRow?.metadata?.totalArea ?? "";
+
       setFormData(initial);
       setErrors([]);
       setShowAlert(false);
@@ -86,9 +93,24 @@ const FormDialog = ({
       return;
     }
 
+    const payload = {};
+
+    baseFields.forEach((f) => {
+      if (f.id !== "totalArea") {
+        payload[f.id] = formData[f.id];
+      }
+    });
+
+    if (selectedMenu === "warehouses") {
+      payload.metadata = {
+        ...(selectedRow?.metadata || {}),
+        totalArea: formData.totalArea,
+      };
+    }
+
     setErrors([]);
     setShowAlert(false);
-    onAction(formData);
+    onAction(payload);
   };
 
   const renderField = (field) => {

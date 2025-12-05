@@ -9,14 +9,15 @@ import FormDialog from "./components/FormDialog";
 import ViewDialog from "./components/ViewDialog";
 import { menuItems } from "./components/MenuConfig";
 import {
-  warehousesData,
   locationsData,
   batchesData,
   fetchCategoriesData,
   fetchProductsData,
+  fetchWarehousesData,
 } from "./components/data_service";
 import ProductCategories from "@/services/category.service";
 import ProductService from "@/services/product.service";
+import WarehouseService from "@/services/warehouse.service";
 
 const menuConfig = {
   categories: {
@@ -27,10 +28,10 @@ const menuConfig = {
     fetchData: fetchProductsData,
     service: ProductService,
   },
-  // warehouses: {
-  //   fetchData: fetchWarehousesData,
-  //   service: WarehouseService,
-  // },
+  warehouses: {
+    fetchData: fetchWarehousesData,
+    service: WarehouseService,
+  },
   // locations: {
   //   fetchData: fetchLocationsData,
   //   service: LocationService,
@@ -53,7 +54,6 @@ const Warehouse = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
   const staticData = {
-    warehouses: warehousesData,
     locations: locationsData,
     batches: batchesData,
   };
@@ -113,18 +113,16 @@ const Warehouse = () => {
   const handleSave = async (formData) => {
     const config = menuConfig[selectedMenu];
 
-    if (config?.service) {
-      let res;
-      if (dialogMode === "edit" && selectedRow?.id) {
-        res = await config.service.update(selectedRow.id, formData);
-      } else {
-        res = await config.service.create(formData);
-      }
+    let res;
+    if (dialogMode === "edit" && selectedRow?.id) {
+      res = await config.service.update(selectedRow.id, formData);
+    } else {
+      res = await config.service.create(formData);
+    }
 
-      if (res) {
-        const reload = await config.fetchData();
-        setDynamicData((prev) => ({ ...prev, [selectedMenu]: reload }));
-      }
+    if (res) {
+      const reload = await config.fetchData();
+      setDynamicData((prev) => ({ ...prev, [selectedMenu]: reload }));
     }
 
     setOpenDialog(false);

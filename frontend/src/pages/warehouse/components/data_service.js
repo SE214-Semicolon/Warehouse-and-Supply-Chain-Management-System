@@ -1,38 +1,6 @@
 import ProductCategories from "@/services/category.service";
 import Products from "@/services/product.service";
-
-const buildExtraInfo = (row) =>
-  `Người tạo: ${row.createdBy || "Không rõ"}
-  Ngày tạo: ${row.createdAt || "N/A"}
-  Ghi chú: ${row.note || "Không có ghi chú"}
-`;
-
-export const warehousesData = [
-  {
-    id: 1,
-    code: "WH001",
-    name: "Kho Trung Tâm",
-    address: "123 Nguyễn Văn Linh, Q7",
-    quantity: 150,
-    createdAt: "2024-01-15",
-  },
-  {
-    id: 2,
-    code: "WH002",
-    name: "Kho Miền Bắc",
-    address: "456 Láng Hạ, Hà Nội",
-    quantity: 200,
-    createdAt: "2024-02-20",
-  },
-  {
-    id: 3,
-    code: "WH003",
-    name: "Kho Miền Trung",
-    address: "789 Lê Duẩn, Đà Nẵng",
-    quantity: 80,
-    createdAt: "2024-03-10",
-  },
-].map((item) => ({ ...item, extraInfo: buildExtraInfo(item) }));
+import Warehouses from "@/services/warehouse.service";
 
 export const locationsData = [
   {
@@ -99,7 +67,7 @@ export const batchesData = [
 export const fetchCategoriesData = async () => {
   try {
     const res = await ProductCategories.getAll();
-    return res.data;
+    return res.data?.data ?? [];
   } catch (error) {
     console.error("Lỗi khi fetch categories:", error);
     return [];
@@ -109,9 +77,19 @@ export const fetchCategoriesData = async () => {
 export const fetchProductsData = async () => {
   try {
     const res = await Products.getAll();
-    return res.data;
+    return res.data?.data ?? [];
   } catch (error) {
     console.error("Lỗi khi fetch products:", error);
+    return [];
+  }
+};
+
+export const fetchWarehousesData = async () => {
+  try {
+    const res = await Warehouses.getAll();
+    return res.data?.warehouses ?? res.data?.data?.warehouses ?? [];
+  } catch (error) {
+    console.error("Lỗi khi fetch warehouses:", error);
     return [];
   }
 };
