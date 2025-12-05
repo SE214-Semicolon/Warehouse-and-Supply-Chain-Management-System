@@ -24,7 +24,7 @@ export class OrderService {
     return `PO-${y}${m}-${rand}`;
   }
 
-  async createPurchaseOrder(dto: CreatePurchaseOrderDto): Promise<PurchaseOrder> {
+  async createPurchaseOrder(dto: CreatePurchaseOrderDto, createdById: string): Promise<PurchaseOrder> {
     const poNo = this.generatePoNo();
     const items: Omit<Prisma.PurchaseOrderItemCreateManyInput, 'purchaseOrderId'>[] = (
       dto.items ?? []
@@ -44,7 +44,7 @@ export class OrderService {
         placedAt: dto.placedAt ? new Date(dto.placedAt) : undefined,
         expectedArrival: dto.expectedArrival ? new Date(dto.expectedArrival) : undefined,
         notes: dto.notes,
-        createdBy: dto.createdById ? { connect: { id: dto.createdById } } : undefined,
+        createdBy: { connect: { id: createdById } },
       },
       items,
     );

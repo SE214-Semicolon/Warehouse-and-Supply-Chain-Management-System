@@ -72,6 +72,12 @@ export class AuthService {
     if (!token || token.userId !== userId || token.revokedAt) {
       throw new UnauthorizedException('Invalid refresh token');
     }
+    
+    // Check if refresh token has expired
+    if (new Date() > token.expiresAt) {
+      throw new UnauthorizedException('Refresh token has expired');
+    }
+    
     const user = await this.usersService.findById(userId);
     if (!user?.active) throw new UnauthorizedException('Account is disabled');
     return this.issueTokens(user.id, user.email!, user.role);

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/jwt.guard';
 import { RolesGuard } from '../../auth/roles.guard';
@@ -21,8 +21,11 @@ export class SalesOrderController {
   @Post()
   @ApiOperation({ summary: 'Tạo Sales Order (pending)' })
   @Roles(UserRole.admin, UserRole.manager, UserRole.logistics)
-  create(@Body() dto: CreateSalesOrderDto) {
-    return this.svc.createSalesOrder(dto);
+  create(
+    @Body() dto: CreateSalesOrderDto,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.svc.createSalesOrder(dto, req.user.userId);
   }
 
   @Post(':id/submit')

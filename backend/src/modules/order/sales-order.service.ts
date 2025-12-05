@@ -25,7 +25,7 @@ export class SalesOrderService {
     return `SO-${y}${m}-${rand}`;
   }
 
-  async createSalesOrder(dto: CreateSalesOrderDto): Promise<SalesOrder> {
+  async createSalesOrder(dto: CreateSalesOrderDto, createdById: string): Promise<SalesOrder> {
     const soNo = this.generateSONo();
     const items: Omit<Prisma.SalesOrderItemCreateManyInput, 'salesOrderId'>[] = (
       dto.items ?? []
@@ -43,7 +43,7 @@ export class SalesOrderService {
         customer: dto.customerId ? { connect: { id: dto.customerId } } : undefined,
         status: OrderStatus.pending,
         placedAt: dto.placedAt ? new Date(dto.placedAt) : undefined,
-        createdBy: dto.createdById ? { connect: { id: dto.createdById } } : undefined,
+        createdBy: { connect: { id: createdById } },
       },
       items,
     );

@@ -38,11 +38,6 @@ export class CreateSalesOrderDto {
   @IsString()
   notes?: string;
 
-  @ApiProperty({ description: 'User ID creating this SO', required: false })
-  @IsOptional()
-  @IsUUID()
-  createdById?: string;
-
   @ApiProperty({ type: [CreateSOItemDto], required: false })
   @IsOptional()
   @IsArray()

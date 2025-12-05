@@ -12,6 +12,7 @@ import {
   IsNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsDateAfterOrEqual } from '../../../common/validators/date-comparison.validator';
 
 export class CreatePOItemDto {
   @ApiProperty({ description: 'ID sản phẩm' })
@@ -51,6 +52,9 @@ export class CreatePurchaseOrderDto {
   @ApiPropertyOptional({ description: 'Ngày dự kiến nhận hàng' })
   @IsOptional()
   @IsDateString()
+  @IsDateAfterOrEqual('placedAt', {
+    message: 'Expected arrival date must be after or equal to placed date',
+  })
   expectedArrival?: string;
 
   @ApiPropertyOptional({ description: 'Ghi chú' })
@@ -58,12 +62,6 @@ export class CreatePurchaseOrderDto {
   @IsString()
   @MaxLength(1000)
   notes?: string;
-
-  @ApiPropertyOptional({ description: 'ID người tạo' })
-  @IsOptional()
-  @IsString()
-  @IsUUID()
-  createdById?: string;
 
   @ApiPropertyOptional({ type: [CreatePOItemDto] })
   @IsOptional()

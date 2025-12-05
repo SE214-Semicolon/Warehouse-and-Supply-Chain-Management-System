@@ -510,6 +510,94 @@ async function main() {
     }),
   ]);
 
+  // Create purchase orders
+  console.log('Creating purchase orders...');
+  const purchaseOrders = await Promise.all([
+    prisma.purchaseOrder.upsert({
+      where: { poNo: 'PO-202410-001' },
+      update: {},
+      create: {
+        poNo: 'PO-202410-001',
+        supplierId: suppliers[0].id,
+        status: 'draft',
+        totalAmount: 36000000,
+        placedAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+        expectedArrival: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        notes: 'Regular electronics restock',
+        createdById: managerUser.id,
+        items: {
+          create: [
+            {
+              productId: products[0].id, // Laptop
+              qtyOrdered: 30,
+              qtyReceived: 0,
+              unitPrice: 1200000,
+              lineTotal: 36000000,
+              remark: 'Latest model',
+            },
+          ],
+        },
+      },
+    }),
+    prisma.purchaseOrder.upsert({
+      where: { poNo: 'PO-202410-002' },
+      update: {},
+      create: {
+        poNo: 'PO-202410-002',
+        supplierId: suppliers[1].id,
+        status: 'ordered',
+        totalAmount: 100000,
+        placedAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+        expectedArrival: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+        notes: 'Fresh food supplies',
+        createdById: managerUser.id,
+        items: {
+          create: [
+            {
+              productId: products[3].id, // Milk
+              qtyOrdered: 100,
+              qtyReceived: 50,
+              unitPrice: 500,
+              lineTotal: 50000,
+            },
+            {
+              productId: products[4].id, // Bread
+              qtyOrdered: 50,
+              qtyReceived: 0,
+              unitPrice: 1000,
+              lineTotal: 50000,
+            },
+          ],
+        },
+      },
+    }),
+    prisma.purchaseOrder.upsert({
+      where: { poNo: 'PO-202410-003' },
+      update: {},
+      create: {
+        poNo: 'PO-202410-003',
+        supplierId: suppliers[0].id,
+        status: 'received',
+        totalAmount: 750000,
+        placedAt: new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
+        expectedArrival: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000),
+        notes: 'Completed order',
+        createdById: managerUser.id,
+        items: {
+          create: [
+            {
+              productId: products[1].id, // Phone
+              qtyOrdered: 50,
+              qtyReceived: 50,
+              unitPrice: 15000,
+              lineTotal: 750000,
+            },
+          ],
+        },
+      },
+    }),
+  ]);
+
   // Create sales orders
   console.log('Creating sales orders...');
   const salesOrders = await Promise.all([
@@ -572,6 +660,7 @@ async function main() {
   console.log(`   Inventory Records: ${inventoryRecords.length}`);
   console.log(`   Customers: ${customers.length}`);
   console.log(`   Suppliers: ${suppliers.length}`);
+  console.log(`   Purchase Orders: ${purchaseOrders.length}`);
   console.log(`   Sales Orders: ${salesOrders.length}`);
 
   console.log('\n🔐 Test Accounts:');
@@ -586,6 +675,8 @@ async function main() {
   console.log('   • Stock transfers between locations');
   console.log('   • Inventory reports and valuation');
   console.log('   • Reservation and release operations');
+  console.log('   • Purchase Order flows (draft, ordered, partial, received)');
+  console.log('   • Sales Order fulfillment with qtyFulfilled tracking');
 }
 
 main()
