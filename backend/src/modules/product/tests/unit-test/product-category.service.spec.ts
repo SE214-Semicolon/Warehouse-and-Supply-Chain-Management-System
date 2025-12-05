@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ProductCategoryService } from '../services/product-category.service';
-import { ProductCategoryRepository } from '../repositories/product-category.repository';
+import { ProductCategoryService } from '../../services/product-category.service';
+import { ProductCategoryRepository } from '../../repositories/product-category.repository';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('ProductCategoryService', () => {
@@ -511,3 +511,4 @@ describe('ProductCategoryService', () => {
     });
   });
 });
+

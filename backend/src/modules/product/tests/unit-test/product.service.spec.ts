@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ProductService } from '../services/product.service';
-import { ProductRepository } from '../repositories/product.repository';
-import { ProductCategoryRepository } from '../repositories/product-category.repository';
-import { CacheService } from '../../../cache/cache.service';
+import { ProductService } from '../../services/product.service';
+import { ProductRepository } from '../../repositories/product.repository';
+import { ProductCategoryRepository } from '../../repositories/product-category.repository';
+import { CacheService } from '../../../../cache/cache.service';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
 describe('ProductService', () => {
@@ -1064,3 +1064,4 @@ describe('ProductService', () => {
     });
   });
 });
+

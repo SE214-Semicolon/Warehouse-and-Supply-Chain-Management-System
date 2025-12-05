@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { PrismaService } from '../../../database/prisma/prisma.service';
+import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
-import { OrderModule } from '../order.module';
+import { OrderModule } from '../../order.module';
 import { PoStatus, UserRole } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
-import { AuthModule } from '../../../auth/auth.module';
-import { InventoryModule } from '../../inventory/inventory.module';
-import { DatabaseModule } from '../../../database/database.module';
+import { AuthModule } from '../../../../auth/auth.module';
+import { InventoryModule } from '../../../inventory/inventory.module';
+import { DatabaseModule } from '../../../../database/database.module';
 
 describe('Purchase Order Module (e2e)', () => {
   let app: INestApplication;

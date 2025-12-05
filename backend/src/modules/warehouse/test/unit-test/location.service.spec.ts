@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { LocationService } from '../services/location.service';
-import { LocationRepository } from '../repositories/location.repository';
-import { WarehouseRepository } from '../repositories/warehouse.repository';
-import { CacheService } from '../../../cache/cache.service';
+import { LocationService } from '../../services/location.service';
+import { LocationRepository } from '../../repositories/location.repository';
+import { WarehouseRepository } from '../../repositories/warehouse.repository';
+import { CacheService } from '../../../../cache/cache.service';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
 describe('LocationService', () => {
