@@ -50,9 +50,17 @@ export default function FormFieldsRenderer({
 
   const handleChange = (id, value) => {
     setFormData((prev) => ({ ...prev, [id]: value }));
+
     setErrors((prev) => {
       const next = new Set(prev);
-      next.delete(id);
+      const max = MAX_LENGTHS[id];
+
+      if (max && value.length > max) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+
       return next;
     });
   };
