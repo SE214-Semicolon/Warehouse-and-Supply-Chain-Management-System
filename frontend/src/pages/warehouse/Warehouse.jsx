@@ -102,23 +102,19 @@ const Warehouse = () => {
   };
 
   const confirmDelete = async () => {
-    try {
-      if (!selectedRow?.id) return;
+    if (!selectedRow?.id) return;
 
-      const config = menuConfig[selectedMenu];
-      if (config?.service) {
-        const res = await config.service.delete(selectedRow.id);
+    const config = menuConfig[selectedMenu];
+    if (config?.service) {
+      const res = await config.service.delete(selectedRow.id);
 
-        if (res) {
-          const reload = await config.fetchData();
-          setDynamicData((prev) => ({ ...prev, [selectedMenu]: reload }));
-        }
+      if (res) {
+        const reload = await config.fetchData();
+        setDynamicData((prev) => ({ ...prev, [selectedMenu]: reload }));
       }
-
-      setOpenDeleteDialog(false);
-    } catch (err) {
-      throw err;
     }
+
+    setOpenDeleteDialog(false);
   };
 
   const handleSave = async (formData) => {
