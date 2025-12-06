@@ -1,9 +1,31 @@
-import { Dialog, DialogTitle, DialogContent, Typography } from "@mui/material";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Typography,
+  Alert,
+} from "@mui/material";
 import DialogButtons from "@/components/DialogButtons";
+import { useState, useEffect } from "react";
 
 const ConfirmDeleteDialog = ({ open, onClose, onConfirm, selectedRow }) => {
+  const [error, setError] = useState("");
+
   const itemName =
-    selectedRow?.name || selectedRow?.code || selectedRow?.id || "";
+    selectedRow?.name || selectedRow?.code || selectedRow?.batchNo || "";
+
+  const handleAction = async () => {
+    setError("");
+    try {
+      await onConfirm();
+    } catch (msg) {
+      setError(msg);
+    }
+  };
+
+  useEffect(() => {
+    if (!open) setError("");
+  }, [open]);
 
   return (
     <Dialog
@@ -22,6 +44,12 @@ const ConfirmDeleteDialog = ({ open, onClose, onConfirm, selectedRow }) => {
       </DialogTitle>
 
       <DialogContent dividers>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
         <Typography>
           Are you sure you want to delete <strong>{itemName}</strong>?
         </Typography>
@@ -29,7 +57,7 @@ const ConfirmDeleteDialog = ({ open, onClose, onConfirm, selectedRow }) => {
 
       <DialogButtons
         onClose={onClose}
-        onAction={onConfirm}
+        onAction={handleAction}
         labelAction="Delete"
         colorAction="#D32F2F"
         colorCancel="#D32F2F"

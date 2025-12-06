@@ -9,39 +9,46 @@ import FormDialog from "./components/FormDialog";
 import ViewDialog from "./components/ViewDialog";
 import { menuItems } from "./components/MenuConfig";
 import {
-  warehousesData,
-  locationsData,
-  batchesData,
   fetchCategoriesData,
   fetchProductsData,
+  fetchWarehousesData,
+  fetchLocationsData,
+  fetchBatchesData,
 } from "./components/data_service";
-import ProductCategories from "@/services/category.service";
+import ProductCategoryService from "@/services/category.service";
 import ProductService from "@/services/product.service";
+import WarehouseService from "@/services/warehouse.service";
+import LocationService from "@/services/location.service";
+import ProductBatchService from "@/services/batch.service";
+import { useNavigate } from "react-router-dom";
+import { convertDate } from "@/utils/convertDate";
+import { CircularProgress } from "@mui/material";
 
 const menuConfig = {
   categories: {
     fetchData: fetchCategoriesData,
-    service: ProductCategories,
+    service: ProductCategoryService,
   },
   products: {
     fetchData: fetchProductsData,
     service: ProductService,
   },
-  // warehouses: {
-  //   fetchData: fetchWarehousesData,
-  //   service: WarehouseService,
-  // },
-  // locations: {
-  //   fetchData: fetchLocationsData,
-  //   service: LocationService,
-  // },
-  // batches: {
-  //   fetchData: fetchBatchesData,
-  //   service: BatchService,
-  // },
+  warehouses: {
+    fetchData: fetchWarehousesData,
+    service: WarehouseService,
+  },
+  locations: {
+    fetchData: fetchLocationsData,
+    service: LocationService,
+  },
+  batches: {
+    fetchData: fetchBatchesData,
+    service: ProductBatchService,
+  },
 };
 
 const Warehouse = () => {
+  const navigate = useNavigate();
   const [selectedMenu, setSelectedMenu] = useState("warehouses");
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState(null);
@@ -51,12 +58,6 @@ const Warehouse = () => {
   const [dynamicData, setDynamicData] = useState({});
   const [loading, setLoading] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-
-  const staticData = {
-    warehouses: warehousesData,
-    locations: locationsData,
-    batches: batchesData,
-  };
 
   useEffect(() => {
     const config = menuConfig[selectedMenu];
@@ -85,6 +86,11 @@ const Warehouse = () => {
   };
 
   const handleView = (row) => {
+    if (selectedMenu === "batches") {
+      navigate(`/warehouse/batches/${row.id}`);
+      return;
+    }
+
     setDialogMode("view");
     setSelectedRow(row);
     setOpenDialog(true);
@@ -101,6 +107,7 @@ const Warehouse = () => {
     const config = menuConfig[selectedMenu];
     if (config?.service) {
       const res = await config.service.delete(selectedRow.id);
+
       if (res) {
         const reload = await config.fetchData();
         setDynamicData((prev) => ({ ...prev, [selectedMenu]: reload }));
@@ -113,18 +120,25 @@ const Warehouse = () => {
   const handleSave = async (formData) => {
     const config = menuConfig[selectedMenu];
 
-    if (config?.service) {
-      let res;
-      if (dialogMode === "edit" && selectedRow?.id) {
-        res = await config.service.update(selectedRow.id, formData);
-      } else {
-        res = await config.service.create(formData);
-      }
+    if (selectedMenu === "batches") {
+      formData = {
+        ...formData,
+        manufactureDate: convertDate(formData.manufactureDate),
+        expiryDate: convertDate(formData.expiryDate),
+        quantity: parseInt(formData.quantity),
+      };
+    }
 
-      if (res) {
-        const reload = await config.fetchData();
-        setDynamicData((prev) => ({ ...prev, [selectedMenu]: reload }));
-      }
+    let res;
+    if (dialogMode === "edit" && selectedRow?.id) {
+      res = await config.service.update(selectedRow.id, formData);
+    } else {
+      res = await config.service.create(formData);
+    }
+
+    if (res) {
+      const reload = await config.fetchData();
+      setDynamicData((prev) => ({ ...prev, [selectedMenu]: reload }));
     }
 
     setOpenDialog(false);
@@ -143,7 +157,7 @@ const Warehouse = () => {
   };
 
   const getCurrentData = (menuId) => {
-    return dynamicData[menuId] || staticData[menuId] || [];
+    return dynamicData[menuId] || [];
   };
 
   const dataTables = Object.fromEntries(
@@ -190,8 +204,21 @@ const Warehouse = () => {
         />
       </Box>
 
-      <Box>
-        {dataTables[selectedMenu] || <Typography>In progress...</Typography>}
+      <Box sx={{ position: "relative", minHeight: "200px" }}>
+        {loading ? (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "200px",
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        ) : (
+          dataTables[selectedMenu] || <Typography>In progress...</Typography>
+        )}
       </Box>
 
       {(dialogMode === "add" || dialogMode === "edit") && (

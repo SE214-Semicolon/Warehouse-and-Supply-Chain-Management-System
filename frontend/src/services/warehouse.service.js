@@ -1,9 +1,9 @@
 import api from "@/utils/axiosInstance";
 import { handleError } from "@/utils/handleError";
 
-const BASE = "/products";
+const BASE = "/warehouses";
 
-const ProductService = {
+const WarehouseService = {
   getAll: () => api.get(BASE),
 
   create: async (data) => {
@@ -34,4 +34,4 @@ const ProductService = {
   },
 };
 
-export default ProductService;
+export default WarehouseService;
