@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import ProductCategoryService from "@/services/category.service";
 import WarehouseService from "@/services/warehouse.service";
+import ProductService from "@/services/product.service";
 
 const CONFIG = {
   products: {
     service: ProductCategoryService,
-    getData: (res) => (Array.isArray(res.data.data) ? res.data.data : []),
+    getData: (res) => res?.data?.data ?? [],
     fieldId: "categoryId",
     nestedKey: "category",
   },
@@ -14,6 +15,12 @@ const CONFIG = {
     getData: (res) => res?.data?.warehouses ?? [],
     fieldId: "warehouseId",
     nestedKey: "warehouse",
+  },
+  batches: {
+    service: ProductService,
+    getData: (res) => res?.data?.data ?? [],
+    fieldId: "productId",
+    nestedKey: "product",
   },
 };
 

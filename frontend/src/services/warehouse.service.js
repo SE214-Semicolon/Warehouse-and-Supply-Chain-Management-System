@@ -1,4 +1,5 @@
-import api from "../utils/axiosInstance";
+import api from "@/utils/axiosInstance";
+import { handleError } from "@/utils/handleError";
 
 const BASE = "/warehouses";
 
@@ -10,7 +11,7 @@ const WarehouseService = {
       const response = await api.post(BASE, data);
       return response.data;
     } catch (err) {
-      console.log(err?.response?.data);
+      handleError(err);
     }
   },
 
@@ -19,7 +20,7 @@ const WarehouseService = {
       const response = await api.patch(`${BASE}/${id}`, data);
       return response.data;
     } catch (err) {
-      console.log(err?.response?.data);
+      handleError(err);
     }
   },
 
@@ -28,7 +29,7 @@ const WarehouseService = {
       const response = await api.delete(`${BASE}/${id}`);
       return response.data;
     } catch (err) {
-      console.log(err?.response?.data);
+      handleError(err);
     }
   },
 };

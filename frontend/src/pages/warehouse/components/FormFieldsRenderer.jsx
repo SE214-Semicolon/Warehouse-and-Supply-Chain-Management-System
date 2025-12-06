@@ -11,6 +11,12 @@ const MAX_LENGTHS = {
   code: 50,
 };
 
+const NUMERIC_ONLY = ["barcode", "quantity", "capacity"];
+const NUMERIC_BLOCK = ["unit"];
+
+const LIMIT_FIELDS = ["quantity", "capacity"];
+const MAX_VALUE = 30000;
+
 export default function FormFieldsRenderer({
   selectedMenu,
   selectedRow,
@@ -50,23 +56,59 @@ export default function FormFieldsRenderer({
 
   const handleChange = (id, value) => {
     setFormData((prev) => ({ ...prev, [id]: value }));
+
     setErrors((prev) => {
       const next = new Set(prev);
-      next.delete(id);
+
+      const max = MAX_LENGTHS[id];
+      if (max && value.length > max) next.add(id);
+      else next.delete(id);
+
+      if (LIMIT_FIELDS.includes(id)) {
+        const num = Number(value);
+        if (num > MAX_VALUE) next.add(id);
+        else next.delete(id);
+      }
+
+      if (id === "manufactureDate" || id === "expiryDate") {
+        const dateErrors = validateDates(id, value, formData);
+
+        ["manufactureDate", "expiryDate"].forEach((field) => {
+          if (dateErrors.has(field)) next.add(field);
+          else next.delete(field);
+        });
+      }
+
       return next;
     });
   };
 
   const validate = () => {
-    const missing = baseFields
-      .filter((f) => f.required && !formData[f.id]?.toString().trim())
-      .map((f) => f.id);
+    const next = new Set();
 
-    const tooLong = Object.keys(MAX_LENGTHS)
-      .filter((key) => formData[key]?.length > MAX_LENGTHS[key])
-      .map((key) => key);
+    baseFields.forEach((f) => {
+      if (f.required && !formData[f.id]?.toString().trim()) {
+        next.add(f.id);
+      }
+    });
 
-    return new Set([...missing, ...tooLong]);
+    Object.keys(MAX_LENGTHS).forEach((key) => {
+      if (formData[key]?.length > MAX_LENGTHS[key]) {
+        next.add(key);
+      }
+    });
+
+    LIMIT_FIELDS.forEach((key) => {
+      const val = Number(formData[key]);
+      if (!isNaN(val) && val > MAX_VALUE) {
+        next.add(key);
+      }
+    });
+
+    const dateErrors = validateDates(null, null, formData);
+    dateErrors.forEach((e) => next.add(e));
+
+    return next;
   };
 
   const handleSubmit = () => {
@@ -89,19 +131,56 @@ export default function FormFieldsRenderer({
     onSubmit(payload);
   };
 
+  const validateDates = (id, value, formData) => {
+    const nextErrors = new Set();
+
+    const mfg = id === "manufactureDate" ? value : formData.manufactureDate;
+
+    const exp = id === "expiryDate" ? value : formData.expiryDate;
+
+    const manufactureDate = mfg ? new Date(mfg) : null;
+    const expiryDate = exp ? new Date(exp) : null;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (manufactureDate && manufactureDate > today) {
+      nextErrors.add("manufactureDate");
+    }
+
+    if (expiryDate && expiryDate < today) {
+      nextErrors.add("expiryDate");
+    }
+
+    if (manufactureDate && expiryDate && expiryDate <= manufactureDate) {
+      nextErrors.add("expiryDate");
+    }
+
+    return nextErrors;
+  };
+
   const handleKeyDown = (field, e) => {
-    const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"];
+    const allowedKeys = [
+      "Backspace",
+      "Delete",
+      "ArrowLeft",
+      "ArrowRight",
+      "Tab",
+    ];
+    const isNumber = /[0-9]/.test(e.key);
+
     if (
-      field.id === "unit" &&
-      /[0-9]/.test(e.key) &&
-      !allowed.includes(e.key)
+      NUMERIC_ONLY.includes(field.id) &&
+      !isNumber &&
+      !allowedKeys.includes(e.key)
     ) {
       e.preventDefault();
     }
+
     if (
-      field.id === "barcode" &&
-      !/[0-9]/.test(e.key) &&
-      !allowed.includes(e.key)
+      NUMERIC_BLOCK.includes(field.id) &&
+      isNumber &&
+      !allowedKeys.includes(e.key)
     ) {
       e.preventDefault();
     }
@@ -110,16 +189,24 @@ export default function FormFieldsRenderer({
   const getHelperText = (fieldId) => {
     if (!errors.has(fieldId)) return "";
 
-    const value = formData[fieldId] || "";
-    const max = MAX_LENGTHS[fieldId];
-
     const label =
       fieldConfigs[selectedMenu].find((f) => f.id === fieldId)?.label ||
       fieldId;
 
-    if (max && value.length > max) {
+    const max = MAX_LENGTHS[fieldId];
+    if (max && formData[fieldId]?.length > max)
       return `${label} must not exceed ${max} characters`;
+
+    if (LIMIT_FIELDS.includes(fieldId)) {
+      const val = Number(formData[fieldId]);
+      if (val > MAX_VALUE)
+        return `${label} must not exceed ${MAX_VALUE.toLocaleString("en-US")}`;
     }
+
+    if (fieldId === "manufactureDate")
+      return `${label} must be today or earlier`;
+    if (fieldId === "expiryDate")
+      return `${label} must be after Manufacture Date and not earlier than today`;
 
     return `${label} is required`;
   };
@@ -136,6 +223,9 @@ export default function FormFieldsRenderer({
             fieldOptions = dynamicOptions;
           }
           if (field.id === "warehouseId" && selectedMenu === "locations") {
+            fieldOptions = dynamicOptions;
+          }
+          if (field.id === "productId" && selectedMenu === "batches") {
             fieldOptions = dynamicOptions;
           }
 

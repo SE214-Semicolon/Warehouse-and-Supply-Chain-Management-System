@@ -1,9 +1,9 @@
 import api from "@/utils/axiosInstance";
 import { handleError } from "@/utils/handleError";
 
-const BASE = "/locations";
+const BASE = "/product-batches";
 
-const LocationService = {
+const ProductBatchService = {
   getAll: () => api.get(BASE),
 
   create: async (data) => {
@@ -34,4 +34,4 @@ const LocationService = {
   },
 };
 
-export default LocationService;
+export default ProductBatchService;
