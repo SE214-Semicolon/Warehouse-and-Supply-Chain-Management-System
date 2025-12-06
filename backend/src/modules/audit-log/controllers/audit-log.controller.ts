@@ -6,6 +6,7 @@ import { RolesGuard } from '../../../auth/roles.guard';
 import { Roles } from '../../../auth/decorators/roles.decorator';
 import { AuditLogService } from '../services/audit-log.service';
 import { QueryAuditLogDto } from '../dto/query-audit-log.dto';
+import { AuditLogListResponseDto } from '../dto/audit-log-response.dto';
 
 @ApiTags('audit-logs')
 @Controller('audit-logs')
@@ -17,7 +18,10 @@ export class AuditLogController {
   @Get()
   @Roles(UserRole.admin, UserRole.manager)
   @ApiOperation({ summary: 'List audit logs with filters and pagination' })
-  @ApiOkResponse({ description: 'Paged audit logs' })
+  @ApiOkResponse({
+    description: 'Paged audit logs',
+    type: AuditLogListResponseDto,
+  })
   @ApiQuery({ name: 'entityType', required: false, type: String })
   @ApiQuery({ name: 'entityId', required: false, type: String })
   @ApiQuery({
@@ -32,7 +36,7 @@ export class AuditLogController {
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 50 })
   @ApiQuery({ name: 'search', required: false, type: String })
-  async list(@Query() query: QueryAuditLogDto) {
+  async list(@Query() query: QueryAuditLogDto): Promise<AuditLogListResponseDto> {
     return this.svc.query(query);
   }
 }
