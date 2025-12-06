@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AuditLogRepository } from '../repositories/audit-log.repository';
 import { QueryAuditLogDto } from '../dto/query-audit-log.dto';
+import { AuditLogListResponseDto } from '../dto/audit-log-response.dto';
 
 @Injectable()
 export class AuditLogService {
@@ -16,7 +17,7 @@ export class AuditLogService {
     }
   }
 
-  async query(query: QueryAuditLogDto) {
+  async query(query: QueryAuditLogDto): Promise<AuditLogListResponseDto> {
     return this.repo.query(query);
   }
 }

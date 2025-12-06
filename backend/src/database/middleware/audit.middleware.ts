@@ -11,7 +11,22 @@ import { AuditContextInterceptor } from '../../common/interceptors/audit-context
 export class AuditMiddleware implements OnModuleInit {
   private readonly logger = new Logger(AuditMiddleware.name);
 
-  // Entities to audit (excluding StockMovement as it's already an audit trail)
+  // Sensitive fields to mask in audit logs
+  private readonly SENSITIVE_FIELDS = [
+    'password',
+    'passwordHash',
+    'refreshToken',
+    'apiKey',
+    'secret',
+    'token',
+    'accessToken',
+  ];
+
+  // PII fields to partially mask
+  private readonly PII_FIELDS = ['email', 'phone', 'phoneNumber'];
+
+  // Entities to audit
+  // Note: StockMovement is now audited to track who creates/modifies movement records
   private readonly AUDITED_MODELS = [
     'Product',
     'ProductBatch',
@@ -19,12 +34,78 @@ export class AuditMiddleware implements OnModuleInit {
     'Inventory',
     'Warehouse',
     'Location',
+    'StockMovement',
   ];
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLogService: AuditLogService,
   ) {}
+
+  /**
+   * Mask sensitive data in an object recursively
+   */
+  private maskSensitiveData(data: any): any {
+    if (!data || typeof data !== 'object') {
+      return data;
+    }
+
+    if (Array.isArray(data)) {
+      return data.map((item) => this.maskSensitiveData(item));
+    }
+
+    const masked = { ...data };
+
+    for (const key of Object.keys(masked)) {
+      const lowerKey = key.toLowerCase();
+
+      // Completely redact sensitive fields
+      if (this.SENSITIVE_FIELDS.some((field) => lowerKey.includes(field.toLowerCase()))) {
+        masked[key] = '[REDACTED]';
+        continue;
+      }
+
+      // Partially mask PII fields
+      if (this.PII_FIELDS.some((field) => lowerKey.includes(field.toLowerCase()))) {
+        if (typeof masked[key] === 'string') {
+          if (lowerKey.includes('email')) {
+            // email@example.com → e***@***.com
+            masked[key] = this.maskEmail(masked[key]);
+          } else if (lowerKey.includes('phone')) {
+            // +1234567890 → *****7890
+            masked[key] = this.maskPhone(masked[key]);
+          }
+        }
+        continue;
+      }
+
+      // Recursively mask nested objects
+      if (typeof masked[key] === 'object' && masked[key] !== null) {
+        masked[key] = this.maskSensitiveData(masked[key]);
+      }
+    }
+
+    return masked;
+  }
+
+  /**
+   * Mask email: email@example.com → e***@***.com
+   */
+  private maskEmail(email: string): string {
+    if (!email || !email.includes('@')) return email;
+    const [local, domain] = email.split('@');
+    const maskedLocal = local.charAt(0) + '***';
+    const maskedDomain = domain.includes('.') ? '***.' + domain.split('.').pop() : '***' + domain;
+    return `${maskedLocal}@${maskedDomain}`;
+  }
+
+  /**
+   * Mask phone: +1234567890 → *****7890
+   */
+  private maskPhone(phone: string): string {
+    if (!phone || phone.length < 4) return phone;
+    return '*'.repeat(phone.length - 4) + phone.slice(-4);
+  }
 
   async onModuleInit() {
     this.logger.log('Registering audit middleware for entity tracking');
@@ -87,6 +168,10 @@ export class AuditMiddleware implements OnModuleInit {
         setImmediate(() => {
           const context = AuditContextInterceptor.getContext();
 
+          // Mask sensitive data in before/after states
+          const maskedBefore = this.maskSensitiveData(beforeState);
+          const maskedAfter = action === 'delete' ? null : this.maskSensitiveData(result);
+
           this.auditLogService
             .write({
               timestamp: new Date(),
@@ -99,8 +184,8 @@ export class AuditMiddleware implements OnModuleInit {
               ipAddress: context?.ipAddress,
               method: context?.method,
               path: context?.path,
-              before: beforeState,
-              after: action === 'delete' ? null : result,
+              before: maskedBefore,
+              after: maskedAfter,
               metadata: {
                 operation: params.action,
                 args: params.args,
