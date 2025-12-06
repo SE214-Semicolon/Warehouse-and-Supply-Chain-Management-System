@@ -80,61 +80,72 @@ model ProductCategory {
 }
 
 model Product {
-  id            String              @id @default(uuid()) @db.Uuid
-  sku           String              @unique @db.VarChar(100)
-  name          String              @db.VarChar(300)
-  categoryId    String?             @db.Uuid
-  unit          String              @db.VarChar(50)
-  barcode       String?             @db.VarChar(200)
-  parameters    Json?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  category      ProductCategory?    @relation(fields: [categoryId], references: [id])
-  batches       ProductBatch[]
-  poItems       PurchaseOrderItem[]
-  soItems       SalesOrderItem[]
-  shipmentItems ShipmentItem[]
-  stockMoves    StockMovement[]
+  id         String   @id @default(uuid()) @db.Uuid
+  sku        String   @unique @db.VarChar(100)
+  name       String   @db.VarChar(300)
+  categoryId String?  @db.Uuid
+  unit       String   @db.VarChar(50)
+  barcode    String?  @db.VarChar(200)
+  parameters Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  @@index([sku], map: "idx_product_sku")
+  // Fields for alerts and demand planning
+  minStockLevel    Int? // Minimum stock level before an alert is triggered
+  reorderPoint     Int? // Stock level at which a new order should be placed
+  leadTimeDays     Int? // Expected number of days for a purchase order to arrive
+  safetyStockLevel Int? // Extra quantity of an item held in inventory
+
+  category        ProductCategory?    @relation(fields: [categoryId], references: [id])
+  batches         ProductBatch[]
+  stockMoves      StockMovement[]
+  poItems         PurchaseOrderItem[]
+  soItems         SalesOrderItem[]
+  shipmentItems   ShipmentItem[]
+  demandForecasts DemandForecast[]
+
+  @@index([sku], name: "idx_product_sku")
 }
 
 model ProductBatch {
-  id               String              @id @default(uuid()) @db.Uuid
-  productId        String              @db.Uuid
+  id               String    @id @default(uuid()) @db.Uuid
+  productId        String    @db.Uuid
   batchNo          String?
-  quantity         Int                 @default(0)
+  quantity         Int       @default(0)
   manufactureDate  DateTime?
   expiryDate       DateTime?
   barcodeOrQr      String?
-  inboundReceiptId String?             @db.Uuid
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  inventory        Inventory[]
-  product          Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
-  poItems          PurchaseOrderItem[]
-  soItems          SalesOrderItem[]
-  shipmentItems    ShipmentItem[]
-  stockMoves       StockMovement[]
+  inboundReceiptId String?   @db.Uuid
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  product       Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventory     Inventory[]
+  stockMoves    StockMovement[]
+  poItems       PurchaseOrderItem[]
+  soItems       SalesOrderItem[]
+  shipmentItems ShipmentItem[]
 
   @@unique([productId, batchNo])
-  @@index([productId], map: "idx_productbatch_product")
+  @@index([productId], name: "idx_productbatch_product")
 }
 
 model Inventory {
-  id             String       @id @default(uuid()) @db.Uuid
-  productBatchId String       @db.Uuid
-  locationId     String       @db.Uuid
-  availableQty   Int          @default(0)
-  reservedQty    Int          @default(0)
-  updatedAt      DateTime     @updatedAt
+  id             String    @id @default(uuid()) @db.Uuid
+  productBatchId String    @db.Uuid
+  locationId     String    @db.Uuid
+  availableQty   Int       @default(0)
+  reservedQty    Int       @default(0)
+  updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
-  location       Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  productBatch   ProductBatch @relation(fields: [productBatchId], references: [id], onDelete: Cascade)
+
+  productBatch ProductBatch @relation(fields: [productBatchId], references: [id], onDelete: Cascade)
+  location     Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   @@unique([productBatchId, locationId])
-  @@index([locationId], map: "idx_inventory_location")
-  @@index([productBatchId], map: "idx_inventory_product")
+  @@index([locationId], name: "idx_inventory_location")
+  @@index([productBatchId], name: "idx_inventory_product")
+  @@index([deletedAt], name: "idx_inventory_deleted_at")
 }
 
 model StockMovement {
@@ -280,7 +291,22 @@ model ShipmentTrackingEvent {
   location   String?
   statusText String?
   rawPayload Json?
-  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+}
+
+model DemandForecast {
+  id                 String   @id @default(cuid())
+  productId          String   @db.Uuid
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  forecastDate       DateTime // The date for which the forecast is made
+  forecastedQuantity Int // The forecasted sales quantity
+  algorithmUsed      String   @default("SIMPLE_MOVING_AVERAGE") // The algorithm used for this forecast
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([productId, forecastDate])
+  @@index([productId], name: "idx_demandforecast_product")
 }
 
 model User {
@@ -301,26 +327,8 @@ model User {
   invitesUsed    UserInvite[]    @relation("InviteUsedBy")
 }
 
-model AuditLog {
-  id          String   @id @default(uuid()) @db.Uuid
-  entityType  String?
-  entityId    String?
-  action      String?
-  payload     Json?
-  performedBy String?  @db.Uuid
-  performedAt DateTime @default(now())
-}
-
-model Alert {
-  id          String    @id @default(uuid()) @db.Uuid
-  type        String?
-  referenceId String?   @db.Uuid
-  payload     Json?
-  severity    String?
-  resolved    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  resolvedAt  DateTime?
-}
+// AuditLog moved to MongoDB collection 'audit_logs' (see MongoDBService)
+// Alert moved to MongoDB collection 'alerts' (see MongoDBService)
 
 /// *
 ///  * ENUMS
@@ -349,8 +357,8 @@ enum StockMovementType {
   transfer_out
   returned
   reservation
-  consumption
   release
+  consumption
 }
 
 enum ShipmentStatus {
@@ -366,6 +374,8 @@ enum UserRole {
   manager
   warehouse_staff
   procurement
+  sales
   logistics
+  analyst
   partner
 }
