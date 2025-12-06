@@ -83,11 +83,28 @@ export const menuItems = [
     columns: [
       { id: "stt", label: "STT" },
       { id: "batchNo", label: "Batch No" },
-      { id: "product", label: "Sản phẩm" },
-      { id: "quantity", label: "Số lượng" },
-      { id: "mfgDate", label: "Ngày SX" },
-      { id: "expDate", label: "HSD" },
-      { id: "createdAt", label: "Ngày cập nhật" },
+      {
+        id: "productId",
+        label: "Product",
+        align: "left",
+        render: (_, row) => row.product?.name ?? "-",
+      },
+      { id: "quantity", label: "Quantity" },
+      {
+        id: "manufactureDate",
+        label: "Mfg Date",
+        render: (_, row) => formatDate(row.manufactureDate),
+      },
+      {
+        id: "expiryDate",
+        label: "Exp Date",
+        render: (_, row) => formatDate(row.expiryDate) ?? "-",
+      },
+      {
+        id: "updatedAt",
+        label: "Update Date",
+        render: (_, row) => formatDate(row.updatedAt),
+      },
     ],
   },
 ];
