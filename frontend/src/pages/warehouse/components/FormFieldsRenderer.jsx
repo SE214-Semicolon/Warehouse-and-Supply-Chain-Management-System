@@ -11,6 +11,8 @@ const MAX_LENGTHS = {
   code: 50,
 };
 
+const BARCODE_LENGTHS = 13;
+
 const NUMERIC_ONLY = ["barcode", "quantity", "capacity"];
 const NUMERIC_BLOCK = ["unit"];
 
@@ -97,6 +99,10 @@ export default function FormFieldsRenderer({
         next.add(key);
       }
     });
+
+    if (formData.barcode && formData.barcode.length !== BARCODE_LENGTHS) {
+      next.add("barcode");
+    }
 
     LIMIT_FIELDS.forEach((key) => {
       const val = Number(formData[key]);
@@ -187,7 +193,7 @@ export default function FormFieldsRenderer({
   };
 
   const getHelperText = (fieldId) => {
-    if (!errors.has(fieldId)) return "";
+    if (fieldId !== "barcode" && !errors.has(fieldId)) return "";
 
     const label =
       fieldConfigs[selectedMenu].find((f) => f.id === fieldId)?.label ||
@@ -207,6 +213,14 @@ export default function FormFieldsRenderer({
       return `${label} must be today or earlier`;
     if (fieldId === "expiryDate")
       return `${label} must be after Manufacture Date and not earlier than today`;
+
+    if (fieldId === "barcode") {
+      const len = formData.barcode?.length || 0;
+      if (errors.has("barcode")) {
+        return `${label} must be exactly ${BARCODE_LENGTHS} digits`;
+      }
+      return `Barcode length: ${len} / ${BARCODE_LENGTHS} digits`;
+    }
 
     return `${label} is required`;
   };
