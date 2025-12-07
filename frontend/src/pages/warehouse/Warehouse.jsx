@@ -98,6 +98,11 @@ const Warehouse = () => {
       return;
     }
 
+    if (selectedMenu === "products") {
+      navigate(`/warehouse/products/${row.id}`);
+      return;
+    }
+
     setDialogMode("view");
     setSelectedRow(row);
     setOpenDialog(true);
