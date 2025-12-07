@@ -15,3 +15,7 @@ export { QueryAuditLogDto } from './dto/query-audit-log.dto';
 
 // Interfaces
 export type { AuditLogEntry } from './interfaces/audit-log-entry.interface';
+
+// Schemas
+export { AUDITED_ENTITIES } from './schemas/audit-log.schema';
+export type { AuditedEntityType } from './schemas/audit-log.schema';
