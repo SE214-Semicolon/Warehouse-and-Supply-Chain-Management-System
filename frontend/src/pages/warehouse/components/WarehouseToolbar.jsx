@@ -9,20 +9,50 @@ export default function WarehouseToolbar({
     <Stack
       direction="row"
       justifyContent="space-between"
-      flexWrap="wrap"
-      gap={1}
-      sx={{ background: "#f5f5f5", borderRadius: 1, p: 1 }}
+      // gap={7}
+      sx={{
+        background: "#fafafa",
+        borderRadius: 1,
+        p: 1.5,
+        border: "1px solid #eee",
+      }}
     >
-      {menuItems.map((item) => (
-        <Button
-          key={item.id}
-          color={selectedMenu === item.id ? "secondary" : "inherit"}
-          startIcon={item.icon}
-          onClick={() => onSelect(item.id)}
-        >
-          {item.label}
-        </Button>
-      ))}
+      {menuItems.map((item) => {
+        const isActive = selectedMenu === item.id;
+
+        return (
+          <Button
+            key={item.id}
+            startIcon={item.icon}
+            onClick={() => onSelect(item.id)}
+            sx={{
+              color: isActive ? "primary.main" : "text.primary",
+              fontWeight: isActive ? 600 : 400,
+              fontSize: "14.5px",
+              position: "relative",
+              borderRadius: 0,
+              px: 2,
+              py: 1,
+              "&:hover": {
+                backgroundColor: "rgba(25,118,210,0.08)",
+              },
+              "&::after": {
+                content: '""',
+                position: "absolute",
+                left: 8,
+                right: 8,
+                bottom: 0,
+                height: "3px",
+                borderRadius: "3px",
+                backgroundColor: isActive ? "primary.main" : "transparent",
+                transition: "0.2s",
+              },
+            }}
+          >
+            {item.label}
+          </Button>
+        );
+      })}
     </Stack>
   );
 }
