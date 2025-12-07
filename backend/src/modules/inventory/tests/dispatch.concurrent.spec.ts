@@ -28,8 +28,8 @@ class InMemoryRepoMock {
     productBatchId: string,
     locationId: string,
     quantity: number,
-    //createdById?: string,
-    //idempotencyKey?: string,
+    _createdById?: string,
+    _idempotencyKey?: string,
   ) {
     const key = `${productBatchId}:${locationId}`;
     const inv = this.inventories[key];
@@ -62,7 +62,11 @@ describe('concurrent dispatch', () => {
       delete: jest.fn(async () => undefined as any),
       reset: jest.fn(async () => undefined as any),
     };
-    const service = new InventoryService(repo as any, mockCache as CacheService);
+    // minimal AlertGenerationService mock (non-blocking, no-op)
+    const mockAlertGen = {
+      checkLowStockAlert: jest.fn(async () => undefined),
+    } as any;
+    const service = new InventoryService(repo as any, mockCache as CacheService, mockAlertGen);
 
     const dto = {
       productBatchId: 'pb1',
