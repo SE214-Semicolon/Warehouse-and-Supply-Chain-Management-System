@@ -55,6 +55,7 @@ jobs:
       uses: dorny/paths-filter@v2
       id: changes
       with:
+        base: ${{ github.event_name == 'push' && 'HEAD~1' || '' }}
         filters: |
           backend:
             - 'backend/**'
