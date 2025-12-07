@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Box, CircularProgress, Paper } from "@mui/material";
 import ProductService from "@/services/product.service";
@@ -26,24 +26,23 @@ const ProductDetail = () => {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [batchMode, setBatchMode] = useState("add");
 
-  useEffect(() => {
-    fetchProductDetail();
-  }, [id]);
-
-  const fetchProductDetail = async () => {
+  const fetchProductDetail = useCallback(async () => {
     setLoading(true);
     try {
       const res = await ProductService.getAll();
       const allProducts = res.data?.data || [];
       const foundProduct = allProducts.find((p) => p.id === id);
-
       setProduct(foundProduct || null);
-    } catch (error) {
+    } catch {
       setProduct(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchProductDetail();
+  }, [fetchProductDetail]);
 
   const handleBack = () => {
     localStorage.setItem("selectedMenu", "products");
@@ -113,9 +112,9 @@ const ProductDetail = () => {
   if (!product) {
     return (
       <EmptyStateCard
-        title="Không tìm thấy sản phẩm"
-        description="Sản phẩm có thể đã bị xóa hoặc không tồn tại"
-        buttonText="Quay lại danh sách sản phẩm"
+        title="Product not found"
+        description="The product may have been deleted or does not exist"
+        buttonText="Back to product list"
         onButtonClick={handleBack}
       />
     );

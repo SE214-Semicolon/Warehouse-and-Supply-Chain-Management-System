@@ -32,7 +32,6 @@ const CardSection = ({
         sx={{
           p: 3,
           pb: 1,
-          bgcolor: "#f8f9fa",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
