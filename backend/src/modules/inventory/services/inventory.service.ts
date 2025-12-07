@@ -17,6 +17,7 @@ import {
 } from '../dto/report-query.dto';
 import { CacheService } from 'src/cache/cache.service';
 import { CACHE_PREFIX, CACHE_TTL } from 'src/cache/cache.constants';
+import { AlertGenerationService } from '../../alerts/services/alert-generation.service';
 
 @Injectable()
 export class InventoryService {
@@ -25,6 +26,7 @@ export class InventoryService {
   constructor(
     private readonly inventoryRepo: InventoryRepository,
     private readonly cacheService: CacheService,
+    private readonly alertGenService: AlertGenerationService,
   ) {}
 
   /**
@@ -157,6 +159,15 @@ export class InventoryService {
         dto.idempotencyKey,
       );
 
+      // Trigger low stock alert check (non-blocking)
+      this.alertGenService
+        .checkLowStockAlert({
+          productBatchId: dto.productBatchId,
+          locationId: dto.locationId,
+          availableQty: inventory.availableQty,
+        })
+        .catch((err) => this.logger.warn('Failed to check low stock alert:', err));
+
       return { success: true, inventory, movement };
     } catch (err) {
       if (err instanceof Error && err.message === 'NotEnoughStock') {
@@ -239,6 +250,17 @@ export class InventoryService {
         dto.reason,
         dto.note,
       );
+
+      // Trigger low stock alert check if adjustment decreased inventory (non-blocking)
+      if (dto.adjustmentQuantity < 0) {
+        this.alertGenService
+          .checkLowStockAlert({
+            productBatchId: dto.productBatchId,
+            locationId: dto.locationId,
+            availableQty: inventory.availableQty,
+          })
+          .catch((err) => this.logger.warn('Failed to check low stock alert:', err));
+      }
 
       return { success: true, inventory, movement };
     } catch (err) {
