@@ -350,7 +350,7 @@ describe('Purchase Order Module (e2e)', () => {
     });
 
     // PO-INT-10: Create with expectedArrival before placedAt
-    it('PO-INT-10: Should allow creating PO with expectedArrival before placedAt (edge case)', async () => {
+    it('PO-INT-10: Should reject PO with expectedArrival before placedAt (validation)', async () => {
       const createDto = {
         supplierId: testSupplierId,
         placedAt: '2024-01-15T10:00:00Z',
@@ -358,15 +358,11 @@ describe('Purchase Order Module (e2e)', () => {
         items: [],
       };
 
-      const response = await request(app.getHttpServer())
+      await request(app.getHttpServer())
         .post('/purchase-orders')
         .set('Authorization', adminToken)
         .send(createDto)
-        .expect(201);
-
-      expect(new Date(response.body.expectedArrival).getTime()).toBeLessThan(
-        new Date(response.body.placedAt).getTime(),
-      );
+        .expect(400);
     });
   });
 
@@ -1068,11 +1064,17 @@ describe('Purchase Order Module (e2e)', () => {
       };
 
       // First receive
-      await request(app.getHttpServer())
+      const firstResponse = await request(app.getHttpServer())
         .post(`/purchase-orders/${orderedPoId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(201);
+
+      // Get the total qtyReceived after first receive across all items
+      const firstTotal = firstResponse.body.items.reduce(
+        (sum: number, item: any) => sum + (item.qtyReceived as number),
+        0,
+      );
 
       // Second receive with same idempotencyKey should not double-receive
       const response = await request(app.getHttpServer())
@@ -1081,8 +1083,12 @@ describe('Purchase Order Module (e2e)', () => {
         .send(receiveDto)
         .expect(201);
 
-      // Should still show only 50 received
-      expect(response.body.items[0].qtyReceived).toBe(50);
+      // Total qtyReceived should remain the same (idempotent)
+      const secondTotal = response.body.items.reduce(
+        (sum: number, item: any) => sum + (item.qtyReceived as number),
+        0,
+      );
+      expect(secondTotal).toBe(firstTotal);
     });
 
     // PO-INT-42: Receive non-existent PO

@@ -19,7 +19,6 @@ describe('SupplierService', () => {
     },
     address: '123 Test Street',
     createdAt: new Date(),
-    deletedAt: null,
   };
 
   beforeEach(async () => {
@@ -31,6 +30,7 @@ describe('SupplierService', () => {
       count: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
+      countActivePurchaseOrders: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
