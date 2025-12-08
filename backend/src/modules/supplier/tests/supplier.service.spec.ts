@@ -19,6 +19,7 @@ describe('SupplierService', () => {
     },
     address: '123 Test Street',
     createdAt: new Date(),
+    deletedAt: null,
   };
 
   beforeEach(async () => {

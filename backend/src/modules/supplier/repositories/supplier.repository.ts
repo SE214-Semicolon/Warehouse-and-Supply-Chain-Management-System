@@ -12,13 +12,13 @@ export class SupplierRepository {
 
   async findById(id: string): Promise<Supplier | null> {
     return this.prisma.supplier.findUnique({
-      where: { id },
+      where: { id, deletedAt: null },
     });
   }
 
   async findUnique(where: Prisma.SupplierWhereUniqueInput): Promise<Supplier | null> {
-    return this.prisma.supplier.findUnique({
-      where,
+    return this.prisma.supplier.findFirst({
+      where: { ...where, deletedAt: null },
     });
   }
 
@@ -32,14 +32,14 @@ export class SupplierRepository {
     return this.prisma.supplier.findMany({
       skip,
       take,
-      where,
+      where: { ...where, deletedAt: null },
       orderBy,
     });
   }
 
   async count(where?: Prisma.SupplierWhereInput): Promise<number> {
     return this.prisma.supplier.count({
-      where,
+      where: { ...where, deletedAt: null },
     });
   }
 
@@ -59,7 +59,13 @@ export class SupplierRepository {
   }
 
   async remove(id: string): Promise<Supplier> {
-    // Note: Supplier model does not have deletedAt field, so we use hard delete
+    return this.prisma.supplier.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  async hardDelete(id: string): Promise<Supplier> {
     return this.prisma.supplier.delete({ where: { id } });
   }
 }

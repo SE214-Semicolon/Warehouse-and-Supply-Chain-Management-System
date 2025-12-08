@@ -760,11 +760,12 @@ describe('Supplier Module (e2e)', () => {
         .set('Authorization', adminToken)
         .expect(200);
 
-      // Verify deleted
+      // Verify soft deleted (deletedAt should be set)
       const check = await prisma.supplier.findUnique({
         where: { id: deleteSupplierId },
       });
-      expect(check).toBeNull();
+      expect(check).not.toBeNull();
+      expect(check?.deletedAt).not.toBeNull();
     });
 
     // SUP-INT-40: Supplier not found
