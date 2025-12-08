@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { InventoryService } from '../services/inventory.service';
 import { InventoryRepository } from '../repositories/inventory.repository';
 import { CacheService } from '../../../cache/cache.service';
+import { AlertGenerationService } from '../../alerts/services/alert-generation.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AdjustmentReason } from '../dto/adjust-inventory.dto';
@@ -106,11 +107,18 @@ describe('InventoryService', () => {
       reset: jest.fn(),
     };
 
+    const mockAlertGenerationService = {
+      checkLowStockAlert: jest.fn().mockResolvedValue(undefined),
+      checkExpiryAlert: jest.fn().mockResolvedValue(undefined),
+      checkDemandAlert: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InventoryService,
         { provide: InventoryRepository, useValue: mockInventoryRepo },
         { provide: CacheService, useValue: mockCacheService },
+        { provide: AlertGenerationService, useValue: mockAlertGenerationService },
       ],
     }).compile();
 

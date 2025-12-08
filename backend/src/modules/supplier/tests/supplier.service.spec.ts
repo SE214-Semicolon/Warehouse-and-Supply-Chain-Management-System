@@ -31,6 +31,7 @@ describe('SupplierService', () => {
       count: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
+      countActivePurchaseOrders: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
