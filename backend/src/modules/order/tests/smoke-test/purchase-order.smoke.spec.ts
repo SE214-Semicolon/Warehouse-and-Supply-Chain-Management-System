@@ -10,7 +10,7 @@ import { UserRole } from '@prisma/client';
  * SMOKE TEST - Order Module
  * Critical path testing for basic CRUD operations
  */
-describe('Order Module - Smoke Tests', () => {
+describe('Purchase Order Module - Smoke Tests', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;

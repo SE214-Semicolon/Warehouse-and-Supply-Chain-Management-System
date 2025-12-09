@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -22,6 +23,7 @@ class CreateSOItemDto {
 
   @ApiProperty({ description: 'Quantity to order' })
   @IsNumber()
+  @Min(1)
   qty!: number;
 
   @ApiProperty({ description: 'Unit price', required: false })
