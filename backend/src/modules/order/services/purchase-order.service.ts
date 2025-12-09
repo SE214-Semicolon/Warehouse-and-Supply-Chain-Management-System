@@ -1,16 +1,16 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { PurchaseOrderRepository } from './repositories/purchase-order.repository';
-import { CreatePurchaseOrderDto } from './dto/create-po.dto';
-import { SubmitPurchaseOrderDto } from './dto/submit-po.dto';
-import { ReceivePurchaseOrderDto } from './dto/receive-po.dto';
-import { InventoryService } from '../inventory/services/inventory.service';
-import { ReceiveInventoryDto } from '../inventory/dto/receive-inventory.dto';
-import { QueryPurchaseOrderDto } from './dto/query-po.dto';
+import { PurchaseOrderRepository } from '../repositories/purchase-order.repository';
+import { CreatePurchaseOrderDto } from '../dto/create-po.dto';
+import { SubmitPurchaseOrderDto } from '../dto/submit-po.dto';
+import { ReceivePurchaseOrderDto } from '../dto/receive-po.dto';
+import { InventoryService } from '../../inventory/services/inventory.service';
+import { ReceiveInventoryDto } from '../../inventory/dto/receive-inventory.dto';
+import { QueryPurchaseOrderDto } from '../dto/query-po.dto';
 import { PoStatus, PurchaseOrder, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
 @Injectable()
-export class OrderService {
+export class PurchaseOrderService {
   constructor(
     private readonly poRepo: PurchaseOrderRepository,
     private readonly inventorySvc: InventoryService,

@@ -10,7 +10,7 @@ import { UserRole } from '@prisma/client';
  * SANITY TEST - Order Module
  * Verify key functionalities after minor changes/bug fixes
  */
-describe('Order Module - Sanity Tests', () => {
+describe('Purchase Order Module - Sanity Tests', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;

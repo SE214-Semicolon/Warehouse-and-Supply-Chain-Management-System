@@ -1,15 +1,15 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/jwt.guard';
-import { RolesGuard } from '../../auth/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../../auth/jwt.guard';
+import { RolesGuard } from '../../../auth/roles.guard';
+import { Roles } from '../../../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
-import { SalesOrderService } from './sales-order.service';
-import { CreateSalesOrderDto } from './dto/create-so.dto';
-import { UpdateSalesOrderDto } from './dto/update-so.dto';
-import { SubmitSalesOrderDto } from './dto/submit-so.dto';
-import { FulfillSalesOrderDto } from './dto/fulfill-so.dto';
-import { QuerySalesOrderDto } from './dto/query-so.dto';
+import { SalesOrderService } from '../services/sales-order.service';
+import { CreateSalesOrderDto } from '../dto/create-so.dto';
+import { UpdateSalesOrderDto } from '../dto/update-so.dto';
+import { SubmitSalesOrderDto } from '../dto/submit-so.dto';
+import { FulfillSalesOrderDto } from '../dto/fulfill-so.dto';
+import { QuerySalesOrderDto } from '../dto/query-so.dto';
 
 @ApiTags('sales-orders')
 @Controller('sales-orders')

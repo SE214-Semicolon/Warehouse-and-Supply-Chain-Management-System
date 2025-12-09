@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { IsArray, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class FulfillSOItemDto {
@@ -16,6 +16,8 @@ class FulfillSOItemDto {
   locationId!: string;
 
   @ApiProperty({ description: 'Quantity to fulfill' })
+  @IsNumber()
+  @Min(1)
   qtyToFulfill!: number;
 
   @ApiProperty({ description: 'User ID performing the fulfillment' })

@@ -1,12 +1,12 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { SalesOrderRepository } from './repositories/sales-order.repository';
-import { CreateSalesOrderDto } from './dto/create-so.dto';
-import { UpdateSalesOrderDto } from './dto/update-so.dto';
-import { SubmitSalesOrderDto } from './dto/submit-so.dto';
-import { FulfillSalesOrderDto } from './dto/fulfill-so.dto';
-import { QuerySalesOrderDto } from './dto/query-so.dto';
-import { InventoryService } from '../inventory/services/inventory.service';
-import { DispatchInventoryDto } from '../inventory/dto/dispatch-inventory.dto';
+import { SalesOrderRepository } from '../repositories/sales-order.repository';
+import { CreateSalesOrderDto } from '../dto/create-so.dto';
+import { UpdateSalesOrderDto } from '../dto/update-so.dto';
+import { SubmitSalesOrderDto } from '../dto/submit-so.dto';
+import { FulfillSalesOrderDto } from '../dto/fulfill-so.dto';
+import { QuerySalesOrderDto } from '../dto/query-so.dto';
+import { InventoryService } from '../../inventory/services/inventory.service';
+import { DispatchInventoryDto } from '../../inventory/dto/dispatch-inventory.dto';
 import { OrderStatus, SalesOrder, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
@@ -17,6 +17,10 @@ export class SalesOrderService {
     private readonly inventorySvc: InventoryService,
   ) {}
 
+  /**
+   * Generate SO Number
+   * Internal helper method - not tested directly
+   */
   private generateSONo(): string {
     const date = new Date();
     const y = date.getFullYear();
@@ -25,6 +29,23 @@ export class SalesOrderService {
     return `SO-${y}${m}-${rand}`;
   }
 
+  /**
+   * Create Sales Order API
+   * Minimum test cases: 10
+   * - SO-TC01: Create pending SO with valid data (201)
+   * - SO-TC02: Create without customerId (201, optional field)
+   * - SO-TC03: Create without items (201, empty array)
+   * - SO-TC04: Create with items missing unitPrice (201, null values)
+   * - SO-TC05: Create with multiple items (201, calculate total)
+   * - SO-TC06: Create with invalid productId (400, tested by DTO)
+   * - SO-TC07: Create with negative qty (400, tested by DTO)
+   * - SO-TC08: Permission denied role warehouse_staff (403, tested by guard)
+   * - SO-TC09: Create with placedAt in past (201, edge case allowed)
+   * - SO-TC10: Create with placedAt in future (201, edge case allowed)
+   *
+   * Security: createdById is extracted from JWT token in controller,
+   * not from DTO to prevent user impersonation.
+   */
   async createSalesOrder(dto: CreateSalesOrderDto, createdById: string): Promise<SalesOrder> {
     const soNo = this.generateSONo();
     const items: Omit<Prisma.SalesOrderItemCreateManyInput, 'salesOrderId'>[] = (
@@ -54,6 +75,16 @@ export class SalesOrderService {
     return created;
   }
 
+  /**
+   * Submit Sales Order API
+   * Minimum test cases: 6
+   * - SO-TC11: Submit pending SO successfully (200, status → approved)
+   * - SO-TC12: Missing userId (400, tested by DTO)
+   * - SO-TC13: Submit SO not in pending status (400)
+   * - SO-TC14: Submit non-existent SO (404)
+   * - SO-TC15: Permission denied role warehouse_staff (403, tested by guard)
+   * - SO-TC16: No authentication (401, tested by guard)
+   */
   async submitSalesOrder(id: string, dto: SubmitSalesOrderDto) {
     if (!dto?.userId) {
       throw new BadRequestException('userId is required');
@@ -69,12 +100,36 @@ export class SalesOrderService {
     return updated;
   }
 
+  /**
+   * Get Sales Order by ID API
+   * Minimum test cases: 3
+   * - SO-TC17: Find by valid ID (200)
+   * - SO-TC18: SO not found (404)
+   * - SO-TC19: Find by invalid UUID format (400/500, edge case)
+   */
   async findById(id: string) {
     const so = await this.soRepo.findById(id);
     if (!so) throw new NotFoundException('SO not found');
     return so;
   }
 
+  /**
+   * List Sales Orders API
+   * Minimum test cases: 13
+   * - SO-TC20: Get all with default pagination (200)
+   * - SO-TC21: Filter by soNo (200)
+   * - SO-TC22: Filter by status (200)
+   * - SO-TC23: Filter by customerId (200)
+   * - SO-TC24: Filter by dateFrom (200)
+   * - SO-TC25: Filter by dateTo (200)
+   * - SO-TC26: Filter by date range (200)
+   * - SO-TC27: Pagination page 1 (200)
+   * - SO-TC28: Pagination page 2 (200)
+   * - SO-TC29: Sort by placedAt asc (200)
+   * - SO-TC30: Sort by status desc (200)
+   * - SO-TC31: Combine multiple filters (200)
+   * - SO-TC32: SQL injection test (200, handled by Prisma)
+   */
   async list(query: QuerySalesOrderDto) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
@@ -108,6 +163,22 @@ export class SalesOrderService {
     return { data, total, page, pageSize };
   }
 
+  /**
+   * Update Sales Order API
+   * Minimum test cases: 12
+   * - SO-TC33: Update pending SO customer successfully (200)
+   * - SO-TC34: Update pending SO placedAt successfully (200)
+   * - SO-TC35: Update pending SO items successfully (200)
+   * - SO-TC36: Update item qty successfully (200)
+   * - SO-TC37: Update item unitPrice successfully (200, recalculate lineTotal)
+   * - SO-TC38: Update multiple items at once (200)
+   * - SO-TC39: Update with invalid itemId (400)
+   * - SO-TC40: Update SO not in pending status (400)
+   * - SO-TC41: Update non-existent SO (404)
+   * - SO-TC42: Update with empty items array (200, no changes)
+   * - SO-TC43: Permission denied role warehouse_staff (403, tested by guard)
+   * - SO-TC44: No authentication (401, tested by guard)
+   */
   async updateSalesOrder(id: string, dto: UpdateSalesOrderDto) {
     const so = await this.soRepo.findById(id);
     if (!so) throw new NotFoundException('SO not found');
@@ -148,6 +219,35 @@ export class SalesOrderService {
     return updated;
   }
 
+  /**
+   * Fulfill Sales Order API (Dispatch Inventory)
+   * Minimum test cases: 25
+   * - SO-TC45: Fulfill partial successfully (200, status → processing)
+   * - SO-TC46: Fulfill full successfully (200, status → shipped)
+   * - SO-TC47: Fulfill multiple times partial → partial (200)
+   * - SO-TC48: Fulfill multiple times partial → shipped (200)
+   * - SO-TC49: Fulfill multiple times with multiple items (200)
+   * - SO-TC50: Fulfill exceeds ordered quantity (400)
+   * - SO-TC51: Fulfill exceeds with multiple fulfills (400)
+   * - SO-TC52: Fulfill SO not in approved/processing status (400)
+   * - SO-TC53: Fulfill with invalid soItemId (400)
+   * - SO-TC54: Fulfill without items array (400, tested by DTO)
+   * - SO-TC55: Fulfill with duplicate idempotencyKey (200, idempotent)
+   * - SO-TC56: Fulfill non-existent SO (404)
+   * - SO-TC57: Fulfill without locationId (400, tested by DTO)
+   * - SO-TC58: Fulfill without productBatchId (400, tested by DTO)
+   * - SO-TC59: Fulfill without createdById (400, tested by DTO)
+   * - SO-TC60: Fulfill without idempotencyKey (400, tested by DTO)
+   * - SO-TC61: Fulfill multiple items simultaneously (200)
+   * - SO-TC62: Fulfill pending SO (400, not approved yet)
+   * - SO-TC63: Fulfill cancelled SO (400)
+   * - SO-TC64: Fulfill shipped SO (400, already completed)
+   * - SO-TC65: Fulfill with insufficient inventory (400/500, inventory service error)
+   * - SO-TC66: Fulfill validates qtyToFulfill > 0 (400, tested by DTO)
+   * - SO-TC67: Permission denied role sales_analyst (403, tested by guard)
+   * - SO-TC68: No authentication (401, tested by guard)
+   * - SO-TC69: Inventory integration verified (200, check stock decreases)
+   */
   async fulfillSalesOrder(soId: string, dto: FulfillSalesOrderDto) {
     if (!dto.items?.length) {
       throw new BadRequestException('No items to fulfill');
@@ -212,6 +312,27 @@ export class SalesOrderService {
     return updated;
   }
 
+  /**
+   * Cancel Sales Order API
+   * Minimum test cases: 8
+   * - SO-TC70: Cancel pending SO successfully (200, status → cancelled)
+   * - SO-TC71: Cancel approved SO successfully (200)
+   * - SO-TC72: Cancel processing SO successfully (200)
+   * - SO-TC73: Cancel shipped SO (400, cannot cancel)
+   * - SO-TC74: Cancel already cancelled SO (400)
+   * - SO-TC75: Cancel non-existent SO (404)
+   * - SO-TC76: Permission denied role sales_analyst (403, tested by guard)
+   * - SO-TC77: No authentication (401, tested by guard)
+   *
+   * Total: 77 test cases for SalesOrderService
+   * Additional considerations:
+   * - Integration with InventoryService for dispatch operations
+   * - Transaction rollback scenarios if inventory dispatch fails
+   * - Concurrent fulfillment handling with idempotency keys
+   * - Status transition validation (pending → approved → processing → shipped)
+   * - Business rule: Cannot fulfill more than ordered quantity
+   * - Edge case: Multiple partial fulfillments leading to shipped status
+   */
   async cancelSalesOrder(id: string) {
     const so = await this.soRepo.findById(id);
     if (!so) throw new NotFoundException('SO not found');
