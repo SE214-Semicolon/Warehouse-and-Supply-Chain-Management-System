@@ -190,17 +190,24 @@ describe('Sales Order Module (e2e)', () => {
     await prisma.inventory.deleteMany({
       where: { location: { warehouse: { code: { contains: TEST_SUITE_ID } } } },
     });
-    // Delete all order items first (includes items from beforeEach with local customers)
-    await prisma.salesOrderItem.deleteMany({});
-    await prisma.salesOrder.deleteMany({
+    // Delete order items from this test suite (by SO customer OR by Product)
+    await prisma.salesOrderItem.deleteMany({
       where: {
         OR: [
-          { customer: { code: { contains: TEST_SUITE_ID } } },
-          { soNo: { contains: 'SO-TEST' } },
-          { soNo: { contains: 'SO-GET' } },
-          { soNo: { contains: 'SO-LIST' } },
-          { soNo: { contains: 'SO-FULFILL' } },
+          {
+            salesOrder: {
+              customer: { code: { contains: TEST_SUITE_ID } },
+            },
+          },
+          {
+            product: { sku: { contains: TEST_SUITE_ID } },
+          },
         ],
+      },
+    });
+    await prisma.salesOrder.deleteMany({
+      where: {
+        customer: { code: { contains: TEST_SUITE_ID } },
       },
     });
     await prisma.productBatch.deleteMany({
@@ -428,7 +435,7 @@ describe('Sales Order Module (e2e)', () => {
     beforeEach(async () => {
       const so = await prisma.salesOrder.create({
         data: {
-          soNo: `SO-TEST-${Date.now()}`,
+          soNo: `SO-TEST-${TEST_SUITE_ID}-${Date.now()}`,
           status: OrderStatus.pending,
           customerId: testCustomerId,
           totalAmount: 0,
@@ -526,7 +533,7 @@ describe('Sales Order Module (e2e)', () => {
     beforeAll(async () => {
       const so = await prisma.salesOrder.create({
         data: {
-          soNo: `SO-GET-${Date.now()}`,
+          soNo: `SO-GET-${TEST_SUITE_ID}-${Date.now()}`,
           status: OrderStatus.pending,
           customerId: testCustomerId,
           totalAmount: 0,
@@ -570,21 +577,21 @@ describe('Sales Order Module (e2e)', () => {
       await prisma.salesOrder.createMany({
         data: [
           {
-            soNo: `SO-LIST-001-${Date.now()}`,
+            soNo: `SO-LIST-001-${TEST_SUITE_ID}-${Date.now()}`,
             status: OrderStatus.pending,
             customerId: testCustomerId,
             placedAt: new Date('2024-01-10'),
             totalAmount: 100,
           },
           {
-            soNo: `SO-LIST-002-${Date.now()}`,
+            soNo: `SO-LIST-002-${TEST_SUITE_ID}-${Date.now()}`,
             status: OrderStatus.approved,
             customerId: testCustomerId,
             placedAt: new Date('2024-01-15'),
             totalAmount: 200,
           },
           {
-            soNo: `SO-LIST-003-${Date.now()}`,
+            soNo: `SO-LIST-003-${TEST_SUITE_ID}-${Date.now()}`,
             status: OrderStatus.shipped,
             placedAt: new Date('2024-01-20'),
             totalAmount: 300,
@@ -849,7 +856,7 @@ describe('Sales Order Module (e2e)', () => {
     beforeEach(async () => {
       const so = await prisma.salesOrder.create({
         data: {
-          soNo: `SO-FULFILL-${Date.now()}`,
+          soNo: `SO-FULFILL-${TEST_SUITE_ID}-${Date.now()}`,
           status: OrderStatus.approved,
           customerId: testCustomerId,
           totalAmount: 500000,
