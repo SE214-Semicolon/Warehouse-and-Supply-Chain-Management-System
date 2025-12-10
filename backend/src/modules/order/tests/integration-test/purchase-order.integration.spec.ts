@@ -10,6 +10,9 @@ import { AuthModule } from '../../../../auth/auth.module';
 import { InventoryModule } from '../../../inventory/inventory.module';
 import { DatabaseModule } from '../../../../database/database.module';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `po-int-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 describe('Purchase Order Module (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -56,8 +59,8 @@ describe('Purchase Order Module (e2e)', () => {
     // Create test users
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-po-test',
-        email: 'admin-po@test.com',
+        username: `admin-po-test-${TEST_SUITE_ID}`,
+        email: `admin-po-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin PO Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -67,8 +70,8 @@ describe('Purchase Order Module (e2e)', () => {
 
     const managerUser = await prisma.user.create({
       data: {
-        username: 'manager-po-test',
-        email: 'manager-po@test.com',
+        username: `manager-po-test-${TEST_SUITE_ID}`,
+        email: `manager-po-${TEST_SUITE_ID}@test.com`,
         fullName: 'Manager PO Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.manager,
@@ -78,8 +81,8 @@ describe('Purchase Order Module (e2e)', () => {
 
     const procurementUser = await prisma.user.create({
       data: {
-        username: 'procurement-po-test',
-        email: 'procurement-po@test.com',
+        username: `procurement-po-test-${TEST_SUITE_ID}`,
+        email: `procurement-po-${TEST_SUITE_ID}@test.com`,
         fullName: 'Procurement PO Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.procurement,
@@ -89,8 +92,8 @@ describe('Purchase Order Module (e2e)', () => {
 
     const staffUser = await prisma.user.create({
       data: {
-        username: 'staff-po-test',
-        email: 'staff-po@test.com',
+        username: `staff-po-test-${TEST_SUITE_ID}`,
+        email: `staff-po-${TEST_SUITE_ID}@test.com`,
         fullName: 'Staff PO Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.warehouse_staff,
@@ -110,8 +113,8 @@ describe('Purchase Order Module (e2e)', () => {
     // Create test supplier
     const supplier = await prisma.supplier.create({
       data: {
-        code: `SUP-PO-${Date.now()}`,
-        name: 'Test Supplier for PO',
+        code: `SUP-PO-${TEST_SUITE_ID}`,
+        name: `Test Supplier for PO ${TEST_SUITE_ID}`,
         contactInfo: { phone: '0901234567' },
       },
     });
@@ -120,15 +123,15 @@ describe('Purchase Order Module (e2e)', () => {
     // Create test product category
     const category = await prisma.productCategory.create({
       data: {
-        name: `PO-Test-Category-${Date.now()}`,
+        name: `PO-Test-Category-${TEST_SUITE_ID}`,
       },
     });
 
     // Create test product
     const product = await prisma.product.create({
       data: {
-        sku: `SKU-PO-${Date.now()}`,
-        name: 'Test Product for PO',
+        sku: `SKU-PO-${TEST_SUITE_ID}`,
+        name: `Test Product for PO ${TEST_SUITE_ID}`,
         unit: 'pcs',
         categoryId: category.id,
       },
@@ -142,19 +145,36 @@ describe('Purchase Order Module (e2e)', () => {
   }, 30000);
 
   async function cleanDatabase() {
-    await prisma.stockMovement.deleteMany({});
-    await prisma.inventory.deleteMany({});
-    await prisma.purchaseOrderItem.deleteMany({});
-    await prisma.purchaseOrder.deleteMany({});
-    await prisma.productBatch.deleteMany({});
-    await prisma.product.deleteMany({});
-    await prisma.productCategory.deleteMany({});
-    await prisma.location.deleteMany({});
-    await prisma.warehouse.deleteMany({});
-    await prisma.supplier.deleteMany({});
-    await prisma.user.deleteMany({
-      where: { email: { contains: '@test.com' } },
+    await prisma.stockMovement.deleteMany({
+      where: { productBatch: { product: { sku: { contains: TEST_SUITE_ID } } } },
     });
+    await prisma.inventory.deleteMany({
+      where: { location: { warehouse: { code: { contains: TEST_SUITE_ID } } } },
+    });
+    // Delete all order items first (includes items from beforeEach with local suppliers)
+    await prisma.purchaseOrderItem.deleteMany({});
+    await prisma.purchaseOrder.deleteMany({
+      where: {
+        OR: [
+          { supplier: { code: { contains: TEST_SUITE_ID } } },
+          { poNo: { contains: 'PO-TEST' } },
+          { poNo: { contains: 'PO-GET' } },
+          { poNo: { contains: 'PO-LIST' } },
+          { poNo: { contains: 'PO-RECEIVE' } },
+        ],
+      },
+    });
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.productCategory.deleteMany({ where: { name: { contains: TEST_SUITE_ID } } });
+    await prisma.location.deleteMany({
+      where: { warehouse: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.supplier.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
   }
 
   describe('POST /purchase-orders - Create Purchase Order', () => {
@@ -368,13 +388,24 @@ describe('Purchase Order Module (e2e)', () => {
 
   describe('POST /purchase-orders/:id/submit - Submit Purchase Order', () => {
     let draftPoId: string;
+    let localSupplierId: string;
 
     beforeEach(async () => {
+      // Create supplier for this test
+      const supplier = await prisma.supplier.create({
+        data: {
+          code: `SUP-SUBMIT-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: `Supplier Submit ${TEST_SUITE_ID}`,
+          contactInfo: { phone: '0901234567' },
+        },
+      });
+      localSupplierId = supplier.id;
+
       const po = await prisma.purchaseOrder.create({
         data: {
           poNo: `PO-TEST-${Date.now()}`,
           status: PoStatus.draft,
-          supplierId: testSupplierId,
+          supplierId: localSupplierId,
           totalAmount: 0,
         },
       });
@@ -466,13 +497,24 @@ describe('Purchase Order Module (e2e)', () => {
 
   describe('GET /purchase-orders/:id - Get Purchase Order', () => {
     let testPoId: string;
+    let localSupplierId: string;
 
     beforeAll(async () => {
+      // Create supplier for this test
+      const supplier = await prisma.supplier.create({
+        data: {
+          code: `SUP-GET-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: `Supplier GET ${TEST_SUITE_ID}`,
+          contactInfo: { phone: '0901234567' },
+        },
+      });
+      localSupplierId = supplier.id;
+
       const po = await prisma.purchaseOrder.create({
         data: {
           poNo: `PO-GET-${Date.now()}`,
           status: PoStatus.ordered,
-          supplierId: testSupplierId,
+          supplierId: localSupplierId,
           totalAmount: 1000000,
         },
       });
@@ -500,21 +542,33 @@ describe('Purchase Order Module (e2e)', () => {
   });
 
   describe('GET /purchase-orders - List Purchase Orders', () => {
+    let localSupplierId: string;
+
     beforeAll(async () => {
+      // Create supplier for this test
+      const supplier = await prisma.supplier.create({
+        data: {
+          code: `SUP-LIST-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: `Supplier LIST ${TEST_SUITE_ID}`,
+          contactInfo: { phone: '0901234567' },
+        },
+      });
+      localSupplierId = supplier.id;
+
       // Create multiple POs for testing
       await prisma.purchaseOrder.createMany({
         data: [
           {
             poNo: 'PO-LIST-001',
             status: PoStatus.draft,
-            supplierId: testSupplierId,
+            supplierId: localSupplierId,
             totalAmount: 100000,
             placedAt: new Date('2024-01-10'),
           },
           {
             poNo: 'PO-LIST-002',
             status: PoStatus.ordered,
-            supplierId: testSupplierId,
+            supplierId: localSupplierId,
             totalAmount: 200000,
             placedAt: new Date('2024-01-15'),
           },
@@ -684,13 +738,15 @@ describe('Purchase Order Module (e2e)', () => {
     let testWarehouseId: string;
     let testLocationId: string;
     let testBatchId: string;
+    let localSupplierId: string;
+    let localProductId: string;
 
     beforeAll(async () => {
       // Create warehouse and location for receiving
       const warehouse = await prisma.warehouse.create({
         data: {
-          code: `WH-PO-${Date.now()}`,
-          name: 'Test Warehouse for PO',
+          code: `WH-RECEIVE-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: `Warehouse Receive ${TEST_SUITE_ID}`,
         },
       });
       testWarehouseId = warehouse.id;
@@ -698,17 +754,44 @@ describe('Purchase Order Module (e2e)', () => {
       const location = await prisma.location.create({
         data: {
           warehouseId: testWarehouseId,
-          code: `LOC-PO-${Date.now()}`,
-          name: 'Test Location for PO',
+          code: `LOC-RECEIVE-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: `Location Receive ${TEST_SUITE_ID}`,
         },
       });
       testLocationId = location.id;
 
+      // Create supplier for receive tests
+      const supplier = await prisma.supplier.create({
+        data: {
+          code: `SUP-RECEIVE-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: `Supplier Receive ${TEST_SUITE_ID}`,
+          contactInfo: { phone: '0901234567' },
+        },
+      });
+      localSupplierId = supplier.id;
+
+      // Create product for receive tests
+      const category = await prisma.productCategory.create({
+        data: {
+          name: `Category-Receive-${TEST_SUITE_ID}-${Date.now()}`,
+        },
+      });
+
+      const product = await prisma.product.create({
+        data: {
+          sku: `SKU-RECEIVE-${TEST_SUITE_ID}-${Date.now()}`,
+          name: `Product Receive ${TEST_SUITE_ID}`,
+          unit: 'pcs',
+          categoryId: category.id,
+        },
+      });
+      localProductId = product.id;
+
       // Create product batch
       const batch = await prisma.productBatch.create({
         data: {
-          productId: testProductId,
-          batchNo: `BATCH-PO-${Date.now()}`,
+          productId: localProductId,
+          batchNo: `BATCH-RECEIVE-${Date.now()}-${Math.random().toString(36).substring(7)}`,
           quantity: 100,
         },
       });
@@ -721,7 +804,7 @@ describe('Purchase Order Module (e2e)', () => {
         data: {
           poNo: `PO-RECEIVE-${Date.now()}`,
           status: PoStatus.ordered,
-          supplierId: testSupplierId,
+          supplierId: localSupplierId,
           totalAmount: 1000000,
         },
       });
@@ -730,7 +813,7 @@ describe('Purchase Order Module (e2e)', () => {
       const item = await prisma.purchaseOrderItem.create({
         data: {
           purchaseOrderId: orderedPoId,
-          productId: testProductId,
+          productId: localProductId,
           qtyOrdered: 100,
           qtyReceived: 0,
           unitPrice: 10000,
