@@ -15,4 +15,5 @@ export const CACHE_PREFIX = {
   METRICS: 'metrics:',
   ALERT: 'alert:',
   FORECAST: 'forecast:',
+  REPORT: 'report:',
 } as const;
