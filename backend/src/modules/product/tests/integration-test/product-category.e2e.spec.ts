@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `category-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 describe('Product Category Module (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -37,14 +40,11 @@ describe('Product Category Module (e2e)', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    // Clean database
-    await cleanDatabase();
-
-    // Create test users and tokens
+    // Create test users and tokens with unique identifiers
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-category-test',
-        email: 'admin-category@test.com',
+        username: `admin-cat-${TEST_SUITE_ID}`,
+        email: `admin-cat-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Category Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -54,8 +54,8 @@ describe('Product Category Module (e2e)', () => {
 
     const staffUser = await prisma.user.create({
       data: {
-        username: 'staff-category-test',
-        email: 'staff-category@test.com',
+        username: `staff-cat-${TEST_SUITE_ID}`,
+        email: `staff-cat-${TEST_SUITE_ID}@test.com`,
         fullName: 'Staff Category Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.warehouse_staff,
@@ -73,14 +73,14 @@ describe('Product Category Module (e2e)', () => {
     // Create initial test categories
     const rootCategory = await prisma.productCategory.create({
       data: {
-        name: `Electronics-${Date.now()}`,
+        name: `Electronics-${TEST_SUITE_ID}`,
       },
     });
     rootCategoryId = rootCategory.id;
 
     const childCategory = await prisma.productCategory.create({
       data: {
-        name: `Laptops-${Date.now()}`,
+        name: `Laptops-${TEST_SUITE_ID}`,
         parentId: rootCategoryId,
       },
     });
@@ -88,26 +88,29 @@ describe('Product Category Module (e2e)', () => {
   }, 30000);
 
   afterAll(async () => {
-    await cleanDatabase();
-    await app.close();
-  }, 30000);
-
-  async function cleanDatabase() {
-    await prisma.productCategory.deleteMany({});
-    await prisma.user.deleteMany({
+    // Clean up only this test suite's data
+    await prisma.productCategory.deleteMany({
       where: {
-        email: {
-          contains: '@test.com',
+        name: {
+          contains: TEST_SUITE_ID,
         },
       },
     });
-  }
+    await prisma.user.deleteMany({
+      where: {
+        email: {
+          contains: TEST_SUITE_ID,
+        },
+      },
+    });
+    await app.close();
+  }, 30000);
 
   describe('POST /categories - Create Category', () => {
     // CAT-TC01: Create with valid data
     it('CAT-INT-01: Should create category with valid data', async () => {
       const createDto = {
-        name: 'Smartphones',
+        name: `Smartphones-${TEST_SUITE_ID}-${Date.now()}`,
       };
 
       const response = await request(app.getHttpServer())
@@ -124,7 +127,7 @@ describe('Product Category Module (e2e)', () => {
     // CAT-TC02: Create with parent category
     it('CAT-INT-02: Should create category with parent category', async () => {
       const createDto = {
-        name: 'Gaming Laptops',
+        name: `Gaming-Laptops-${TEST_SUITE_ID}-${Date.now()}`,
         parentId: childCategoryId,
       };
 
@@ -233,7 +236,7 @@ describe('Product Category Module (e2e)', () => {
     // CAT-TC10: Name with special characters
     it('CAT-INT-10: Should create category with special characters', async () => {
       const createDto = {
-        name: 'Electronics & Gadgets (2024)',
+        name: `Electronics & Gadgets (2024)-${TEST_SUITE_ID}`,
       };
 
       const response = await request(app.getHttpServer())
@@ -248,7 +251,7 @@ describe('Product Category Module (e2e)', () => {
     // CAT-TC11: Create without parent (root)
     it('CAT-INT-11: Should create root category without parent', async () => {
       const createDto = {
-        name: 'Furniture',
+        name: `Furniture-${TEST_SUITE_ID}-${Date.now()}`,
       };
 
       const response = await request(app.getHttpServer())
@@ -278,7 +281,7 @@ describe('Product Category Module (e2e)', () => {
     // CAT-TC13: SQL injection in name
     it('CAT-INT-13: Should sanitize SQL injection in name', async () => {
       const createDto = {
-        name: "CAT'; DROP TABLE product_categories;--",
+        name: `CAT-${TEST_SUITE_ID}'; DROP TABLE product_categories;--`,
       };
 
       const response = await request(app.getHttpServer())
@@ -312,7 +315,7 @@ describe('Product Category Module (e2e)', () => {
       }
 
       const createDto = {
-        name: 'Accessories',
+        name: `Accessories-${TEST_SUITE_ID}-${Date.now()}`,
         parentId: parentId,
       };
 
@@ -332,7 +335,7 @@ describe('Product Category Module (e2e)', () => {
     // CAT-TC15: Create with description
     it('CAT-INT-15: Should create category with metadata', async () => {
       const createDto = {
-        name: 'Office Supplies',
+        name: `Office-Supplies-${TEST_SUITE_ID}-${Date.now()}`,
       };
 
       const response = await request(app.getHttpServer())
@@ -359,20 +362,23 @@ describe('Product Category Module (e2e)', () => {
 
     // CAT-TC17: Empty categories list (tested after cleanup)
     it('CAT-INT-17: Should return empty array when no categories exist', async () => {
-      // Temporarily delete all categories
-      await prisma.productCategory.deleteMany({});
+      // Temporarily delete all categories for this test suite
+      await prisma.productCategory.deleteMany({ where: { name: { contains: TEST_SUITE_ID } } });
 
       const response = await request(app.getHttpServer())
         .get('/product-categories')
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response.body.data).toEqual([]);
-      expect(response.body.total).toBe(0);
+      // Filter to only check this test suite's categories
+      const testSuiteCategories = response.body.data.filter((cat) =>
+        cat.name.includes(TEST_SUITE_ID),
+      );
+      expect(testSuiteCategories).toEqual([]);
 
       // Restore test data
       const root = await prisma.productCategory.create({
-        data: { name: 'Electronics' },
+        data: { name: `Electronics-${TEST_SUITE_ID}` },
       });
       rootCategoryId = root.id;
     });
@@ -394,19 +400,19 @@ describe('Product Category Module (e2e)', () => {
   describe('Edge Cases - Get All Categories', () => {
     beforeEach(async () => {
       // Clean and create test hierarchy
-      await prisma.productCategory.deleteMany({});
+      await prisma.productCategory.deleteMany({ where: { name: { contains: TEST_SUITE_ID } } });
 
       const root = await prisma.productCategory.create({
-        data: { name: 'Root' },
+        data: { name: `Root-${TEST_SUITE_ID}` },
       });
       rootCategoryId = root.id;
 
       const child1 = await prisma.productCategory.create({
-        data: { name: 'Child 1', parentId: rootCategoryId },
+        data: { name: `Child-1-${TEST_SUITE_ID}`, parentId: rootCategoryId },
       });
 
       await prisma.productCategory.create({
-        data: { name: 'Grandchild 1', parentId: child1.id },
+        data: { name: `Grandchild-1-${TEST_SUITE_ID}`, parentId: child1.id },
       });
     }, 10000);
 
@@ -428,7 +434,8 @@ describe('Product Category Module (e2e)', () => {
         .expect(200);
 
       // Check that tree structure includes nested children
-      const rootCat = response.body.data.find((cat) => cat.name === 'Root');
+      const rootCat = response.body.data.find((cat) => cat.name === `Root-${TEST_SUITE_ID}`);
+      expect(rootCat).toBeDefined();
       expect(rootCat.children).toBeDefined();
       expect(rootCat.children.length).toBeGreaterThan(0);
     });
@@ -449,7 +456,10 @@ describe('Product Category Module (e2e)', () => {
       for (let i = 0; i < 50; i++) {
         promises.push(
           prisma.productCategory.create({
-            data: { name: `Category ${i}`, parentId: i % 2 === 0 ? rootCategoryId : null },
+            data: {
+              name: `Category-${i}-${TEST_SUITE_ID}`,
+              parentId: i % 2 === 0 ? rootCategoryId : null,
+            },
           }),
         );
       }
@@ -504,7 +514,7 @@ describe('Product Category Module (e2e)', () => {
 
     beforeEach(async () => {
       const category = await prisma.productCategory.create({
-        data: { name: `TO-UPDATE-${Date.now()}` },
+        data: { name: `TO-UPDATE-${TEST_SUITE_ID}-${Date.now()}` },
       });
       updateCategoryId = category.id;
     }, 10000);
@@ -512,7 +522,7 @@ describe('Product Category Module (e2e)', () => {
     // CAT-TC24: Update with valid data
     it('CAT-INT-28: Should update category with valid data', async () => {
       const updateDto = {
-        name: 'Updated Name',
+        name: `Updated-Name-${TEST_SUITE_ID}-${Date.now()}`,
       };
 
       const response = await request(app.getHttpServer())
@@ -615,7 +625,7 @@ describe('Product Category Module (e2e)', () => {
 
     beforeEach(async () => {
       const category = await prisma.productCategory.create({
-        data: { name: `EDGE-UPDATE-${Date.now()}` },
+        data: { name: `EDGE-UPDATE-${TEST_SUITE_ID}-${Date.now()}` },
       });
       updateCategoryId = category.id;
     }, 10000);
@@ -623,7 +633,7 @@ describe('Product Category Module (e2e)', () => {
     // CAT-TC32: Update only name
     it('CAT-INT-35: Should update only name', async () => {
       const updateDto = {
-        name: 'Name Only',
+        name: `Name-Only-${TEST_SUITE_ID}-${Date.now()}`,
       };
 
       const response = await request(app.getHttpServer())
@@ -635,10 +645,10 @@ describe('Product Category Module (e2e)', () => {
       expect(response.body.data.name).toBe(updateDto.name);
     });
 
-    // CAT-TC33: Update only description
-    it.skip('CAT-INT-36: Should update only description (SKIPPED - no description field in schema)', async () => {
-      // ProductCategory schema does not have description field
-    });
+    // // CAT-TC33: Update only description
+    // it.skip('CAT-INT-36: Should update only description (SKIPPED - no description field in schema)', async () => {
+    //   // ProductCategory schema does not have description field
+    // });
 
     // CAT-TC34: Update only parent
     it('CAT-INT-37: Should update only parent', async () => {
@@ -658,7 +668,7 @@ describe('Product Category Module (e2e)', () => {
     // CAT-TC35: Update all fields
     it('CAT-INT-38: Should update all fields', async () => {
       const updateDto = {
-        name: 'All Fields',
+        name: `All-Fields-${TEST_SUITE_ID}-${Date.now()}`,
         parentId: rootCategoryId,
       };
 
@@ -726,7 +736,7 @@ describe('Product Category Module (e2e)', () => {
     // CAT-TC39: Update with special characters
     it('CAT-INT-42: Should update name with special characters', async () => {
       const updateDto = {
-        name: 'Special & Updated (2024)',
+        name: `Special & Updated (2024)-${TEST_SUITE_ID}`,
       };
 
       const response = await request(app.getHttpServer())
@@ -744,11 +754,11 @@ describe('Product Category Module (e2e)', () => {
 
     beforeEach(async () => {
       await prisma.productCategory.deleteMany({
-        where: { name: { startsWith: 'CAT-TO-DELETE' } },
+        where: { name: { contains: `CAT-TO-DELETE-${TEST_SUITE_ID}` } },
       });
 
       const category = await prisma.productCategory.create({
-        data: { name: `CAT-TO-DELETE-${Date.now()}` },
+        data: { name: `CAT-TO-DELETE-${TEST_SUITE_ID}-${Date.now()}` },
       });
       deleteCategoryId = category.id;
     }, 10000);
@@ -799,7 +809,7 @@ describe('Product Category Module (e2e)', () => {
     it('CAT-INT-47: Should complete full category lifecycle', async () => {
       // 1. Create root category
       const createRootDto = {
-        name: 'Lifecycle Root',
+        name: `Lifecycle-Root-${TEST_SUITE_ID}-${Date.now()}`,
       };
 
       const createRootResponse = await request(app.getHttpServer())
@@ -812,7 +822,7 @@ describe('Product Category Module (e2e)', () => {
 
       // 2. Create child category
       const createChildDto = {
-        name: 'Lifecycle Child',
+        name: `Lifecycle-Child-${TEST_SUITE_ID}-${Date.now()}`,
         parentId: rootId,
       };
 
@@ -842,7 +852,7 @@ describe('Product Category Module (e2e)', () => {
 
       // 5. Update child
       const updateDto = {
-        name: 'Updated Lifecycle Child',
+        name: `Updated-Lifecycle-Child-${TEST_SUITE_ID}`,
       };
 
       const updateResponse = await request(app.getHttpServer())

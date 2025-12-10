@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `inv-sanity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SANITY TEST - Inventory Module
  * Verify key functionalities after minor changes/bug fixes
@@ -39,17 +42,23 @@ describe('Inventory Module - Sanity Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.inventory.deleteMany({});
-    await prisma.productBatch.deleteMany({});
-    await prisma.product.deleteMany({});
-    await prisma.location.deleteMany({});
-    await prisma.warehouse.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.inventory.deleteMany({
+      where: { location: { warehouse: { code: { contains: TEST_SUITE_ID } } } },
+    });
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.location.deleteMany({
+      where: { warehouse: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-inventory-sanity',
-        email: 'admin-inventory-sanity@test.com',
+        username: `admin-inventory-sanity-${TEST_SUITE_ID}`,
+        email: `admin-inventory-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Inventory Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -59,8 +68,8 @@ describe('Inventory Module - Sanity Tests', () => {
 
     const managerUser = await prisma.user.create({
       data: {
-        username: 'manager-inventory-sanity',
-        email: 'manager-inventory-sanity@test.com',
+        username: `manager-inventory-sanity-${TEST_SUITE_ID}`,
+        email: `manager-inventory-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Manager Inventory Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.manager,
@@ -83,24 +92,24 @@ describe('Inventory Module - Sanity Tests', () => {
 
     const warehouse = await prisma.warehouse.create({
       data: {
-        code: 'SANITY-WH-001',
-        name: 'Sanity Test Warehouse',
+        code: `SANITY-WH-${TEST_SUITE_ID}`,
+        name: `Sanity Test Warehouse ${TEST_SUITE_ID}`,
       },
     });
 
     const location = await prisma.location.create({
       data: {
         warehouseId: warehouse.id,
-        code: 'SANITY-LOC-001',
-        name: 'Sanity Test Location 1',
+        code: `SANITY-LOC-001-${TEST_SUITE_ID}`,
+        name: `Sanity Test Location 1 ${TEST_SUITE_ID}`,
       },
     });
 
     const location2 = await prisma.location.create({
       data: {
         warehouseId: warehouse.id,
-        code: 'SANITY-LOC-002',
-        name: 'Sanity Test Location 2',
+        code: `SANITY-LOC-002-${TEST_SUITE_ID}`,
+        name: `Sanity Test Location 2 ${TEST_SUITE_ID}`,
       },
     });
 
@@ -109,8 +118,8 @@ describe('Inventory Module - Sanity Tests', () => {
 
     const product = await prisma.product.create({
       data: {
-        sku: 'SANITY-INV-PROD-001',
-        name: 'Sanity Inventory Product',
+        sku: `SANITY-INV-PROD-${TEST_SUITE_ID}`,
+        name: `Sanity Inventory Product ${TEST_SUITE_ID}`,
         unit: 'pcs',
       },
     });
@@ -118,7 +127,7 @@ describe('Inventory Module - Sanity Tests', () => {
     const productBatch = await prisma.productBatch.create({
       data: {
         productId: product.id,
-        batchNo: 'SANITY-INV-BATCH-001',
+        batchNo: `SANITY-INV-BATCH-${TEST_SUITE_ID}`,
         quantity: 1000,
       },
     });
@@ -127,6 +136,19 @@ describe('Inventory Module - Sanity Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.inventory.deleteMany({
+      where: { location: { warehouse: { code: { contains: TEST_SUITE_ID } } } },
+    });
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.location.deleteMany({
+      where: { warehouse: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 

@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `so-sanity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SANITY TEST - Sales Order Module
  * Verify key functionalities after minor changes/bug fixes
@@ -37,14 +40,16 @@ describe('Sales Order Module - Sanity Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.salesOrder.deleteMany({});
-    await prisma.customer.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.salesOrder.deleteMany({
+      where: { customer: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.customer.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-so-sanity',
-        email: 'admin-so-sanity@test.com',
+        username: `admin-so-sanity-${TEST_SUITE_ID}`,
+        email: `admin-so-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin SO Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -54,8 +59,8 @@ describe('Sales Order Module - Sanity Tests', () => {
 
     const managerUser = await prisma.user.create({
       data: {
-        username: 'manager-so-sanity',
-        email: 'manager-so-sanity@test.com',
+        username: `manager-so-sanity-${TEST_SUITE_ID}`,
+        email: `manager-so-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Manager SO Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.manager,
@@ -79,8 +84,8 @@ describe('Sales Order Module - Sanity Tests', () => {
 
     const customer = await prisma.customer.create({
       data: {
-        code: 'SANITY-CUSTOMER-001',
-        name: 'Sanity Test Customer',
+        code: `SANITY-CUSTOMER-${TEST_SUITE_ID}`,
+        name: `Sanity Test Customer ${TEST_SUITE_ID}`,
         contactInfo: JSON.stringify({ email: 'customer@test.com' }),
       },
     });
@@ -89,6 +94,12 @@ describe('Sales Order Module - Sanity Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.salesOrder.deleteMany({
+      where: { customer: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.customer.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 

@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `wh-smoke-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SMOKE TEST - Warehouse Module
 
@@ -43,14 +46,14 @@ describe('Warehouse Module - Smoke Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    // Clean and setup
-    await prisma.warehouse.deleteMany({});
-    await prisma.user.deleteMany({});
+    // Clean only this test suite's data
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-smoke-test',
-        email: 'admin-smoke@test.com',
+        username: `admin-smoke-${TEST_SUITE_ID}`,
+        email: `admin-smoke-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Smoke Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -66,6 +69,10 @@ describe('Warehouse Module - Smoke Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    // Clean up only this test suite's data
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 

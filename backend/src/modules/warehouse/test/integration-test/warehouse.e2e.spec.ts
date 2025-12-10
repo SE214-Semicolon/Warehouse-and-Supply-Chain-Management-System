@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `warehouse-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 describe('Warehouse Integration Tests (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -34,44 +37,45 @@ describe('Warehouse Integration Tests (e2e)', () => {
     prisma = app.get(PrismaService);
     jwtService = app.get(JwtService);
 
-    // Clean up test data
-    await cleanDatabase();
-
     // Create test users and get tokens
     await createTestUsers();
   }, 30000); // 30 second timeout for setup
 
   afterAll(async () => {
-    await cleanDatabase();
-    await prisma.$disconnect();
-    await app.close();
-  }, 30000); // 30 second timeout for teardown
-
-  async function cleanDatabase() {
-    // Delete in correct order to respect foreign key constraints
-    await prisma.location.deleteMany({});
+    // Clean up only this test suite's data
+    await prisma.location.deleteMany({
+      where: {
+        warehouse: {
+          code: {
+            contains: TEST_SUITE_ID,
+          },
+        },
+      },
+    });
     await prisma.warehouse.deleteMany({
       where: {
         code: {
-          startsWith: 'TEST-',
+          contains: TEST_SUITE_ID,
         },
       },
     });
     await prisma.user.deleteMany({
       where: {
         email: {
-          contains: '@test-e2e.com',
+          contains: TEST_SUITE_ID,
         },
       },
     });
-  }
+    await prisma.$disconnect();
+    await app.close();
+  }, 30000);
 
   async function createTestUsers() {
     // Create admin user
     const admin = await prisma.user.create({
       data: {
-        username: 'admin-e2e',
-        email: 'admin@test-e2e.com',
+        username: `admin-wh-${TEST_SUITE_ID}`,
+        email: `admin-wh-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin User',
         passwordHash: '$2b$10$validhashedpassword', // Mock hash
         role: UserRole.admin,
@@ -82,8 +86,8 @@ describe('Warehouse Integration Tests (e2e)', () => {
     // Create manager user
     const manager = await prisma.user.create({
       data: {
-        username: 'manager-e2e',
-        email: 'manager@test-e2e.com',
+        username: `manager-wh-${TEST_SUITE_ID}`,
+        email: `manager-wh-${TEST_SUITE_ID}@test.com`,
         fullName: 'Manager User',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.manager,
@@ -94,8 +98,8 @@ describe('Warehouse Integration Tests (e2e)', () => {
     // Create staff user
     const staff = await prisma.user.create({
       data: {
-        username: 'staff-e2e',
-        email: 'staff@test-e2e.com',
+        username: `staff-wh-${TEST_SUITE_ID}`,
+        email: `staff-wh-${TEST_SUITE_ID}@test.com`,
         fullName: 'Staff User',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.warehouse_staff,
@@ -116,7 +120,7 @@ describe('Warehouse Integration Tests (e2e)', () => {
   describe('POST /warehouses - Create Warehouse', () => {
     it('WH-INT-01: Should create warehouse with valid data (admin)', async () => {
       const createDto = {
-        code: 'TEST-WH-001',
+        code: `TEST-WH-001-${TEST_SUITE_ID}`,
         name: 'Integration Test Warehouse',
         address: '123 Test Street',
         metadata: {
@@ -145,7 +149,7 @@ describe('Warehouse Integration Tests (e2e)', () => {
 
     it('WH-INT-02: Should create warehouse with valid data (manager)', async () => {
       const createDto = {
-        code: 'TEST-WH-002',
+        code: `TEST-WH-002-${TEST_SUITE_ID}`,
         name: 'Manager Created Warehouse',
         address: '456 Manager Street',
       };
@@ -162,7 +166,7 @@ describe('Warehouse Integration Tests (e2e)', () => {
 
     it('WH-INT-03: Should fail with duplicate code', async () => {
       const createDto = {
-        code: 'TEST-WH-001', // Same as first test
+        code: `TEST-WH-001-${TEST_SUITE_ID}`, // Same as first test
         name: 'Duplicate Code Warehouse',
       };
 
@@ -230,13 +234,13 @@ describe('Warehouse Integration Tests (e2e)', () => {
     it('WH-INT-08: Should filter by code', async () => {
       const response = await request(app.getHttpServer())
         .get('/warehouses')
-        .query({ code: 'TEST-WH-001' })
+        .query({ code: createdWarehouseCode })
         .set('Authorization', adminToken)
         .expect(200);
 
       expect(response.body.success).toBe(true);
       expect(response.body.warehouses).toHaveLength(1);
-      expect(response.body.warehouses[0].code).toBe('TEST-WH-001');
+      expect(response.body.warehouses[0].code).toBe(createdWarehouseCode);
     });
 
     it('WH-INT-09: Should filter by search query', async () => {
@@ -290,7 +294,7 @@ describe('Warehouse Integration Tests (e2e)', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.warehouse).toBeDefined();
       expect(response.body.warehouse.id).toBe(createdWarehouseId);
-      expect(response.body.warehouse.code).toBe('TEST-WH-001');
+      expect(response.body.warehouse.code).toBe(createdWarehouseCode);
       expect(response.body.stats).toBeDefined();
     });
 
@@ -359,7 +363,7 @@ describe('Warehouse Integration Tests (e2e)', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.warehouseId).toBe(createdWarehouseId);
       expect(response.body.warehouseName).toBe('Integration Test Warehouse');
-      expect(response.body.warehouseCode).toBe('TEST-WH-001');
+      expect(response.body.warehouseCode).toBe(createdWarehouseCode);
       expect(response.body.totalLocations).toBeDefined();
       expect(response.body.totalCapacity).toBeDefined();
       expect(response.body.occupiedLocations).toBeDefined();
@@ -401,7 +405,7 @@ describe('Warehouse Integration Tests (e2e)', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.warehouse.name).toBe(updateDto.name);
       expect(response.body.warehouse.address).toBe(updateDto.address);
-      expect(response.body.warehouse.code).toBe('TEST-WH-001'); // Code unchanged
+      expect(response.body.warehouse.code).toBe(createdWarehouseCode); // Code unchanged
     });
 
     it('WH-INT-23: Should update warehouse metadata', async () => {
@@ -424,7 +428,7 @@ describe('Warehouse Integration Tests (e2e)', () => {
 
     it('WH-INT-24: Should fail when updating to duplicate code', async () => {
       const updateDto = {
-        code: 'TEST-WH-002', // This code already exists
+        code: `TEST-WH-002-${TEST_SUITE_ID}`, // This code already exists
       };
 
       const response = await request(app.getHttpServer())

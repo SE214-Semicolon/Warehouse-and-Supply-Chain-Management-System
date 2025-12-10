@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `product-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 describe('Product Module (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -39,14 +42,11 @@ describe('Product Module (e2e)', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    // Clean database
-    await cleanDatabase();
-
-    // Create test users and tokens
+    // Create test users and tokens with unique identifiers
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-product-test',
-        email: 'admin-product@test.com',
+        username: `admin-prod-${TEST_SUITE_ID}`,
+        email: `admin-prod-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Product Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -56,8 +56,8 @@ describe('Product Module (e2e)', () => {
 
     const managerUser = await prisma.user.create({
       data: {
-        username: 'manager-product-test',
-        email: 'manager-product@test.com',
+        username: `manager-prod-${TEST_SUITE_ID}`,
+        email: `manager-prod-${TEST_SUITE_ID}@test.com`,
         fullName: 'Manager Product Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.manager,
@@ -67,8 +67,8 @@ describe('Product Module (e2e)', () => {
 
     const procurementUser = await prisma.user.create({
       data: {
-        username: 'procurement-product-test',
-        email: 'procurement-product@test.com',
+        username: `procurement-prod-${TEST_SUITE_ID}`,
+        email: `procurement-prod-${TEST_SUITE_ID}@test.com`,
         fullName: 'Procurement Product Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.procurement,
@@ -78,8 +78,8 @@ describe('Product Module (e2e)', () => {
 
     const staffUser = await prisma.user.create({
       data: {
-        username: 'staff-product-test',
-        email: 'staff-product@test.com',
+        username: `staff-prod-${TEST_SUITE_ID}`,
+        email: `staff-prod-${TEST_SUITE_ID}@test.com`,
         fullName: 'Staff Product Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.warehouse_staff,
@@ -109,7 +109,7 @@ describe('Product Module (e2e)', () => {
     // Create test category
     const category = await prisma.productCategory.create({
       data: {
-        name: 'Test Electronics',
+        name: `Test-Electronics-${TEST_SUITE_ID}`,
       },
     });
     testCategoryId = category.id;
@@ -117,7 +117,7 @@ describe('Product Module (e2e)', () => {
     // Create initial test product
     const product = await prisma.product.create({
       data: {
-        sku: 'TEST-SKU-001',
+        sku: `TEST-SKU-001-${TEST_SUITE_ID}`,
         name: 'Test Product 1',
         unit: 'pcs',
         barcode: '1234567890',
@@ -128,35 +128,37 @@ describe('Product Module (e2e)', () => {
   }, 30000);
 
   afterAll(async () => {
-    await cleanDatabase();
-    await app.close();
-  }, 30000);
-
-  async function cleanDatabase() {
-    // Delete in correct order to avoid foreign key constraints
-    try {
-      await prisma.$executeRaw`SET CONSTRAINTS ALL DEFERRED`;
-    } catch {
-      // Ignore if not PostgreSQL
-    }
-    await prisma.salesOrderItem.deleteMany({});
-    await prisma.purchaseOrderItem.deleteMany({});
-    await prisma.product.deleteMany({});
-    await prisma.productCategory.deleteMany({});
-    await prisma.user.deleteMany({
+    // Clean up only this test suite's data
+    await prisma.product.deleteMany({
       where: {
-        email: {
-          contains: '@test.com',
+        sku: {
+          contains: TEST_SUITE_ID,
         },
       },
     });
-  }
+    await prisma.productCategory.deleteMany({
+      where: {
+        name: {
+          contains: TEST_SUITE_ID,
+        },
+      },
+    });
+    await prisma.user.deleteMany({
+      where: {
+        email: {
+          contains: TEST_SUITE_ID,
+        },
+      },
+    });
+    await prisma.$disconnect();
+    await app.close();
+  }, 30000);
 
   describe('POST /products - Create Product', () => {
     // PROD-TC01: Create with valid data
     it('PROD-INT-01: Should create product with valid data', async () => {
       const createDto = {
-        sku: 'PROD-NEW-001',
+        sku: `PROD-NEW-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         name: 'New Product',
         unit: 'pcs',
         barcode: '9876543210',
@@ -179,7 +181,7 @@ describe('Product Module (e2e)', () => {
     // PROD-TC02: Duplicate SKU
     it('PROD-INT-02: Should return 409 for duplicate SKU', async () => {
       const createDto = {
-        sku: 'TEST-SKU-001', // Already exists
+        sku: `TEST-SKU-001-${TEST_SUITE_ID}`, // Already exists
         name: 'Duplicate SKU Product',
         unit: 'pcs',
       };
@@ -214,7 +216,7 @@ describe('Product Module (e2e)', () => {
     // PROD-TC04: Create with category
     it('PROD-INT-04: Should create product with category', async () => {
       const createDto = {
-        sku: 'PROD-WITH-CAT',
+        sku: `PROD-WITH-CAT-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         name: 'Product With Category',
         unit: 'box',
         categoryId: testCategoryId,
@@ -246,7 +248,7 @@ describe('Product Module (e2e)', () => {
     // PROD-TC06: Permission denied (tested by guard)
     it('PROD-INT-06: Should allow manager to create product', async () => {
       const createDto = {
-        sku: 'PROD-MANAGER',
+        sku: `PROD-MANAGER-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         name: 'Manager Product',
         unit: 'pcs',
       };
@@ -271,7 +273,7 @@ describe('Product Module (e2e)', () => {
 
     it('PROD-INT-08: Should allow procurement to create product', async () => {
       const createDto = {
-        sku: 'PROD-PROCUREMENT',
+        sku: `PROD-PROCUREMENT-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         name: 'Procurement Product',
         unit: 'pcs',
       };
@@ -332,7 +334,7 @@ describe('Product Module (e2e)', () => {
     // PROD-TC10: SKU with special chars
     it('PROD-INT-12: Should create product with special chars in SKU', async () => {
       const createDto = {
-        sku: 'PROD-2024@#$',
+        sku: `PROD-2024@#$-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         name: 'Special SKU',
         unit: 'pcs',
       };
@@ -362,14 +364,15 @@ describe('Product Module (e2e)', () => {
 
     // PROD-TC12: Duplicate SKU case insensitive
     it('PROD-INT-14: Should return 409 for case-insensitive duplicate SKU', async () => {
+      const uniqueSku = `PROD-CASE-${TEST_SUITE_ID}`;
       const createDto1 = {
-        sku: 'PROD-CASE-TEST',
+        sku: uniqueSku,
         name: 'Case Test 1',
         unit: 'pcs',
       };
 
       const createDto2 = {
-        sku: 'prod-case-test',
+        sku: uniqueSku.toLowerCase(),
         name: 'Case Test 2',
         unit: 'pcs',
       };
@@ -392,7 +395,7 @@ describe('Product Module (e2e)', () => {
     // PROD-TC13: Create with null barcode
     it('PROD-INT-15: Should create product with null barcode', async () => {
       const createDto = {
-        sku: 'PROD-NULL-BARCODE',
+        sku: `PROD-NULL-BARCODE-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         name: 'Null Barcode Product',
         unit: 'pcs',
         barcode: null,
@@ -410,7 +413,7 @@ describe('Product Module (e2e)', () => {
     // PROD-TC14: Create with complex parameters
     it('PROD-INT-16: Should create product with complex parameters', async () => {
       const createDto = {
-        sku: 'PROD-COMPLEX',
+        sku: `PROD-COMPLEX-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         name: 'Complex Parameters',
         unit: 'pcs',
         parameters: {
@@ -436,7 +439,7 @@ describe('Product Module (e2e)', () => {
     // PROD-TC15: Create with empty parameters
     it('PROD-INT-17: Should create product with empty parameters', async () => {
       const createDto = {
-        sku: 'PROD-EMPTY-PARAMS',
+        sku: `PROD-EMPTY-PARAMS-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         name: 'Empty Parameters',
         unit: 'pcs',
         parameters: {},
@@ -452,7 +455,7 @@ describe('Product Module (e2e)', () => {
     // PROD-TC16: Create without category
     it('PROD-INT-18: Should create product without category', async () => {
       const createDto = {
-        sku: 'PROD-NO-CATEGORY',
+        sku: `PROD-NO-CATEGORY-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         name: 'No Category Product',
         unit: 'pcs',
       };
@@ -486,7 +489,7 @@ describe('Product Module (e2e)', () => {
     // PROD-TC18: SQL injection in SKU
     it('PROD-INT-20: Should sanitize SQL injection in SKU', async () => {
       const createDto = {
-        sku: "PROD'; DROP TABLE products;--",
+        sku: `PROD-${Date.now()}-${Math.random().toString(36).substring(7)}'; DROP TABLE products;--`,
         name: 'SQL Injection Test',
         unit: 'pcs',
       };
@@ -510,47 +513,54 @@ describe('Product Module (e2e)', () => {
 
   describe('GET /products - Get All Products', () => {
     beforeEach(async () => {
-      // Ensure test category exists
-      const categoryExists = await prisma.productCategory.findUnique({
-        where: { id: testCategoryId },
-      });
-      if (!categoryExists) {
-        const newCategory = await prisma.productCategory.create({
-          data: { name: `Test-Electronics-${Date.now()}` },
+      try {
+        // Ensure test category exists
+        let categoryExists = await prisma.productCategory.findUnique({
+          where: { id: testCategoryId },
         });
-        testCategoryId = newCategory.id;
-      }
+        if (!categoryExists) {
+          // Category was deleted, create new one with unique timestamp
+          const newCategory = await prisma.productCategory.create({
+            data: { name: `Test-Electronics-${TEST_SUITE_ID}-${Date.now()}` },
+          });
+          testCategoryId = newCategory.id;
+          categoryExists = newCategory;
+        }
 
-      // Create multiple test products
-      await prisma.product.createMany({
-        data: [
-          {
-            sku: 'GET-PROD-001',
-            name: 'Get Product 1',
-            unit: 'pcs',
-            barcode: 'BAR-001',
-            categoryId: testCategoryId,
-          },
-          {
-            sku: 'GET-PROD-002',
-            name: 'Get Product 2',
-            unit: 'box',
-            barcode: 'BAR-002',
-            categoryId: testCategoryId,
-          },
-          {
-            sku: 'GET-PROD-003',
-            name: 'Different Product',
-            unit: 'kg',
-            barcode: 'BAR-003',
-          },
-        ],
-      });
+        // Create multiple test products
+        await prisma.product.createMany({
+          data: [
+            {
+              sku: `GET-PROD-001-${TEST_SUITE_ID}`,
+              name: 'Get Product 1',
+              unit: 'pcs',
+              barcode: 'BAR-001',
+              categoryId: testCategoryId,
+            },
+            {
+              sku: `GET-PROD-002-${TEST_SUITE_ID}`,
+              name: 'Get Product 2',
+              unit: 'box',
+              barcode: 'BAR-002',
+              categoryId: testCategoryId,
+            },
+            {
+              sku: `GET-PROD-003-${TEST_SUITE_ID}`,
+              name: 'Different Product',
+              unit: 'kg',
+              barcode: 'BAR-003',
+            },
+          ],
+        });
+      } catch (error) {
+        console.error('Error in beforeEach:', error);
+        throw error;
+      }
     }, 10000);
 
     afterEach(async () => {
       await prisma.product.deleteMany({
-        where: { sku: { startsWith: 'GET-PROD-' } },
+        where: { sku: { contains: TEST_SUITE_ID } },
       });
     }, 10000);
 
@@ -774,6 +784,17 @@ describe('Product Module (e2e)', () => {
   describe('GET /products/:id - Get Product By ID', () => {
     // Find by valid ID
     it('PROD-INT-42: Should get product by valid ID', async () => {
+      // Ensure testCategory still exists
+      const categoryExists = await prisma.productCategory.findUnique({
+        where: { id: testCategoryId },
+      });
+      if (!categoryExists) {
+        const newCategory = await prisma.productCategory.create({
+          data: { name: `Test-Electronics-${TEST_SUITE_ID}` },
+        });
+        testCategoryId = newCategory.id;
+      }
+
       // Ensure testProduct still exists
       const productExists = await prisma.product.findUnique({
         where: { id: testProductId },
@@ -1052,7 +1073,7 @@ describe('Product Module (e2e)', () => {
 
       // 2. Create product
       const createProductDto = {
-        sku: 'LIFECYCLE-PROD-001',
+        sku: `LIFECYCLE-PROD-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         name: 'Lifecycle Product',
         unit: 'pcs',
         barcode: 'LIFE-001',

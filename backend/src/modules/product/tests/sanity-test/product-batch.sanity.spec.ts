@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `batch-sanity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SANITY TEST - Product Batch Module
  * Verify key functionalities after minor changes/bug fixes
@@ -36,14 +39,16 @@ describe('Product Batch Module - Sanity Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.productBatch.deleteMany({});
-    await prisma.product.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-batch-sanity',
-        email: 'admin-batch-sanity@test.com',
+        username: `admin-batch-sanity-${TEST_SUITE_ID}`,
+        email: `admin-batch-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Batch Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -53,8 +58,8 @@ describe('Product Batch Module - Sanity Tests', () => {
 
     const managerUser = await prisma.user.create({
       data: {
-        username: 'manager-batch-sanity',
-        email: 'manager-batch-sanity@test.com',
+        username: `manager-batch-sanity-${TEST_SUITE_ID}`,
+        email: `manager-batch-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Manager Batch Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.manager,
@@ -76,8 +81,8 @@ describe('Product Batch Module - Sanity Tests', () => {
 
     const product = await prisma.product.create({
       data: {
-        sku: 'SANITY-BATCH-PROD-001',
-        name: 'Sanity Batch Product',
+        sku: `SANITY-BATCH-PROD-${TEST_SUITE_ID}`,
+        name: `Sanity Batch Product ${TEST_SUITE_ID}`,
         unit: 'pcs',
       },
     });
@@ -86,6 +91,12 @@ describe('Product Batch Module - Sanity Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 

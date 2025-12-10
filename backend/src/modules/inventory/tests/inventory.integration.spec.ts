@@ -10,6 +10,9 @@ import { AuthModule } from '../../../auth/auth.module';
 import { DatabaseModule } from '../../../database/database.module';
 import { ProductModule } from '../../product/product.module';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `inv-int-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 describe('Inventory Module (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -57,8 +60,8 @@ describe('Inventory Module (e2e)', () => {
     // Create test users
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-inventory-test',
-        email: 'admin-inventory@test.com',
+        username: `admin-inventory-test-${TEST_SUITE_ID}`,
+        email: `admin-inventory-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Inventory Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -68,8 +71,8 @@ describe('Inventory Module (e2e)', () => {
 
     const managerUser = await prisma.user.create({
       data: {
-        username: 'manager-inventory-test',
-        email: 'manager-inventory@test.com',
+        username: `manager-inventory-test-${TEST_SUITE_ID}`,
+        email: `manager-inventory-${TEST_SUITE_ID}@test.com`,
         fullName: 'Manager Inventory Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.manager,
@@ -79,8 +82,8 @@ describe('Inventory Module (e2e)', () => {
 
     const staffUser = await prisma.user.create({
       data: {
-        username: 'staff-inventory-test',
-        email: 'staff-inventory@test.com',
+        username: `staff-inventory-test-${TEST_SUITE_ID}`,
+        email: `staff-inventory-${TEST_SUITE_ID}@test.com`,
         fullName: 'Staff Inventory Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.warehouse_staff,
@@ -98,8 +101,8 @@ describe('Inventory Module (e2e)', () => {
     // Create test warehouse
     const warehouse = await prisma.warehouse.create({
       data: {
-        code: `WH-INV-${Date.now()}`,
-        name: 'Test Warehouse for Inventory',
+        code: `WH-INV-${TEST_SUITE_ID}`,
+        name: `Test Warehouse for Inventory ${TEST_SUITE_ID}`,
       },
     });
     testWarehouseId = warehouse.id;
@@ -108,8 +111,8 @@ describe('Inventory Module (e2e)', () => {
     const location = await prisma.location.create({
       data: {
         warehouseId: testWarehouseId,
-        code: `LOC-INV-${Date.now()}`,
-        name: 'Test Location for Inventory',
+        code: `LOC-INV-${TEST_SUITE_ID}`,
+        name: `Test Location for Inventory ${TEST_SUITE_ID}`,
       },
     });
     testLocationId = location.id;
@@ -117,15 +120,15 @@ describe('Inventory Module (e2e)', () => {
     // Create test product category
     const category = await prisma.productCategory.create({
       data: {
-        name: `INV-Test-Category-${Date.now()}`,
+        name: `INV-Test-Category-${TEST_SUITE_ID}`,
       },
     });
 
     // Create test product
     const product = await prisma.product.create({
       data: {
-        sku: `SKU-INV-${Date.now()}`,
-        name: 'Test Product for Inventory',
+        sku: `SKU-INV-${TEST_SUITE_ID}`,
+        name: `Test Product for Inventory ${TEST_SUITE_ID}`,
         unit: 'pcs',
         categoryId: category.id,
       },
@@ -136,7 +139,7 @@ describe('Inventory Module (e2e)', () => {
     const batch = await prisma.productBatch.create({
       data: {
         productId: testProductId,
-        batchNo: `BATCH-INV-${Date.now()}`,
+        batchNo: `BATCH-INV-${TEST_SUITE_ID}`,
         quantity: 1000,
       },
     });
@@ -145,20 +148,27 @@ describe('Inventory Module (e2e)', () => {
 
   afterAll(async () => {
     await cleanDatabase();
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 
   async function cleanDatabase() {
-    await prisma.stockMovement.deleteMany({});
-    await prisma.inventory.deleteMany({});
-    await prisma.productBatch.deleteMany({});
-    await prisma.product.deleteMany({});
-    await prisma.productCategory.deleteMany({});
-    await prisma.location.deleteMany({});
-    await prisma.warehouse.deleteMany({});
-    await prisma.user.deleteMany({
-      where: { email: { contains: '@test.com' } },
+    await prisma.stockMovement.deleteMany({
+      where: { productBatch: { product: { sku: { contains: TEST_SUITE_ID } } } },
     });
+    await prisma.inventory.deleteMany({
+      where: { location: { warehouse: { code: { contains: TEST_SUITE_ID } } } },
+    });
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.productCategory.deleteMany({ where: { name: { contains: TEST_SUITE_ID } } });
+    await prisma.location.deleteMany({
+      where: { warehouse: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
   }
 
   describe('POST /inventory/receive - Receive Inventory', () => {

@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `sup-smoke-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SMOKE TEST - Supplier Module
  * Critical path testing for basic CRUD operations
@@ -34,13 +37,13 @@ describe('Supplier Module - Smoke Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.supplier.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.supplier.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-supplier-smoke',
-        email: 'admin-supplier-smoke@test.com',
+        username: `admin-supplier-smoke-${TEST_SUITE_ID}`,
+        email: `admin-supplier-smoke-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Supplier Smoke',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -56,6 +59,9 @@ describe('Supplier Module - Smoke Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.supplier.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 

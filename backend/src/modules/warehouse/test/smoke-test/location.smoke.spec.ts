@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `loc-smoke-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SMOKE TEST - Location Module
  * Critical path testing for basic CRUD operations
@@ -35,14 +38,14 @@ describe('Location Module - Smoke Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.location.deleteMany({});
-    await prisma.warehouse.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.location.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-loc-smoke',
-        email: 'admin-loc-smoke@test.com',
+        username: `admin-loc-smoke-${TEST_SUITE_ID}`,
+        email: `admin-loc-smoke-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Location Smoke',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -58,8 +61,8 @@ describe('Location Module - Smoke Tests', () => {
 
     const warehouse = await prisma.warehouse.create({
       data: {
-        code: 'SMOKE-WH-001',
-        name: 'Smoke Test Warehouse',
+        code: `SMOKE-WH-${TEST_SUITE_ID}`,
+        name: `Smoke Test Warehouse ${TEST_SUITE_ID}`,
       },
     });
 
@@ -67,6 +70,10 @@ describe('Location Module - Smoke Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.location.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 

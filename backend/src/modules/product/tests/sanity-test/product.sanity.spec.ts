@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `prod-sanity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SANITY TEST - Product Module
  * Verify key functionalities after minor changes/bug fixes
@@ -35,13 +38,13 @@ describe('Product Module - Sanity Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.product.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-product-sanity',
-        email: 'admin-product-sanity@test.com',
+        username: `admin-product-sanity-${TEST_SUITE_ID}`,
+        email: `admin-product-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Product Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -51,8 +54,8 @@ describe('Product Module - Sanity Tests', () => {
 
     const managerUser = await prisma.user.create({
       data: {
-        username: 'manager-product-sanity',
-        email: 'manager-product-sanity@test.com',
+        username: `manager-product-sanity-${TEST_SUITE_ID}`,
+        email: `manager-product-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Manager Product Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.manager,
@@ -74,6 +77,9 @@ describe('Product Module - Sanity Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 
@@ -206,8 +212,8 @@ describe('Product Module - Sanity Tests', () => {
         .post('/products')
         .set('Authorization', managerToken)
         .send({
-          sku: 'SANITY-MANAGER-001',
-          name: 'Manager Created Product',
+          sku: `SANITY-MANAGER-${TEST_SUITE_ID}`,
+          name: `Manager Created Product ${TEST_SUITE_ID}`,
           unit: 'pcs',
         })
         .expect(201);
