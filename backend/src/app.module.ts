@@ -22,6 +22,7 @@ import { OrderModule } from './modules/order/order.module';
 import { SupplierModule } from './modules/supplier/supplier.module';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
+import { ShipmentModule } from './modules/shipment/shipment.module';
 
 // Controller and Service imports
 import { AppController } from './app.controller';
@@ -63,6 +64,7 @@ import { MetricsModule, MetricsInterceptor } from './common/metrics';
     SupplierModule,
     AuditLogModule,
     AlertsModule,
+    ShipmentModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

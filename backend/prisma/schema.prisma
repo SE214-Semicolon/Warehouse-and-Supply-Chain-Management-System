@@ -49,6 +49,7 @@ model Warehouse {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   locations Location[]
+  shipments Shipment[]
 }
 
 model Location {
@@ -240,6 +241,7 @@ model SalesOrder {
   customer     Customer?        @relation(fields: [customerId], references: [id])
   items        SalesOrderItem[]
   ShipmentItem ShipmentItem[]
+  shipments    Shipment[]
 
   @@index([status], map: "idx_so_status")
 }
@@ -261,6 +263,8 @@ model SalesOrderItem {
 model Shipment {
   id                String                  @id @default(uuid()) @db.Uuid
   shipmentNo        String?                 @unique @db.VarChar(120)
+  warehouseId       String                  @db.Uuid
+  salesOrderId      String                  @db.Uuid
   carrier           String?
   trackingCode      String?
   status            ShipmentStatus          @default(preparing)
@@ -268,8 +272,13 @@ model Shipment {
   deliveredAt       DateTime?
   estimatedDelivery DateTime?
   notes             String?
+  warehouse         Warehouse               @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  salesOrder        SalesOrder              @relation(fields: [salesOrderId], references: [id], onDelete: Restrict)
   items             ShipmentItem[]
   trackingEvents    ShipmentTrackingEvent[]
+
+  @@index([warehouseId], name: "idx_shipment_warehouse")
+  @@index([salesOrderId], name: "idx_shipment_sales_order")
 }
 
 model ShipmentItem {

@@ -62,7 +62,7 @@ export class OrderController {
 
   @Post(':id/receive')
   @ApiOperation({ summary: 'Nhận hàng PO (partial/full) + cập nhật tồn kho' })
-  @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
+  @Roles(UserRole.admin, UserRole.manager, UserRole.procurement, UserRole.warehouse_staff)
   async receive(@Param('id') id: string, @Body() dto: ReceivePurchaseOrderDto) {
     return this.svc.receivePurchaseOrder(id, dto);
   }
