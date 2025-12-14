@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `batch-smoke-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SMOKE TEST - Product Batch Module
  * Critical path testing for basic CRUD operations
@@ -35,14 +38,16 @@ describe('Product Batch Module - Smoke Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.productBatch.deleteMany({});
-    await prisma.product.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-batch-smoke',
-        email: 'admin-batch-smoke@test.com',
+        username: `admin-batch-smoke-${TEST_SUITE_ID}`,
+        email: `admin-batch-smoke-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Batch Smoke',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -58,8 +63,8 @@ describe('Product Batch Module - Smoke Tests', () => {
 
     const product = await prisma.product.create({
       data: {
-        sku: 'SMOKE-BATCH-PROD-001',
-        name: 'Smoke Batch Product',
+        sku: `SMOKE-BATCH-PROD-${TEST_SUITE_ID}`,
+        name: `Smoke Batch Product ${TEST_SUITE_ID}`,
         unit: 'pcs',
       },
     });
@@ -68,6 +73,12 @@ describe('Product Batch Module - Smoke Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 

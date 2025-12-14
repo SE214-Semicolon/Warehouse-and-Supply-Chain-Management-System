@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { OrderService } from '../../order.service';
+import { PurchaseOrderService } from '../../services/purchase-order.service';
 import { PurchaseOrderRepository } from '../../repositories/purchase-order.repository';
 import { InventoryService } from '../../../inventory/services/inventory.service';
 import { PoStatus } from '@prisma/client';
 
-describe('OrderService', () => {
-  let service: OrderService;
+describe('Purchase Order Service', () => {
+  let service: PurchaseOrderService;
   let poRepo: jest.Mocked<PurchaseOrderRepository>;
   let inventorySvc: jest.Mocked<InventoryService>;
 
@@ -64,7 +64,7 @@ describe('OrderService', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        OrderService,
+        PurchaseOrderService,
         {
           provide: PurchaseOrderRepository,
           useValue: mockPoRepo,
@@ -76,7 +76,7 @@ describe('OrderService', () => {
       ],
     }).compile();
 
-    service = module.get<OrderService>(OrderService);
+    service = module.get<PurchaseOrderService>(PurchaseOrderService);
     poRepo = module.get(PurchaseOrderRepository);
     inventorySvc = module.get(InventoryService);
   });

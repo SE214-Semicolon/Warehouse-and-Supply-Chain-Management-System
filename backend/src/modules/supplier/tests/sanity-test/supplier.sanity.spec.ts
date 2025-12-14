@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `sup-sanity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SANITY TEST - Supplier Module
  * Verify key functionalities after minor changes/bug fixes
@@ -35,13 +38,13 @@ describe('Supplier Module - Sanity Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.supplier.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.supplier.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-supplier-sanity',
-        email: 'admin-supplier-sanity@test.com',
+        username: `admin-supplier-sanity-${TEST_SUITE_ID}`,
+        email: `admin-supplier-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Supplier Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -51,8 +54,8 @@ describe('Supplier Module - Sanity Tests', () => {
 
     const procurementUser = await prisma.user.create({
       data: {
-        username: 'procurement-supplier-sanity',
-        email: 'procurement-supplier-sanity@test.com',
+        username: `procurement-supplier-sanity-${TEST_SUITE_ID}`,
+        email: `procurement-supplier-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Procurement Supplier Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.procurement,
@@ -74,6 +77,9 @@ describe('Supplier Module - Sanity Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.supplier.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 

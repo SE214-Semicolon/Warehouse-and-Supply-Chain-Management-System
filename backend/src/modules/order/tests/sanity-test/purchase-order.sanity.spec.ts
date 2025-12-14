@@ -6,11 +6,14 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `po-sanity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SANITY TEST - Order Module
  * Verify key functionalities after minor changes/bug fixes
  */
-describe('Order Module - Sanity Tests', () => {
+describe('Purchase Order Module - Sanity Tests', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;
@@ -37,14 +40,16 @@ describe('Order Module - Sanity Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.purchaseOrder.deleteMany({});
-    await prisma.supplier.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.purchaseOrder.deleteMany({
+      where: { supplier: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.supplier.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-order-sanity',
-        email: 'admin-order-sanity@test.com',
+        username: `admin-order-sanity-${TEST_SUITE_ID}`,
+        email: `admin-order-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Order Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -54,8 +59,8 @@ describe('Order Module - Sanity Tests', () => {
 
     const procurementUser = await prisma.user.create({
       data: {
-        username: 'procurement-order-sanity',
-        email: 'procurement-order-sanity@test.com',
+        username: `procurement-order-sanity-${TEST_SUITE_ID}`,
+        email: `procurement-order-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Procurement Order Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.procurement,
@@ -79,8 +84,8 @@ describe('Order Module - Sanity Tests', () => {
 
     const supplier = await prisma.supplier.create({
       data: {
-        code: 'SANITY-SUPPLIER-001',
-        name: 'Sanity Test Supplier',
+        code: `SANITY-SUPPLIER-${TEST_SUITE_ID}`,
+        name: `Sanity Test Supplier ${TEST_SUITE_ID}`,
         contactInfo: JSON.stringify({ email: 'supplier@test.com' }),
       },
     });
@@ -89,6 +94,12 @@ describe('Order Module - Sanity Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.purchaseOrder.deleteMany({
+      where: { supplier: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.supplier.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 

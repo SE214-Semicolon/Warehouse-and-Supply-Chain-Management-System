@@ -9,11 +9,21 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthModule } from '../../../../auth/auth.module';
 import { InventoryModule } from '../../../inventory/inventory.module';
 import { DatabaseModule } from '../../../../database/database.module';
+import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `po-int-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
 describe('Purchase Order Module (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;
+  let container: StartedPostgreSqlContainer;
+  let originalDatabaseUrl: string | undefined;
   let adminToken: string;
   let managerToken: string;
   let procurementToken: string;
@@ -23,6 +33,29 @@ describe('Purchase Order Module (e2e)', () => {
   let testUserId: string;
 
   beforeAll(async () => {
+    // Start isolated PostgreSQL container for this test suite
+    console.log('🐳 Starting isolated PostgreSQL container for PO tests...');
+    container = await new PostgreSqlContainer('postgres:15-alpine')
+      .withDatabase('po_test_db')
+      .withUsername('po_test_user')
+      .withPassword('po_test_pass')
+      .withExposedPorts(5432)
+      .start();
+
+    const containerUrl = container.getConnectionUri();
+    console.log(`✅ Container started: ${containerUrl}`);
+
+    // Save original DATABASE_URL and set new one
+    originalDatabaseUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = containerUrl;
+
+    // Run migrations on isolated database
+    console.log('📦 Running migrations on isolated database...');
+    await execAsync('npx prisma migrate deploy', {
+      env: { ...process.env, DATABASE_URL: containerUrl },
+    });
+    console.log('✅ Migrations completed');
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -56,8 +89,8 @@ describe('Purchase Order Module (e2e)', () => {
     // Create test users
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-po-test',
-        email: 'admin-po@test.com',
+        username: `admin-po-test-${TEST_SUITE_ID}`,
+        email: `admin-po-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin PO Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -67,8 +100,8 @@ describe('Purchase Order Module (e2e)', () => {
 
     const managerUser = await prisma.user.create({
       data: {
-        username: 'manager-po-test',
-        email: 'manager-po@test.com',
+        username: `manager-po-test-${TEST_SUITE_ID}`,
+        email: `manager-po-${TEST_SUITE_ID}@test.com`,
         fullName: 'Manager PO Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.manager,
@@ -78,8 +111,8 @@ describe('Purchase Order Module (e2e)', () => {
 
     const procurementUser = await prisma.user.create({
       data: {
-        username: 'procurement-po-test',
-        email: 'procurement-po@test.com',
+        username: `procurement-po-test-${TEST_SUITE_ID}`,
+        email: `procurement-po-${TEST_SUITE_ID}@test.com`,
         fullName: 'Procurement PO Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.procurement,
@@ -89,8 +122,8 @@ describe('Purchase Order Module (e2e)', () => {
 
     const staffUser = await prisma.user.create({
       data: {
-        username: 'staff-po-test',
-        email: 'staff-po@test.com',
+        username: `staff-po-test-${TEST_SUITE_ID}`,
+        email: `staff-po-${TEST_SUITE_ID}@test.com`,
         fullName: 'Staff PO Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.warehouse_staff,
@@ -110,8 +143,8 @@ describe('Purchase Order Module (e2e)', () => {
     // Create test supplier
     const supplier = await prisma.supplier.create({
       data: {
-        code: `SUP-PO-${Date.now()}`,
-        name: 'Test Supplier for PO',
+        code: `SUP-PO-${TEST_SUITE_ID}`,
+        name: `Test Supplier for PO ${TEST_SUITE_ID}`,
         contactInfo: { phone: '0901234567' },
       },
     });
@@ -120,15 +153,15 @@ describe('Purchase Order Module (e2e)', () => {
     // Create test product category
     const category = await prisma.productCategory.create({
       data: {
-        name: `PO-Test-Category-${Date.now()}`,
+        name: `PO-Test-Category-${TEST_SUITE_ID}`,
       },
     });
 
     // Create test product
     const product = await prisma.product.create({
       data: {
-        sku: `SKU-PO-${Date.now()}`,
-        name: 'Test Product for PO',
+        sku: `SKU-PO-${TEST_SUITE_ID}`,
+        name: `Test Product for PO ${TEST_SUITE_ID}`,
         unit: 'pcs',
         categoryId: category.id,
       },
@@ -137,24 +170,59 @@ describe('Purchase Order Module (e2e)', () => {
   }, 60000);
 
   afterAll(async () => {
+    console.log('🧹 Cleaning up isolated container...');
     await cleanDatabase();
+    await prisma.$disconnect();
     await app.close();
+
+    // Stop and remove container
+    await container.stop();
+
+    // Restore original DATABASE_URL
+    if (originalDatabaseUrl) {
+      process.env.DATABASE_URL = originalDatabaseUrl;
+    }
+    console.log('✅ Cleanup completed');
   }, 30000);
 
   async function cleanDatabase() {
-    await prisma.stockMovement.deleteMany({});
-    await prisma.inventory.deleteMany({});
-    await prisma.purchaseOrderItem.deleteMany({});
-    await prisma.purchaseOrder.deleteMany({});
-    await prisma.productBatch.deleteMany({});
-    await prisma.product.deleteMany({});
-    await prisma.productCategory.deleteMany({});
-    await prisma.location.deleteMany({});
-    await prisma.warehouse.deleteMany({});
-    await prisma.supplier.deleteMany({});
-    await prisma.user.deleteMany({
-      where: { email: { contains: '@test.com' } },
+    await prisma.stockMovement.deleteMany({
+      where: { productBatch: { product: { sku: { contains: TEST_SUITE_ID } } } },
     });
+    await prisma.inventory.deleteMany({
+      where: { location: { warehouse: { code: { contains: TEST_SUITE_ID } } } },
+    });
+    // Delete order items from this test suite (by PO supplier OR by Product)
+    await prisma.purchaseOrderItem.deleteMany({
+      where: {
+        OR: [
+          {
+            purchaseOrder: {
+              supplier: { code: { contains: TEST_SUITE_ID } },
+            },
+          },
+          {
+            product: { sku: { contains: TEST_SUITE_ID } },
+          },
+        ],
+      },
+    });
+    await prisma.purchaseOrder.deleteMany({
+      where: {
+        supplier: { code: { contains: TEST_SUITE_ID } },
+      },
+    });
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.productCategory.deleteMany({ where: { name: { contains: TEST_SUITE_ID } } });
+    await prisma.location.deleteMany({
+      where: { warehouse: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.supplier.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
   }
 
   describe('POST /purchase-orders - Create Purchase Order', () => {
@@ -368,13 +436,24 @@ describe('Purchase Order Module (e2e)', () => {
 
   describe('POST /purchase-orders/:id/submit - Submit Purchase Order', () => {
     let draftPoId: string;
+    let localSupplierId: string;
 
     beforeEach(async () => {
+      // Create supplier for this test
+      const supplier = await prisma.supplier.create({
+        data: {
+          code: `SUP-SUBMIT-${TEST_SUITE_ID}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: `Supplier Submit ${TEST_SUITE_ID}`,
+          contactInfo: { phone: '0901234567' },
+        },
+      });
+      localSupplierId = supplier.id;
+
       const po = await prisma.purchaseOrder.create({
         data: {
-          poNo: `PO-TEST-${Date.now()}`,
+          poNo: `PO-TEST-${TEST_SUITE_ID}-${Date.now()}`,
           status: PoStatus.draft,
-          supplierId: testSupplierId,
+          supplierId: localSupplierId,
           totalAmount: 0,
         },
       });
@@ -466,13 +545,24 @@ describe('Purchase Order Module (e2e)', () => {
 
   describe('GET /purchase-orders/:id - Get Purchase Order', () => {
     let testPoId: string;
+    let localSupplierId: string;
 
     beforeAll(async () => {
+      // Create supplier for this test
+      const supplier = await prisma.supplier.create({
+        data: {
+          code: `SUP-GET-${TEST_SUITE_ID}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: `Supplier GET ${TEST_SUITE_ID}`,
+          contactInfo: { phone: '0901234567' },
+        },
+      });
+      localSupplierId = supplier.id;
+
       const po = await prisma.purchaseOrder.create({
         data: {
-          poNo: `PO-GET-${Date.now()}`,
+          poNo: `PO-GET-${TEST_SUITE_ID}-${Date.now()}`,
           status: PoStatus.ordered,
-          supplierId: testSupplierId,
+          supplierId: localSupplierId,
           totalAmount: 1000000,
         },
       });
@@ -500,26 +590,38 @@ describe('Purchase Order Module (e2e)', () => {
   });
 
   describe('GET /purchase-orders - List Purchase Orders', () => {
+    let localSupplierId: string;
+
     beforeAll(async () => {
+      // Create supplier for this test
+      const supplier = await prisma.supplier.create({
+        data: {
+          code: `SUP-LIST-${TEST_SUITE_ID}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: `Supplier LIST ${TEST_SUITE_ID}`,
+          contactInfo: { phone: '0901234567' },
+        },
+      });
+      localSupplierId = supplier.id;
+
       // Create multiple POs for testing
       await prisma.purchaseOrder.createMany({
         data: [
           {
-            poNo: 'PO-LIST-001',
+            poNo: `PO-LIST-001-${TEST_SUITE_ID}`,
             status: PoStatus.draft,
-            supplierId: testSupplierId,
+            supplierId: localSupplierId,
             totalAmount: 100000,
             placedAt: new Date('2024-01-10'),
           },
           {
-            poNo: 'PO-LIST-002',
+            poNo: `PO-LIST-002-${TEST_SUITE_ID}`,
             status: PoStatus.ordered,
-            supplierId: testSupplierId,
+            supplierId: localSupplierId,
             totalAmount: 200000,
             placedAt: new Date('2024-01-15'),
           },
           {
-            poNo: 'PO-LIST-003',
+            poNo: `PO-LIST-003-${TEST_SUITE_ID}`,
             status: PoStatus.received,
             totalAmount: 150000,
             placedAt: new Date('2024-01-20'),
@@ -679,18 +781,68 @@ describe('Purchase Order Module (e2e)', () => {
   });
 
   describe('POST /purchase-orders/:id/receive - Receive Purchase Order', () => {
-    let orderedPoId: string;
-    let poItemId: string;
     let testWarehouseId: string;
     let testLocationId: string;
-    let testBatchId: string;
+    let localSupplierId: string;
+    let localCategoryId: string;
+
+    // Helper function to create fresh PO with dedicated product/batch for each test
+    const createOrderedPoWithItem = async () => {
+      // Create unique product for this test
+      const product = await prisma.product.create({
+        data: {
+          sku: `SKU-PO-${TEST_SUITE_ID}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: `Product PO Test ${TEST_SUITE_ID}`,
+          unit: 'pcs',
+          categoryId: localCategoryId,
+        },
+      });
+
+      // Create batch for this product
+      const batch = await prisma.productBatch.create({
+        data: {
+          productId: product.id,
+          batchNo: `BATCH-PO-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          quantity: 200,
+        },
+      });
+
+      // Create PO
+      const po = await prisma.purchaseOrder.create({
+        data: {
+          poNo: `PO-RECEIVE-${TEST_SUITE_ID}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          status: PoStatus.ordered,
+          supplierId: localSupplierId,
+          totalAmount: 1000000,
+        },
+      });
+
+      // Create PO item
+      const item = await prisma.purchaseOrderItem.create({
+        data: {
+          purchaseOrderId: po.id,
+          productId: product.id,
+          qtyOrdered: 100,
+          qtyReceived: 0,
+          unitPrice: 10000,
+          lineTotal: 1000000,
+        },
+      });
+
+      return {
+        poId: po.id,
+        itemId: item.id,
+        productId: product.id,
+        batchId: batch.id,
+      };
+    };
 
     beforeAll(async () => {
       // Create warehouse and location for receiving
       const warehouse = await prisma.warehouse.create({
         data: {
-          code: `WH-PO-${Date.now()}`,
-          name: 'Test Warehouse for PO',
+          code: `WH-RECEIVE-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: `Warehouse Receive ${TEST_SUITE_ID}`,
         },
       });
       testWarehouseId = warehouse.id;
@@ -698,55 +850,40 @@ describe('Purchase Order Module (e2e)', () => {
       const location = await prisma.location.create({
         data: {
           warehouseId: testWarehouseId,
-          code: `LOC-PO-${Date.now()}`,
-          name: 'Test Location for PO',
+          code: `LOC-RECEIVE-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: `Location Receive ${TEST_SUITE_ID}`,
         },
       });
       testLocationId = location.id;
 
-      // Create product batch
-      const batch = await prisma.productBatch.create({
+      // Create supplier for receive tests
+      const supplier = await prisma.supplier.create({
         data: {
-          productId: testProductId,
-          batchNo: `BATCH-PO-${Date.now()}`,
-          quantity: 100,
+          code: `SUP-RECEIVE-${TEST_SUITE_ID}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: `Supplier Receive ${TEST_SUITE_ID}`,
+          contactInfo: { phone: '0901234567' },
         },
       });
-      testBatchId = batch.id;
-    });
+      localSupplierId = supplier.id;
 
-    beforeEach(async () => {
-      // Create ordered PO with items
-      const po = await prisma.purchaseOrder.create({
+      // Create product category (shared for all products in tests)
+      const category = await prisma.productCategory.create({
         data: {
-          poNo: `PO-RECEIVE-${Date.now()}`,
-          status: PoStatus.ordered,
-          supplierId: testSupplierId,
-          totalAmount: 1000000,
+          name: `Category-Receive-${TEST_SUITE_ID}-${Date.now()}`,
         },
       });
-      orderedPoId = po.id;
-
-      const item = await prisma.purchaseOrderItem.create({
-        data: {
-          purchaseOrderId: orderedPoId,
-          productId: testProductId,
-          qtyOrdered: 100,
-          qtyReceived: 0,
-          unitPrice: 10000,
-          lineTotal: 1000000,
-        },
-      });
-      poItemId = item.id;
+      localCategoryId = category.id;
     });
 
     // PO-INT-31: Receive partial successfully
     it('PO-INT-31: Should receive partial successfully', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
-            productBatchId: testBatchId,
+            poItemId: itemId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 50,
             createdById: testUserId,
@@ -756,7 +893,7 @@ describe('Purchase Order Module (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(201);
@@ -767,11 +904,13 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-32: Receive full successfully
     it('PO-INT-32: Should receive full successfully', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
-            productBatchId: testBatchId,
+            poItemId: itemId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 100,
             createdById: testUserId,
@@ -781,7 +920,7 @@ describe('Purchase Order Module (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(201);
@@ -792,15 +931,17 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-33: Receive multiple times partial → partial
     it('PO-INT-33: Should receive multiple times partial to partial', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       // First receive
       await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send({
           items: [
             {
-              poItemId: poItemId,
-              productBatchId: testBatchId,
+              poItemId: itemId,
+              productBatchId: batchId,
               locationId: testLocationId,
               qtyToReceive: 30,
               createdById: testUserId,
@@ -812,13 +953,13 @@ describe('Purchase Order Module (e2e)', () => {
 
       // Second receive
       const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', procurementToken)
         .send({
           items: [
             {
-              poItemId: poItemId,
-              productBatchId: testBatchId,
+              poItemId: itemId,
+              productBatchId: batchId,
               locationId: testLocationId,
               qtyToReceive: 30,
               createdById: testUserId,
@@ -834,15 +975,17 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-34: Receive multiple times partial → received
     it('PO-INT-34: Should receive multiple times partial to received', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       // First receive
       await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send({
           items: [
             {
-              poItemId: poItemId,
-              productBatchId: testBatchId,
+              poItemId: itemId,
+              productBatchId: batchId,
               locationId: testLocationId,
               qtyToReceive: 60,
               createdById: testUserId,
@@ -854,13 +997,13 @@ describe('Purchase Order Module (e2e)', () => {
 
       // Second receive completes the order
       const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', managerToken)
         .send({
           items: [
             {
-              poItemId: poItemId,
-              productBatchId: testBatchId,
+              poItemId: itemId,
+              productBatchId: batchId,
               locationId: testLocationId,
               qtyToReceive: 40,
               createdById: testUserId,
@@ -876,11 +1019,13 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-35: Receive multiple items simultaneously
     it('PO-INT-35: Should receive multiple items simultaneously', async () => {
+      const { poId, itemId, productId, batchId } = await createOrderedPoWithItem();
+
       // Add another item to the PO
       const item2 = await prisma.purchaseOrderItem.create({
         data: {
-          purchaseOrderId: orderedPoId,
-          productId: testProductId,
+          purchaseOrderId: poId,
+          productId: productId,
           qtyOrdered: 50,
           qtyReceived: 0,
           unitPrice: 20000,
@@ -891,8 +1036,8 @@ describe('Purchase Order Module (e2e)', () => {
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
-            productBatchId: testBatchId,
+            poItemId: itemId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 100,
             createdById: testUserId,
@@ -900,7 +1045,7 @@ describe('Purchase Order Module (e2e)', () => {
           },
           {
             poItemId: item2.id,
-            productBatchId: testBatchId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 50,
             createdById: testUserId,
@@ -910,7 +1055,7 @@ describe('Purchase Order Module (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(201);
@@ -921,11 +1066,13 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-36: Receive exceeds ordered quantity
     it('PO-INT-36: Should return 400 when receive exceeds ordered quantity', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
-            productBatchId: testBatchId,
+            poItemId: itemId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 150,
             createdById: testUserId,
@@ -935,7 +1082,7 @@ describe('Purchase Order Module (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(400);
@@ -945,15 +1092,17 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-37: Receive exceeds with multiple receives
     it('PO-INT-37: Should return 400 when cumulative receive exceeds ordered', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       // First receive
       await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send({
           items: [
             {
-              poItemId: poItemId,
-              productBatchId: testBatchId,
+              poItemId: itemId,
+              productBatchId: batchId,
               locationId: testLocationId,
               qtyToReceive: 80,
               createdById: testUserId,
@@ -965,13 +1114,13 @@ describe('Purchase Order Module (e2e)', () => {
 
       // Second receive exceeds
       const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send({
           items: [
             {
-              poItemId: poItemId,
-              productBatchId: testBatchId,
+              poItemId: itemId,
+              productBatchId: batchId,
               locationId: testLocationId,
               qtyToReceive: 30,
               createdById: testUserId,
@@ -986,17 +1135,19 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-38: Receive PO not in ordered/partial status
     it('PO-INT-38: Should return 400 if PO not in ordered/partial status', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       // Change status to draft
       await prisma.purchaseOrder.update({
-        where: { id: orderedPoId },
+        where: { id: poId },
         data: { status: PoStatus.draft },
       });
 
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
-            productBatchId: testBatchId,
+            poItemId: itemId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 50,
             createdById: testUserId,
@@ -1006,7 +1157,7 @@ describe('Purchase Order Module (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(400);
@@ -1016,11 +1167,13 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-39: Receive with invalid poItemId
     it('PO-INT-39: Should return 400 with invalid poItemId', async () => {
+      const { poId, batchId } = await createOrderedPoWithItem();
+
       const receiveDto = {
         items: [
           {
             poItemId: '00000000-0000-0000-0000-000000000000',
-            productBatchId: testBatchId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 50,
             createdById: testUserId,
@@ -1030,7 +1183,7 @@ describe('Purchase Order Module (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(400);
@@ -1040,8 +1193,10 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-40: Receive without items array
     it('PO-INT-40: Should return 400 without items array', async () => {
+      const { poId } = await createOrderedPoWithItem();
+
       await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send({})
         .expect(400);
@@ -1049,12 +1204,14 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-41: Receive with duplicate idempotencyKey (idempotent)
     it('PO-INT-41: Should handle duplicate idempotencyKey (idempotent)', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       const idempotencyKey = `idem-dup-${Date.now()}`;
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
-            productBatchId: testBatchId,
+            poItemId: itemId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 50,
             createdById: testUserId,
@@ -1065,7 +1222,7 @@ describe('Purchase Order Module (e2e)', () => {
 
       // First receive
       const firstResponse = await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(201);
@@ -1078,7 +1235,7 @@ describe('Purchase Order Module (e2e)', () => {
 
       // Second receive with same idempotencyKey should not double-receive
       const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(201);
@@ -1093,11 +1250,13 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-42: Receive non-existent PO
     it('PO-INT-42: Should return 404 for non-existent PO', async () => {
+      const { itemId, batchId } = await createOrderedPoWithItem();
+
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
-            productBatchId: testBatchId,
+            poItemId: itemId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 50,
             createdById: testUserId,
@@ -1115,11 +1274,13 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-43: Receive without locationId (tested by DTO)
     it('PO-INT-43: Should return 400 without locationId', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
-            productBatchId: testBatchId,
+            poItemId: itemId,
+            productBatchId: batchId,
             qtyToReceive: 50,
             createdById: testUserId,
             idempotencyKey: `idem-no-loc-${Date.now()}`,
@@ -1128,7 +1289,7 @@ describe('Purchase Order Module (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(400);
@@ -1136,10 +1297,12 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-44: Receive without productBatchId (tested by DTO)
     it('PO-INT-44: Should return 400 without productBatchId', async () => {
+      const { poId, itemId } = await createOrderedPoWithItem();
+
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
+            poItemId: itemId,
             locationId: testLocationId,
             qtyToReceive: 50,
             createdById: testUserId,
@@ -1149,7 +1312,7 @@ describe('Purchase Order Module (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(400);
@@ -1157,11 +1320,13 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-45: Receive without createdById (tested by DTO)
     it('PO-INT-45: Should return 400 without createdById', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
-            productBatchId: testBatchId,
+            poItemId: itemId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 50,
             idempotencyKey: `idem-no-user-${Date.now()}`,
@@ -1170,7 +1335,7 @@ describe('Purchase Order Module (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(400);
@@ -1178,11 +1343,13 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-46: Receive without idempotencyKey (tested by DTO)
     it('PO-INT-46: Should return 400 without idempotencyKey', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
-            productBatchId: testBatchId,
+            poItemId: itemId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 50,
             createdById: testUserId,
@@ -1191,7 +1358,7 @@ describe('Purchase Order Module (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(400);
@@ -1199,11 +1366,13 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-47: Permission denied for warehouse_staff
     it('PO-INT-47: Should return 403 for warehouse_staff role', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
-            productBatchId: testBatchId,
+            poItemId: itemId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 50,
             createdById: testUserId,
@@ -1213,7 +1382,7 @@ describe('Purchase Order Module (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', staffToken)
         .send(receiveDto)
         .expect(403);
@@ -1221,11 +1390,13 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-48: No authentication
     it('PO-INT-48: Should return 401 without authentication', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
-            productBatchId: testBatchId,
+            poItemId: itemId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 50,
             createdById: testUserId,
@@ -1235,18 +1406,20 @@ describe('Purchase Order Module (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .send(receiveDto)
         .expect(401);
     });
 
     // PO-INT-49: Inventory integration verified
     it('PO-INT-49: Should verify inventory increases after receiving', async () => {
+      const { poId, itemId, batchId } = await createOrderedPoWithItem();
+
       const receiveDto = {
         items: [
           {
-            poItemId: poItemId,
-            productBatchId: testBatchId,
+            poItemId: itemId,
+            productBatchId: batchId,
             locationId: testLocationId,
             qtyToReceive: 50,
             createdById: testUserId,
@@ -1259,7 +1432,7 @@ describe('Purchase Order Module (e2e)', () => {
       const invBefore = await prisma.inventory.findUnique({
         where: {
           productBatchId_locationId: {
-            productBatchId: testBatchId,
+            productBatchId: batchId,
             locationId: testLocationId,
           },
         },
@@ -1268,7 +1441,7 @@ describe('Purchase Order Module (e2e)', () => {
 
       // Receive
       await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
         .expect(201);
@@ -1277,7 +1450,7 @@ describe('Purchase Order Module (e2e)', () => {
       const invAfter = await prisma.inventory.findUnique({
         where: {
           productBatchId_locationId: {
-            productBatchId: testBatchId,
+            productBatchId: batchId,
             locationId: testLocationId,
           },
         },
@@ -1289,11 +1462,13 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-50: Receive multiple times with multiple items
     it('PO-INT-50: Should receive multiple times with multiple items', async () => {
+      const { poId, itemId, productId, batchId } = await createOrderedPoWithItem();
+
       // Add another item
       const item2 = await prisma.purchaseOrderItem.create({
         data: {
-          purchaseOrderId: orderedPoId,
-          productId: testProductId,
+          purchaseOrderId: poId,
+          productId: productId,
           qtyOrdered: 80,
           qtyReceived: 0,
           unitPrice: 15000,
@@ -1303,13 +1478,13 @@ describe('Purchase Order Module (e2e)', () => {
 
       // First receive - partial on both items
       await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send({
           items: [
             {
-              poItemId: poItemId,
-              productBatchId: testBatchId,
+              poItemId: itemId,
+              productBatchId: batchId,
               locationId: testLocationId,
               qtyToReceive: 50,
               createdById: testUserId,
@@ -1317,7 +1492,7 @@ describe('Purchase Order Module (e2e)', () => {
             },
             {
               poItemId: item2.id,
-              productBatchId: testBatchId,
+              productBatchId: batchId,
               locationId: testLocationId,
               qtyToReceive: 40,
               createdById: testUserId,
@@ -1329,13 +1504,13 @@ describe('Purchase Order Module (e2e)', () => {
 
       // Second receive - complete both items
       const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${orderedPoId}/receive`)
+        .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send({
           items: [
             {
-              poItemId: poItemId,
-              productBatchId: testBatchId,
+              poItemId: itemId,
+              productBatchId: batchId,
               locationId: testLocationId,
               qtyToReceive: 50,
               createdById: testUserId,
@@ -1343,7 +1518,7 @@ describe('Purchase Order Module (e2e)', () => {
             },
             {
               poItemId: item2.id,
-              productBatchId: testBatchId,
+              productBatchId: batchId,
               locationId: testLocationId,
               qtyToReceive: 40,
               createdById: testUserId,

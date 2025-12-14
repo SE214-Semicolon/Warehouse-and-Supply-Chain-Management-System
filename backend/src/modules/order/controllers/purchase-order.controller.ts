@@ -11,26 +11,26 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/jwt.guard';
-import { RolesGuard } from '../../auth/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../../auth/jwt.guard';
+import { RolesGuard } from '../../../auth/roles.guard';
+import { Roles } from '../../../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
-import { OrderService } from './order.service';
-import { CreatePurchaseOrderDto } from './dto/create-po.dto';
-import { SubmitPurchaseOrderDto } from './dto/submit-po.dto';
-import { ReceivePurchaseOrderDto } from './dto/receive-po.dto';
-import { QueryPurchaseOrderDto } from './dto/query-po.dto';
-import { UpdatePurchaseOrderDto } from './dto/update-po.dto';
-import { CancelPurchaseOrderDto } from './dto/cancel-po.dto';
-import { AddPurchaseOrderItemsDto } from './dto/add-po-items.dto';
-import { RemovePurchaseOrderItemsDto } from './dto/remove-po-items.dto';
+import { PurchaseOrderService } from '../services/purchase-order.service';
+import { CreatePurchaseOrderDto } from '../dto/create-po.dto';
+import { SubmitPurchaseOrderDto } from '../dto/submit-po.dto';
+import { ReceivePurchaseOrderDto } from '../dto/receive-po.dto';
+import { QueryPurchaseOrderDto } from '../dto/query-po.dto';
+import { UpdatePurchaseOrderDto } from '../dto/update-po.dto';
+import { CancelPurchaseOrderDto } from '../dto/cancel-po.dto';
+import { AddPurchaseOrderItemsDto } from '../dto/add-po-items.dto';
+import { RemovePurchaseOrderItemsDto } from '../dto/remove-po-items.dto';
 
 @ApiTags('purchase-orders')
 @Controller('purchase-orders')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
-export class OrderController {
-  constructor(private readonly svc: OrderService) {}
+export class PurchaseOrderController {
+  constructor(private readonly svc: PurchaseOrderService) {}
 
   @Post()
   @ApiOperation({ summary: 'Tạo PO (draft)' })

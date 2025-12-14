@@ -6,11 +6,14 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `po-smoke-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SMOKE TEST - Order Module
  * Critical path testing for basic CRUD operations
  */
-describe('Order Module - Smoke Tests', () => {
+describe('Purchase Order Module - Smoke Tests', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;
@@ -36,14 +39,16 @@ describe('Order Module - Smoke Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.purchaseOrder.deleteMany({});
-    await prisma.supplier.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.purchaseOrder.deleteMany({
+      where: { supplier: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.supplier.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-order-smoke',
-        email: 'admin-order-smoke@test.com',
+        username: `admin-order-smoke-${TEST_SUITE_ID}`,
+        email: `admin-order-smoke-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Order Smoke',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -61,8 +66,8 @@ describe('Order Module - Smoke Tests', () => {
 
     const supplier = await prisma.supplier.create({
       data: {
-        code: 'SMOKE-SUPPLIER-001',
-        name: 'Smoke Test Supplier',
+        code: `SMOKE-SUPPLIER-${TEST_SUITE_ID}`,
+        name: `Smoke Test Supplier ${TEST_SUITE_ID}`,
         contactInfo: JSON.stringify({ email: 'supplier@test.com' }),
       },
     });
@@ -71,6 +76,12 @@ describe('Order Module - Smoke Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.purchaseOrder.deleteMany({
+      where: { supplier: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.supplier.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 

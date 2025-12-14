@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `batch-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 describe('Product Batch Module (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -39,14 +42,11 @@ describe('Product Batch Module (e2e)', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    // Clean database
-    await cleanDatabase();
-
-    // Create test users and tokens
+    // Create test users and tokens with unique identifiers
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-batch-test',
-        email: 'admin-batch@test.com',
+        username: `admin-batch-${TEST_SUITE_ID}`,
+        email: `admin-batch-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Batch Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -56,8 +56,8 @@ describe('Product Batch Module (e2e)', () => {
 
     const managerUser = await prisma.user.create({
       data: {
-        username: 'manager-batch-test',
-        email: 'manager-batch@test.com',
+        username: `manager-batch-${TEST_SUITE_ID}`,
+        email: `manager-batch-${TEST_SUITE_ID}@test.com`,
         fullName: 'Manager Batch Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.manager,
@@ -67,8 +67,8 @@ describe('Product Batch Module (e2e)', () => {
 
     const staffUser = await prisma.user.create({
       data: {
-        username: 'staff-batch-test',
-        email: 'staff-batch@test.com',
+        username: `staff-batch-${TEST_SUITE_ID}`,
+        email: `staff-batch-${TEST_SUITE_ID}@test.com`,
         fullName: 'Staff Batch Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.warehouse_staff,
@@ -92,7 +92,7 @@ describe('Product Batch Module (e2e)', () => {
     // Create test products
     const product1 = await prisma.product.create({
       data: {
-        sku: 'BATCH-PROD-001',
+        sku: `BATCH-PROD-001-${TEST_SUITE_ID}`,
         name: 'Batch Test Product 1',
         unit: 'pcs',
       },
@@ -101,7 +101,7 @@ describe('Product Batch Module (e2e)', () => {
 
     const product2 = await prisma.product.create({
       data: {
-        sku: 'BATCH-PROD-002',
+        sku: `BATCH-PROD-002-${TEST_SUITE_ID}`,
         name: 'Batch Test Product 2',
         unit: 'box',
       },
@@ -112,7 +112,7 @@ describe('Product Batch Module (e2e)', () => {
     const batch = await prisma.productBatch.create({
       data: {
         productId: testProductId,
-        batchNo: 'BATCH-001',
+        batchNo: `BATCH-001-${TEST_SUITE_ID}`,
         manufactureDate: new Date('2024-01-01'),
         expiryDate: new Date('2025-01-01'),
       },
@@ -121,37 +121,37 @@ describe('Product Batch Module (e2e)', () => {
   }, 30000);
 
   afterAll(async () => {
-    await cleanDatabase();
-    await app.close();
-  }, 30000);
-
-  async function cleanDatabase() {
-    // Delete in correct order to avoid foreign key constraints
-    try {
-      await prisma.$executeRaw`SET CONSTRAINTS ALL DEFERRED`;
-    } catch {
-      // Ignore if not PostgreSQL
-    }
-    await prisma.salesOrderItem.deleteMany({});
-    await prisma.purchaseOrderItem.deleteMany({});
-    await prisma.productBatch.deleteMany({});
-    await prisma.product.deleteMany({});
-    await prisma.productCategory.deleteMany({});
-    await prisma.user.deleteMany({
+    // Clean up only this test suite's data
+    await prisma.productBatch.deleteMany({
       where: {
-        email: {
-          contains: '@test.com',
+        batchNo: {
+          contains: TEST_SUITE_ID,
         },
       },
     });
-  }
+    await prisma.product.deleteMany({
+      where: {
+        sku: {
+          contains: TEST_SUITE_ID,
+        },
+      },
+    });
+    await prisma.user.deleteMany({
+      where: {
+        email: {
+          contains: TEST_SUITE_ID,
+        },
+      },
+    });
+    await app.close();
+  }, 30000);
 
   describe('POST /product-batches - Create Product Batch', () => {
     // BATCH-TC01: Create with valid data
     it('BATCH-INT-01: Should create product batch with valid data', async () => {
       const createDto = {
         productId: testProductId,
-        batchNo: 'NEW-BATCH-001',
+        batchNo: `NEW-BATCH-001-${TEST_SUITE_ID}`,
         quantity: 200,
         manufactureDate: '2024-06-01',
         expiryDate: '2025-06-01',
@@ -191,7 +191,7 @@ describe('Product Batch Module (e2e)', () => {
     it('BATCH-INT-03: Should return 409 for duplicate batch number', async () => {
       const createDto = {
         productId: testProductId,
-        batchNo: 'BATCH-001', // Already exists
+        batchNo: `BATCH-001-${TEST_SUITE_ID}`, // Already exists
         quantity: 50,
       };
 
@@ -351,13 +351,13 @@ describe('Product Batch Module (e2e)', () => {
     it('BATCH-INT-13: Should return 409 for case-insensitive duplicate', async () => {
       const createDto1 = {
         productId: testProduct2Id,
-        batchNo: 'CASE-TEST-BATCH',
+        batchNo: `CASE-TEST-${TEST_SUITE_ID}`,
         quantity: 100,
       };
 
       const createDto2 = {
         productId: testProduct2Id,
-        batchNo: 'case-test-batch',
+        batchNo: `case-test-${TEST_SUITE_ID}`,
         quantity: 100,
       };
 
