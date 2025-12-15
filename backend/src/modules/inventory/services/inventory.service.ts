@@ -10,6 +10,7 @@ import { ReleaseReservationDto } from '../dto/release-reservation.dto';
 import { QueryByLocationDto } from '../dto/query-by-location.dto';
 import { QueryByProductBatchDto } from '../dto/query-by-product-batch.dto';
 import { AlertQueryDto } from '../dto/alert-query.dto';
+import { MovementQueryDto } from '../dto/movement-query.dto';
 import {
   StockLevelReportDto,
   MovementReportDto,
@@ -894,6 +895,52 @@ export class InventoryService {
       dto.method || 'AVERAGE',
       dto.page || 1,
       dto.limit || 20,
+    );
+
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  /**
+   * Get Movements By Product Batch API
+   * Returns movement history for a specific product batch
+   * Test coverage: INV-TC101-105
+   * - INV-TC101: Get movements with valid product batch ID (200)
+   * - INV-TC102: Product batch not found (404)
+   * - INV-TC103: Filter by movement type (200)
+   * - INV-TC104: Filter by location (200)
+   * - INV-TC105: Filter by date range (200)
+   */
+  async getMovementsByProductBatch(dto: MovementQueryDto) {
+    this.logger.log(`Getting movements for product batch: ${dto.productBatchId}`);
+
+    // Validate product batch exists
+    const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
+    if (!batch) {
+      throw new NotFoundException(`ProductBatch not found: ${dto.productBatchId}`);
+    }
+
+    // Validate pagination parameters
+    if (dto.page != undefined && dto.page < 1) {
+      throw new BadRequestException('Page must be greater than 0');
+    }
+
+    if (dto.limit != undefined && (dto.limit < 1 || dto.limit > 100)) {
+      throw new BadRequestException('Limit must be between 1 and 100');
+    }
+
+    const result = await this.inventoryRepo.getMovementsByProductBatch(
+      dto.productBatchId,
+      dto.movementType,
+      dto.locationId,
+      dto.startDate,
+      dto.endDate,
+      dto.page || 1,
+      dto.limit || 20,
+      dto.sortBy || 'createdAt',
+      dto.sortOrder || 'desc',
     );
 
     return {
