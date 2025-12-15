@@ -31,6 +31,7 @@ Core inventory tracking system managing stock movements, reservations, and real-
 | POST   | `/inventory/release`                              | Admin, Manager, Staff | Release reservation              |
 | GET    | `/inventory/location`                             | All (except Partner)  | Query by location                |
 | GET    | `/inventory/product-batch`                        | All (except Partner)  | Query by product batch           |
+| GET    | `/inventory/movements/product-batch`              | All (except Partner)  | Movement history by batch        |
 | POST   | `/inventory/:batchId/:locationId/update-quantity` | Admin, Manager        | Update quantity directly         |
 | DELETE | `/inventory/:batchId/:locationId`                 | Admin                 | Delete inventory record          |
 | GET    | `/inventory/reports/stock-levels`                 | Admin, Manager        | Stock level report               |
@@ -266,6 +267,9 @@ GET /inventory/location?locationId={uuid}&page=1&limit=20
 
 # Query inventory by product batch
 GET /inventory/product-batch?productBatchId={uuid}
+
+# Get movement history for a product batch
+GET /inventory/movements/product-batch?productBatchId={uuid}&movementType=purchase_receipt&startDate=2025-01-01&endDate=2025-12-31
 
 # Stock level report
 GET /inventory/reports/stock-levels?locationId={uuid}&minStockOnly=true

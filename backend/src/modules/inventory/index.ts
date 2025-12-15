@@ -26,6 +26,7 @@ export { ReserveInventoryDto } from './dto/reserve-inventory.dto';
 export { ReleaseReservationDto } from './dto/release-reservation.dto';
 export { QueryByLocationDto } from './dto/query-by-location.dto';
 export { QueryByProductBatchDto } from './dto/query-by-product-batch.dto';
+export { MovementQueryDto } from './dto/movement-query.dto';
 export { UpdateQuantityDto } from './dto/update-quantity.dto';
 export { AlertQueryDto } from './dto/alert-query.dto';
 export { StockLevelReportDto, MovementReportDto, ValuationReportDto } from './dto/report-query.dto';
@@ -37,6 +38,7 @@ export {
   InventoryTransferResponseDto,
   InventoryReservationResponseDto,
   InventoryQueryResponseDto,
+  MovementQueryResponseDto,
   ErrorResponseDto,
 } from './dto/response.dto';
 

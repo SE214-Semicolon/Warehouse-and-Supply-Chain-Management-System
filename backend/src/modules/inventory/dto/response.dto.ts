@@ -72,6 +72,26 @@ export class InventoryQueryResponseDto {
   totalPages!: number;
 }
 
+export class MovementQueryResponseDto {
+  @ApiProperty({ example: true })
+  success!: boolean;
+
+  @ApiProperty({ type: [MovementDto] })
+  movements!: MovementDto[];
+
+  @ApiProperty({ example: 100 })
+  total!: number;
+
+  @ApiProperty({ example: 1 })
+  page!: number;
+
+  @ApiProperty({ example: 20 })
+  limit!: number;
+
+  @ApiProperty({ example: 5 })
+  totalPages!: number;
+}
+
 export class ErrorResponseDto {
   @ApiProperty({ example: 400 })
   statusCode!: number;

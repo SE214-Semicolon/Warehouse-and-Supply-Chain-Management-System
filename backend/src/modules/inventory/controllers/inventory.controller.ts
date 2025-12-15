@@ -20,6 +20,7 @@ import { ReserveInventoryDto } from '../dto/reserve-inventory.dto';
 import { ReleaseReservationDto } from '../dto/release-reservation.dto';
 import { QueryByLocationDto } from '../dto/query-by-location.dto';
 import { QueryByProductBatchDto } from '../dto/query-by-product-batch.dto';
+import { MovementQueryDto } from '../dto/movement-query.dto';
 import { UpdateQuantityDto } from '../dto/update-quantity.dto';
 import { JwtAuthGuard } from '../../../auth/jwt.guard';
 import { RolesGuard } from '../../../auth/roles.guard';
@@ -32,6 +33,7 @@ import {
   InventoryTransferResponseDto,
   InventoryReservationResponseDto,
   InventoryQueryResponseDto,
+  MovementQueryResponseDto,
   ErrorResponseDto,
 } from '../dto/response.dto';
 
@@ -442,5 +444,29 @@ export class InventoryController {
     @Param('locationId') locationId: string,
   ) {
     return this.inventoryService.softDeleteInventory(productBatchId, locationId);
+  }
+
+  @Get('movements/product-batch')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get stock movement history by product batch' })
+  @ApiResponse({
+    status: 200,
+    description: 'Stock movement history retrieved successfully',
+    type: MovementQueryResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request (validation)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'ProductBatch not found',
+    type: ErrorResponseDto,
+  })
+  async getMovementsByProductBatch(@Query() dto: MovementQueryDto) {
+    this.logger.log(`GET /inventory/movements/product-batch - Batch: ${dto.productBatchId}`);
+    return this.inventoryService.getMovementsByProductBatch(dto);
   }
 }

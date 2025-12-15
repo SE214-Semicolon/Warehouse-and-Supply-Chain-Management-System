@@ -42,12 +42,18 @@ describe('InventoryService', () => {
     username: 'testuser',
     email: 'user@test.com',
     fullName: 'Test User',
-    passwordHash: null,
+    passwordHash: 'hashed_password',
     role: 'STAFF' as any,
     active: true,
+    emailVerified: true,
+    lastLoginAt: null,
+    failedLoginAttempts: 0,
+    lockedUntil: null,
     metadata: {},
     createdAt: new Date(),
-  };
+    updatedAt: new Date(),
+    deletedAt: null,
+  } as any;
 
   const mockInventory = {
     id: 'inventory-uuid-1',
@@ -96,6 +102,7 @@ describe('InventoryService', () => {
       generateStockLevelReport: jest.fn(),
       generateMovementReport: jest.fn(),
       generateValuationReport: jest.fn(),
+      getMovementsByProductBatch: jest.fn(),
     };
 
     const mockCacheService = {
@@ -2304,6 +2311,313 @@ describe('InventoryService', () => {
         'availableQty',
         'asc',
       );
+    });
+  });
+
+  describe('getMovementsByProductBatch', () => {
+    const mockMovements = [
+      {
+        id: 'movement-1',
+        movementType: 'purchase_receipt' as any,
+        productBatchId: 'batch-uuid-1',
+        productId: null,
+        fromLocationId: null,
+        toLocationId: 'location-uuid-1',
+        quantity: 100,
+        reference: 'PO-001',
+        note: 'Initial stock',
+        createdById: 'user-uuid-1',
+        createdAt: new Date('2025-01-01'),
+        idempotencyKey: null,
+        productBatch: {
+          id: 'batch-uuid-1',
+          productId: 'product-uuid-1',
+          product: {
+            id: 'product-uuid-1',
+            name: 'Test Product',
+            sku: 'TEST-001',
+          },
+        },
+        fromLocation: null,
+        toLocation: mockLocation,
+        createdBy: {
+          id: 'user-uuid-1',
+          username: 'testuser',
+          email: 'test@example.com',
+          fullName: 'Test User',
+        },
+      },
+      {
+        id: 'movement-2',
+        movementType: 'sale_issue' as any,
+        productBatchId: 'batch-uuid-1',
+        productId: null,
+        fromLocationId: 'location-uuid-1',
+        toLocationId: null,
+        quantity: 50,
+        reference: 'SO-001',
+        note: 'Sale dispatch',
+        createdById: 'user-uuid-1',
+        createdAt: new Date('2025-01-05'),
+        idempotencyKey: null,
+        productBatch: {
+          id: 'batch-uuid-1',
+          productId: 'product-uuid-1',
+          product: {
+            id: 'product-uuid-1',
+            name: 'Test Product',
+            sku: 'TEST-001',
+          },
+        },
+        fromLocation: mockLocation,
+        toLocation: null,
+        createdBy: {
+          id: 'user-uuid-1',
+          username: 'testuser',
+          email: 'test@example.com',
+          fullName: 'Test User',
+        },
+      },
+    ] as any[];
+
+    // INV-TC101: Get movements with valid product batch ID
+    it('should get movements for valid product batch ID', async () => {
+      const dto = {
+        productBatchId: 'batch-uuid-1',
+        page: 1,
+        limit: 20,
+        sortBy: 'createdAt',
+        sortOrder: 'desc' as const,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.getMovementsByProductBatch.mockResolvedValue({
+        movements: mockMovements,
+        total: 2,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      });
+
+      const result = await service.getMovementsByProductBatch(dto);
+
+      expect(result.success).toBe(true);
+      expect(result.movements).toHaveLength(2);
+      expect(result.total).toBe(2);
+      expect(inventoryRepo.getMovementsByProductBatch).toHaveBeenCalledWith(
+        'batch-uuid-1',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        1,
+        20,
+        'createdAt',
+        'desc',
+      );
+    });
+
+    // INV-TC102: Product batch not found
+    it('should throw NotFoundException when product batch not found', async () => {
+      const dto = {
+        productBatchId: 'non-existent-batch',
+        page: 1,
+        limit: 20,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(null);
+
+      await expect(service.getMovementsByProductBatch(dto)).rejects.toThrow(NotFoundException);
+      await expect(service.getMovementsByProductBatch(dto)).rejects.toThrow(
+        'ProductBatch not found: non-existent-batch',
+      );
+    });
+
+    // INV-TC103: Filter by movement type
+    it('should filter movements by movement type', async () => {
+      const dto = {
+        productBatchId: 'batch-uuid-1',
+        movementType: 'purchase_receipt' as any,
+        page: 1,
+        limit: 20,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.getMovementsByProductBatch.mockResolvedValue({
+        movements: [mockMovements[0]],
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      });
+
+      const result = await service.getMovementsByProductBatch(dto);
+
+      expect(result.success).toBe(true);
+      expect(result.movements).toHaveLength(1);
+      expect(inventoryRepo.getMovementsByProductBatch).toHaveBeenCalledWith(
+        'batch-uuid-1',
+        'purchase_receipt',
+        undefined,
+        undefined,
+        undefined,
+        1,
+        20,
+        'createdAt',
+        'desc',
+      );
+    });
+
+    // INV-TC104: Filter by location
+    it('should filter movements by location', async () => {
+      const dto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        page: 1,
+        limit: 20,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.getMovementsByProductBatch.mockResolvedValue({
+        movements: mockMovements,
+        total: 2,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      });
+
+      const result = await service.getMovementsByProductBatch(dto);
+
+      expect(result.success).toBe(true);
+      expect(result.movements).toHaveLength(2);
+      expect(inventoryRepo.getMovementsByProductBatch).toHaveBeenCalledWith(
+        'batch-uuid-1',
+        undefined,
+        'location-uuid-1',
+        undefined,
+        undefined,
+        1,
+        20,
+        'createdAt',
+        'desc',
+      );
+    });
+
+    // INV-TC105: Filter by date range
+    it('should filter movements by date range', async () => {
+      const dto = {
+        productBatchId: 'batch-uuid-1',
+        startDate: '2025-01-01',
+        endDate: '2025-01-31',
+        page: 1,
+        limit: 20,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.getMovementsByProductBatch.mockResolvedValue({
+        movements: mockMovements,
+        total: 2,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      });
+
+      const result = await service.getMovementsByProductBatch(dto);
+
+      expect(result.success).toBe(true);
+      expect(result.movements).toHaveLength(2);
+      expect(inventoryRepo.getMovementsByProductBatch).toHaveBeenCalledWith(
+        'batch-uuid-1',
+        undefined,
+        undefined,
+        '2025-01-01',
+        '2025-01-31',
+        1,
+        20,
+        'createdAt',
+        'desc',
+      );
+    });
+
+    // Edge case: Invalid page number
+    it('should reject invalid page number', async () => {
+      const dto = {
+        productBatchId: 'batch-uuid-1',
+        page: 0,
+        limit: 20,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+
+      await expect(service.getMovementsByProductBatch(dto)).rejects.toThrow(BadRequestException);
+      await expect(service.getMovementsByProductBatch(dto)).rejects.toThrow(
+        'Page must be greater than 0',
+      );
+    });
+
+    // Edge case: Invalid limit
+    it('should reject invalid limit', async () => {
+      const dto = {
+        productBatchId: 'batch-uuid-1',
+        page: 1,
+        limit: 150,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+
+      await expect(service.getMovementsByProductBatch(dto)).rejects.toThrow(BadRequestException);
+      await expect(service.getMovementsByProductBatch(dto)).rejects.toThrow(
+        'Limit must be between 1 and 100',
+      );
+    });
+
+    // Edge case: Empty movements list
+    it('should return empty list when no movements found', async () => {
+      const dto = {
+        productBatchId: 'batch-uuid-1',
+        page: 1,
+        limit: 20,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.getMovementsByProductBatch.mockResolvedValue({
+        movements: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+      });
+
+      const result = await service.getMovementsByProductBatch(dto);
+
+      expect(result.success).toBe(true);
+      expect(result.movements).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    // Edge case: Pagination with multiple pages
+    it('should handle pagination correctly', async () => {
+      const dto = {
+        productBatchId: 'batch-uuid-1',
+        page: 2,
+        limit: 1,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.getMovementsByProductBatch.mockResolvedValue({
+        movements: [mockMovements[1]],
+        total: 2,
+        page: 2,
+        limit: 1,
+        totalPages: 2,
+      });
+
+      const result = await service.getMovementsByProductBatch(dto);
+
+      expect(result.success).toBe(true);
+      expect(result.movements).toHaveLength(1);
+      expect(result.page).toBe(2);
+      expect(result.totalPages).toBe(2);
     });
   });
 });
