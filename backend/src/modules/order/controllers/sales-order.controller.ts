@@ -20,7 +20,7 @@ export class SalesOrderController {
 
   @Post()
   @ApiOperation({ summary: 'Tạo Sales Order (pending)' })
-  @Roles(UserRole.admin, UserRole.manager, UserRole.logistics)
+  @Roles(UserRole.admin, UserRole.manager, UserRole.logistics, UserRole.sales)
   create(@Body() dto: CreateSalesOrderDto, @Req() req: { user: { userId: string } }) {
     return this.svc.createSalesOrder(dto, req.user.userId);
   }
@@ -34,21 +34,21 @@ export class SalesOrderController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Chi tiết SO' })
-  @Roles(UserRole.admin, UserRole.manager, UserRole.logistics, UserRole.warehouse_staff)
+  @Roles(UserRole.admin, UserRole.manager, UserRole.logistics, UserRole.warehouse_staff, UserRole.sales, UserRole.analyst)
   findOne(@Param('id') id: string) {
     return this.svc.findById(id);
   }
 
   @Get()
   @ApiOperation({ summary: 'Danh sách SO (filter/search/paginate)' })
-  @Roles(UserRole.admin, UserRole.manager, UserRole.logistics, UserRole.warehouse_staff)
+  @Roles(UserRole.admin, UserRole.manager, UserRole.logistics, UserRole.warehouse_staff, UserRole.sales, UserRole.analyst)
   list(@Query() query: QuerySalesOrderDto) {
     return this.svc.list(query);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Cập nhật pending SO' })
-  @Roles(UserRole.admin, UserRole.manager, UserRole.logistics)
+  @Roles(UserRole.admin, UserRole.manager, UserRole.logistics, UserRole.sales)
   update(@Param('id') id: string, @Body() dto: UpdateSalesOrderDto) {
     return this.svc.updateSalesOrder(id, dto);
   }

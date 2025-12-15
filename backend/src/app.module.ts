@@ -24,6 +24,7 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { DemandPlanningModule } from './modules/demand-planning/demand-planning.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
+import { ShipmentModule } from './modules/shipment/shipment.module';
 
 // Controller and Service imports
 import { AppController } from './app.controller';
@@ -67,6 +68,7 @@ import { MetricsModule, MetricsInterceptor } from './common/metrics';
     AlertsModule,
     DemandPlanningModule,
     ReportingModule,
+    ShipmentModule,
   ],
   controllers: [AppController, HealthController],
   providers: [
