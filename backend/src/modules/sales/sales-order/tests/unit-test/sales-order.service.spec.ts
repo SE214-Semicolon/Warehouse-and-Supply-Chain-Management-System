@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SalesOrderService } from '../../services/sales-order.service';
 import { SalesOrderRepository } from '../../repositories/sales-order.repository';
-import { InventoryService } from '../../../inventory/services/inventory.service';
+import { InventoryService } from '../../../../inventory/services/inventory.service';
 import { OrderStatus } from '@prisma/client';
 
 describe('SalesOrderService', () => {
