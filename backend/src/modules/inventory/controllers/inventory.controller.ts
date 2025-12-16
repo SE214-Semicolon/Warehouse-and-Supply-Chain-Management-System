@@ -21,9 +21,9 @@ import { ReleaseReservationDto } from '../dto/release-reservation.dto';
 import { QueryByLocationDto } from '../dto/query-by-location.dto';
 import { QueryByProductBatchDto } from '../dto/query-by-product-batch.dto';
 import { UpdateQuantityDto } from '../dto/update-quantity.dto';
-import { JwtAuthGuard } from '../../../auth/jwt.guard';
-import { RolesGuard } from '../../../auth/roles.guard';
-import { Roles } from '../../../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../auth/jwt.guard';
+import { RolesGuard } from '../../auth/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
 import {

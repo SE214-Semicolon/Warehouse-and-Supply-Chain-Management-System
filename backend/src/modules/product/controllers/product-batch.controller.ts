@@ -21,9 +21,9 @@ import {
   ProductBatchListResponseDto,
   ProductBatchDeleteResponseDto,
 } from '../dto/product-batch-response.dto';
-import { JwtAuthGuard } from '../../../auth/jwt.guard';
-import { RolesGuard } from '../../../auth/roles.guard';
-import { Roles } from '../../../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../auth/jwt.guard';
+import { RolesGuard } from '../../auth/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 

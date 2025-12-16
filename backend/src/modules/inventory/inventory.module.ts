@@ -10,6 +10,6 @@ import { AlertsModule } from '../alerts/alerts.module';
   imports: [PrismaModule, CacheModule, AlertsModule],
   controllers: [InventoryController],
   providers: [InventoryService, InventoryRepository],
-  exports: [InventoryService],
+  exports: [InventoryService, InventoryRepository],
 })
 export class InventoryModule {}

@@ -12,7 +12,7 @@ import {
   IsNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsDateAfterOrEqual } from '../../../common/validators/date-comparison.validator';
+import { IsDateAfterOrEqual } from '../../../../common/validators/date-comparison.validator';
 
 export class CreatePOItemDto {
   @ApiProperty({ description: 'ID sản phẩm' })

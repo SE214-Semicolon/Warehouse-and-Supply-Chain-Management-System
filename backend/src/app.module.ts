@@ -11,15 +11,16 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
 // Core module imports
 import { DatabaseModule } from './database/database.module';
-import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
 
 // Business module imports
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { ProductModule } from './modules/product/product.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
-import { OrderModule } from './modules/order/order.module';
-import { SupplierModule } from './modules/supplier/supplier.module';
+import { SupplierModule } from './modules/procurement/supplier/supplier.module';
+import { PurchaseOrderModule } from './modules/procurement/purchase-order/purchase-order.module';
+import { SalesOrderModule } from './modules/sales/sales-order/sales-order.module';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { DemandPlanningModule } from './modules/demand-planning/demand-planning.module';
@@ -62,8 +63,9 @@ import { MetricsModule, MetricsInterceptor } from './common/metrics';
     ProductModule,
     WarehouseModule,
     InventoryModule,
-    OrderModule,
     SupplierModule,
+    PurchaseOrderModule,
+    SalesOrderModule,
     AuditLogModule,
     AlertsModule,
     DemandPlanningModule,

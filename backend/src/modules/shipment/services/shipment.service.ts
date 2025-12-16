@@ -6,14 +6,18 @@ import { UpdateShipmentStatusDto } from '../dto/update-shipment-status.dto';
 import { AddTrackingEventDto } from '../dto/add-tracking-event.dto';
 import { QueryShipmentDto } from '../dto/query-shipment.dto';
 import { Prisma, ShipmentStatus } from '@prisma/client';
-import { PrismaService } from 'src/database/prisma/prisma.service';
+import { WarehouseRepository } from '../../warehouse/repositories/warehouse.repository';
+import { SalesOrderRepository } from '../../sales/sales-order/repositories/sales-order.repository';
+import { InventoryRepository } from '../../inventory/repositories/inventory.repository';
 import { randomUUID } from 'crypto';
 
 @Injectable()
 export class ShipmentService {
   constructor(
     private readonly shipmentRepo: ShipmentRepository,
-    private readonly prisma: PrismaService,
+    private readonly warehouseRepo: WarehouseRepository,
+    private readonly salesOrderRepo: SalesOrderRepository,
+    private readonly inventoryRepo: InventoryRepository,
   ) {}
 
   private generateShipmentNo(): string {
@@ -25,29 +29,28 @@ export class ShipmentService {
   }
 
   async createShipment(dto: CreateShipmentDto): Promise<any> {
-    // Step 1: Validate SalesOrder exists
-    const salesOrder = await this.prisma.salesOrder.findUnique({
-      where: { id: dto.salesOrderId },
-      include: { items: true },
-    });
+    // Step 1: Validate SalesOrder exists (using Repository pattern)
+    const salesOrder = await this.salesOrderRepo.findById(dto.salesOrderId);
 
     if (!salesOrder) {
       throw new NotFoundException(`SalesOrder with ID ${dto.salesOrderId} not found`);
     }
 
-    // Step 2: Validate Warehouse exists
-    const warehouse = await this.prisma.warehouse.findUnique({
-      where: { id: dto.warehouseId },
-      include: { locations: true },
-    });
+    // Step 2: Validate Warehouse exists (using Repository pattern)
+    const warehouse = await this.warehouseRepo.findOne(dto.warehouseId);
 
     if (!warehouse) {
       throw new NotFoundException(`Warehouse with ID ${dto.warehouseId} not found`);
     }
 
-    // Step 3: Inventory Check (CRITICAL)
+    // Step 3: Inventory Check (CRITICAL) - using Repository pattern
     // Get all location IDs in the warehouse
-    const locationIds = warehouse.locations.map((loc) => loc.id);
+    // WarehouseRepository.findOne includes locations (type assertion needed)
+    const warehouseWithLocations = warehouse as typeof warehouse & { locations: Array<{ id: string }> };
+    if (!warehouseWithLocations.locations || warehouseWithLocations.locations.length === 0) {
+      throw new BadRequestException(`Warehouse ${dto.warehouseId} has no locations`);
+    }
+    const locationIds = warehouseWithLocations.locations.map((loc) => loc.id);
 
     if (locationIds.length === 0) {
       throw new BadRequestException(`Warehouse ${dto.warehouseId} has no locations`);
@@ -60,22 +63,11 @@ export class ShipmentService {
       }
 
       // Calculate total available stock for this product across all locations in the warehouse
-      const inventoryRecords = await this.prisma.inventory.findMany({
-        where: {
-          locationId: { in: locationIds },
-          productBatch: {
-            productId: item.productId,
-          },
-          deletedAt: null, // Only count non-deleted inventory
-        },
-        include: {
-          productBatch: {
-            include: {
-              product: true,
-            },
-          },
-        },
-      });
+      // Using InventoryRepository instead of PrismaService directly
+      const inventoryRecords = await this.inventoryRepo.findInventoryByProductAndLocations(
+        item.productId,
+        locationIds,
+      );
 
       // Sum up availableQty for this product across all locations in the warehouse
       const totalAvailableQty = inventoryRecords.reduce(

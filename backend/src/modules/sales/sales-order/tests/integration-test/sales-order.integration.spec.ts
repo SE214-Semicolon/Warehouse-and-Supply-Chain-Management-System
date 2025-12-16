@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { PrismaService } from '../../../../database/prisma/prisma.service';
+import { PrismaService } from '../../../../../database/prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
-import { OrderModule } from '../../order.module';
+import { SalesOrderModule } from '../../sales-order.module';
 import { OrderStatus, UserRole } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { AuthModule } from '../../../../auth/auth.module';
-import { InventoryModule } from '../../../inventory/inventory.module';
-import { DatabaseModule } from '../../../../database/database.module';
+import { InventoryModule } from '../../../../inventory/inventory.module';
+import { DatabaseModule } from '../../../../../database/database.module';
 
 // Unique test suite identifier for parallel execution
 const TEST_SUITE_ID = `so-int-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -37,7 +37,7 @@ describe('Sales Order Module (e2e)', () => {
         }),
         DatabaseModule,
         AuthModule,
-        OrderModule,
+        SalesOrderModule,
         InventoryModule,
       ],
     }).compile();

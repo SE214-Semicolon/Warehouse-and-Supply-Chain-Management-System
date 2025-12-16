@@ -6,7 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import { InventoryModule } from '../inventory.module';
 import { UserRole } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
-import { AuthModule } from '../../../auth/auth.module';
+import { AuthModule } from '../../auth/auth.module';
 import { DatabaseModule } from '../../../database/database.module';
 import { ProductModule } from '../../product/product.module';
 

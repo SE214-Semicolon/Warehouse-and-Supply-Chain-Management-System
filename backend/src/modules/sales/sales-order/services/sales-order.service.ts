@@ -5,8 +5,8 @@ import { UpdateSalesOrderDto } from '../dto/update-so.dto';
 import { SubmitSalesOrderDto } from '../dto/submit-so.dto';
 import { FulfillSalesOrderDto } from '../dto/fulfill-so.dto';
 import { QuerySalesOrderDto } from '../dto/query-so.dto';
-import { InventoryService } from '../../inventory/services/inventory.service';
-import { DispatchInventoryDto } from '../../inventory/dto/dispatch-inventory.dto';
+import { InventoryService } from '../../../inventory/services/inventory.service';
+import { DispatchInventoryDto } from '../../../inventory/dto/dispatch-inventory.dto';
 import { OrderStatus, SalesOrder, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 

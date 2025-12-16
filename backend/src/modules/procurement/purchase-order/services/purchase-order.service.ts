@@ -3,8 +3,8 @@ import { PurchaseOrderRepository } from '../repositories/purchase-order.reposito
 import { CreatePurchaseOrderDto } from '../dto/create-po.dto';
 import { SubmitPurchaseOrderDto } from '../dto/submit-po.dto';
 import { ReceivePurchaseOrderDto } from '../dto/receive-po.dto';
-import { InventoryService } from '../../inventory/services/inventory.service';
-import { ReceiveInventoryDto } from '../../inventory/dto/receive-inventory.dto';
+import { InventoryService } from '../../../inventory/services/inventory.service';
+import { ReceiveInventoryDto } from '../../../inventory/dto/receive-inventory.dto';
 import { QueryPurchaseOrderDto } from '../dto/query-po.dto';
 import { PoStatus, PurchaseOrder, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
@@ -157,16 +157,9 @@ export class PurchaseOrderService {
       throw new BadRequestException('Some items not found in PO');
     }
 
+    // 2) Gọi Inventory receive cho từng dòng (Inventory hỗ trợ idempotencyKey)
+    //    -> Nếu Inventory trả về idempotent=true, KHÔNG được tăng qtyReceived lần nữa.
     const increments: { poItemId: string; qtyInc: number }[] = [];
-    for (const r of dto.items) {
-      const item = existing.find((e) => e.id === r.poItemId)!;
-      if (item.qtyReceived + r.qtyToReceive > item.qtyOrdered) {
-        throw new BadRequestException('Receive exceeds ordered quantity');
-      }
-      increments.push({ poItemId: r.poItemId, qtyInc: r.qtyToReceive });
-    }
-
-    // 2) Gọi Inventory receive cho từng dòng (idempotent được xử lý bởi Inventory)
     for (const r of dto.items) {
       const payload: ReceiveInventoryDto = {
         productBatchId: r.productBatchId,
@@ -175,12 +168,28 @@ export class PurchaseOrderService {
         createdById: r.createdById,
         idempotencyKey: r.idempotencyKey,
       };
-      await this.inventorySvc.receiveInventory(payload);
+      const invResult: any = await this.inventorySvc.receiveInventory(payload);
+
+      // Validate over-receive only when this call is not idempotently ignored
+      if (!invResult?.idempotent) {
+        const item = existing.find((e) => e.id === r.poItemId)!;
+        if (item.qtyReceived + r.qtyToReceive > item.qtyOrdered) {
+          throw new BadRequestException('Receive exceeds ordered quantity');
+        }
+        increments.push({ poItemId: r.poItemId, qtyInc: r.qtyToReceive });
+      }
     }
 
     // 3) Cập nhật qtyReceived và trạng thái PO trong transaction
     let updatedPo: PurchaseOrder;
     try {
+      // If everything was idempotent, do not mutate PO again; just return current state.
+      if (increments.length === 0) {
+        const current = await this.poRepo.findById(poId);
+        if (!current) throw new NotFoundException('PO not found after receive');
+        return current;
+      }
+
       updatedPo = await this.poRepo.receiveItems(poId, increments);
     } catch (e) {
       if (e instanceof Error) {
