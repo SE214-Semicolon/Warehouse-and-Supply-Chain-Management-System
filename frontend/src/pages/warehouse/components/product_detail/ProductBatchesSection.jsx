@@ -3,6 +3,7 @@ import { Add } from "@mui/icons-material";
 import DataTable from "@/components/DataTable";
 import { menuItems } from "../MenuConfig";
 import { useNavigate } from "react-router-dom";
+import { useMemo } from "react";
 import CardSection from "../CardSection";
 
 const ProductBatchesSection = ({
@@ -18,17 +19,22 @@ const ProductBatchesSection = ({
     .find((m) => m.id === "batches")
     .columns.filter((col) => col.id !== "productId");
 
+  const actions = useMemo(
+    () => [
+      {
+        label: "Add",
+        startIcon: <Add />,
+        onClick: onAddBatch,
+      },
+    ],
+    [onAddBatch]
+  );
+
   return (
     <CardSection
       title={`Batch List (${batches.length})`}
       headerColor={headerColor}
-      actions={[
-        {
-          label: "Add",
-          startIcon: <Add />,
-          onClick: onAddBatch,
-        },
-      ]}
+      actions={actions}
     >
       {batches.length > 0 ? (
         <DataTable

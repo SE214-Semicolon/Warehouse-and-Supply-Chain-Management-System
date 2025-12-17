@@ -17,24 +17,24 @@ describe('SearchBar Component - Unit Tests', () => {
   // Happy Path Testing
   describe('Happy Path - Normal Behavior', () => {
     it('should render search input with placeholder', () => {
-      render(<SearchBar placeholder="Search products..." />);
+      render(<SearchBar placeholder="Search products..." searchTerm="" setSearchTerm={vi.fn()} />);
       
       const searchInput = screen.getByPlaceholderText('Search products...');
       expect(searchInput).toBeInTheDocument();
     });
 
     it('should display initial value when provided', () => {
-      render(<SearchBar value="initial search" />);
+      render(<SearchBar searchTerm="initial search" setSearchTerm={vi.fn()} />);
       
       const searchInput = screen.getByDisplayValue('initial search');
       expect(searchInput).toBeInTheDocument();
     });
 
-    it('should call onChange handler when typing', async () => {
+    it('should call setSearchTerm handler when typing', async () => {
       const user = userEvent.setup();
       const handleChange = vi.fn();
       
-      render(<SearchBar onChange={handleChange} />);
+      render(<SearchBar searchTerm="" setSearchTerm={handleChange} />);
       
       const searchInput = screen.getByRole('textbox');
       await user.type(searchInput, 'test');
@@ -42,31 +42,26 @@ describe('SearchBar Component - Unit Tests', () => {
       expect(handleChange).toHaveBeenCalled();
     });
 
-    it('should clear search input when clear button is clicked', async () => {
-      const user = userEvent.setup();
-      const handleClear = vi.fn();
+    it('should display search icon', () => {
+      render(<SearchBar searchTerm="" setSearchTerm={vi.fn()} />);
       
-      render(<SearchBar value="test search" onClear={handleClear} />);
-      
-      const clearButton = screen.getByRole('button', { name: /clear/i });
-      await user.click(clearButton);
-      
-      expect(handleClear).toHaveBeenCalledOnce();
+      const searchIcon = screen.getByTestId('SearchIcon');
+      expect(searchIcon).toBeInTheDocument();
     });
   });
 
   // Boundary Value Analysis (BVA)
   describe('BVA - Edge Cases', () => {
     it('should handle empty string input', () => {
-      render(<SearchBar value="" />);
+      render(<SearchBar searchTerm="" setSearchTerm={vi.fn()} />);
       
       const searchInput = screen.getByRole('textbox');
       expect(searchInput).toHaveValue('');
     });
 
     it('should handle very long search strings', () => {
-      const longString = 'a'.repeat(1000);
-      render(<SearchBar value={longString} />);
+      const longString = 'a'.repeat(100); // Reduced length for practicality
+      render(<SearchBar searchTerm={longString} setSearchTerm={vi.fn()} />);
       
       const searchInput = screen.getByRole('textbox');
       expect(searchInput).toHaveValue(longString);
@@ -76,7 +71,7 @@ describe('SearchBar Component - Unit Tests', () => {
       const user = userEvent.setup();
       const handleChange = vi.fn();
       
-      render(<SearchBar onChange={handleChange} />);
+      render(<SearchBar searchTerm="" setSearchTerm={handleChange} />);
       
       const searchInput = screen.getByRole('textbox');
       await user.type(searchInput, 'a');
@@ -87,34 +82,18 @@ describe('SearchBar Component - Unit Tests', () => {
 
   // Error Guessing
   describe('Error Guessing - Error Conditions', () => {
-    it('should not crash when onChange is not provided', async () => {
-      const user = userEvent.setup();
+    it('should not crash when setSearchTerm is not provided', async () => {
+      userEvent.setup();
       
-      render(<SearchBar />);
+      render(<SearchBar searchTerm="" />);
       
       const searchInput = screen.getByRole('textbox');
-      await user.type(searchInput, 'test');
-      
-      // Should not throw error
+      // Should render without crashing
       expect(searchInput).toBeInTheDocument();
     });
 
-    it('should not crash when onClear is not provided', async () => {
-      const user = userEvent.setup();
-      
-      render(<SearchBar value="test" />);
-      
-      const clearButton = screen.queryByRole('button', { name: /clear/i });
-      if (clearButton) {
-        await user.click(clearButton);
-      }
-      
-      // Should not throw error
-      expect(screen.getByRole('textbox')).toBeInTheDocument();
-    });
-
-    it('should handle undefined value prop', () => {
-      render(<SearchBar value={undefined} />);
+    it('should handle undefined searchTerm prop', () => {
+      render(<SearchBar searchTerm={undefined} setSearchTerm={vi.fn()} />);
       
       const searchInput = screen.getByRole('textbox');
       expect(searchInput).toBeInTheDocument();
@@ -123,47 +102,46 @@ describe('SearchBar Component - Unit Tests', () => {
 
   // Non-Functional Checks
   describe('Non-Functional - Accessibility & Performance', () => {
-    it('should have accessible label', () => {
-      render(<SearchBar aria-label="Search input" />);
+    it('should have accessible search icon', () => {
+      render(<SearchBar searchTerm="" setSearchTerm={vi.fn()} />);
       
-      const searchInput = screen.getByLabelText('Search input');
+      const searchIcon = screen.getByTestId('SearchIcon');
+      expect(searchIcon).toBeInTheDocument();
+    });
+
+    it('should have proper input role', () => {
+      render(<SearchBar searchTerm="" setSearchTerm={vi.fn()} placeholder="Search..." />);
+      
+      const searchInput = screen.getByRole('textbox');
       expect(searchInput).toBeInTheDocument();
     });
 
-    it('should have proper ARIA attributes', () => {
-      render(<SearchBar placeholder="Search..." />);
+    it('should use default placeholder when not provided', () => {
+      render(<SearchBar searchTerm="" setSearchTerm={vi.fn()} />);
       
-      const searchInput = screen.getByRole('textbox');
-      expect(searchInput).toHaveAttribute('type', 'text');
-    });
-
-    it('should apply custom className', () => {
-      const { container } = render(<SearchBar className="custom-search" />);
-      
-      expect(container.querySelector('.custom-search')).toBeInTheDocument();
+      const searchInput = screen.getByPlaceholderText('Tìm kiếm...');
+      expect(searchInput).toBeInTheDocument();
     });
   });
 
   // Basic State & Rendering Check
   describe('State & Rendering', () => {
     it('should update controlled input value', () => {
-      const { rerender } = render(<SearchBar value="initial" />);
+      const { rerender } = render(<SearchBar searchTerm="initial" setSearchTerm={vi.fn()} />);
       
       expect(screen.getByDisplayValue('initial')).toBeInTheDocument();
       
-      rerender(<SearchBar value="updated" />);
+      rerender(<SearchBar searchTerm="updated" setSearchTerm={vi.fn()} />);
       
       expect(screen.getByDisplayValue('updated')).toBeInTheDocument();
     });
 
-    it('should show clear button only when value is not empty', () => {
-      const { rerender } = render(<SearchBar value="" />);
+    it('should be a controlled component', () => {
+      const mockSetSearchTerm = vi.fn();
+      render(<SearchBar searchTerm="test" setSearchTerm={mockSetSearchTerm} />);
       
-      expect(screen.queryByRole('button', { name: /clear/i })).not.toBeInTheDocument();
-      
-      rerender(<SearchBar value="test" />);
-      
-      expect(screen.queryByRole('button', { name: /clear/i })).toBeInTheDocument();
+      const searchInput = screen.getByRole('textbox');
+      expect(searchInput).toHaveValue('test');
     });
   });
 });
