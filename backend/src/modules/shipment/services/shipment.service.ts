@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { ShipmentRepository } from '../repositories/shipment.repository';
 import { CreateShipmentDto } from '../dto/create-shipment.dto';
 import { UpdateShipmentDto } from '../dto/update-shipment.dto';
@@ -7,12 +7,14 @@ import { AddTrackingEventDto } from '../dto/add-tracking-event.dto';
 import { QueryShipmentDto } from '../dto/query-shipment.dto';
 import { Prisma, ShipmentStatus } from '@prisma/client';
 import { WarehouseRepository } from '../../warehouse/repositories/warehouse.repository';
-import { SalesOrderRepository } from '../../sales/sales-order/repositories/sales-order.repository';
+import { SalesOrderRepository } from '../../sales/repositories/sales-order.repository';
 import { InventoryRepository } from '../../inventory/repositories/inventory.repository';
 import { randomUUID } from 'crypto';
 
 @Injectable()
 export class ShipmentService {
+  private readonly logger = new Logger(ShipmentService.name);
+
   constructor(
     private readonly shipmentRepo: ShipmentRepository,
     private readonly warehouseRepo: WarehouseRepository,
@@ -29,10 +31,12 @@ export class ShipmentService {
   }
 
   async createShipment(dto: CreateShipmentDto): Promise<any> {
+    this.logger.log(`Creating shipment for sales order: ${dto.salesOrderId}`);
     // Step 1: Validate SalesOrder exists (using Repository pattern)
     const salesOrder = await this.salesOrderRepo.findById(dto.salesOrderId);
 
     if (!salesOrder) {
+      this.logger.warn(`SalesOrder not found: ${dto.salesOrderId}`);
       throw new NotFoundException(`SalesOrder with ID ${dto.salesOrderId} not found`);
     }
 
@@ -40,13 +44,16 @@ export class ShipmentService {
     const warehouse = await this.warehouseRepo.findOne(dto.warehouseId);
 
     if (!warehouse) {
+      this.logger.warn(`Warehouse not found: ${dto.warehouseId}`);
       throw new NotFoundException(`Warehouse with ID ${dto.warehouseId} not found`);
     }
 
     // Step 3: Inventory Check (CRITICAL) - using Repository pattern
     // Get all location IDs in the warehouse
     // WarehouseRepository.findOne includes locations (type assertion needed)
-    const warehouseWithLocations = warehouse as typeof warehouse & { locations: Array<{ id: string }> };
+    const warehouseWithLocations = warehouse as typeof warehouse & {
+      locations: Array<{ id: string }>;
+    };
     if (!warehouseWithLocations.locations || warehouseWithLocations.locations.length === 0) {
       throw new BadRequestException(`Warehouse ${dto.warehouseId} has no locations`);
     }
@@ -70,10 +77,7 @@ export class ShipmentService {
       );
 
       // Sum up availableQty for this product across all locations in the warehouse
-      const totalAvailableQty = inventoryRecords.reduce(
-        (sum, inv) => sum + inv.availableQty,
-        0,
-      );
+      const totalAvailableQty = inventoryRecords.reduce((sum, inv) => sum + inv.availableQty, 0);
 
       // Check if we have enough stock
       if (totalAvailableQty < item.qty) {
@@ -89,14 +93,12 @@ export class ShipmentService {
     // Step 4: Create Shipment with warehouseId and salesOrderId
     const shipmentNo = this.generateShipmentNo();
 
-    const items: Omit<Prisma.ShipmentItemCreateManyInput, 'shipmentId'>[] = dto.items.map(
-      (it) => ({
-        salesOrderId: dto.salesOrderId, // Link to the sales order
-        productId: it.productId ?? null,
-        productBatchId: it.productBatchId ?? null,
-        qty: it.qty,
-      }),
-    );
+    const items: Omit<Prisma.ShipmentItemCreateManyInput, 'shipmentId'>[] = dto.items.map((it) => ({
+      salesOrderId: dto.salesOrderId, // Link to the sales order
+      productId: it.productId ?? null,
+      productBatchId: it.productBatchId ?? null,
+      qty: it.qty,
+    }));
 
     const shipmentData: Prisma.ShipmentCreateInput = {
       shipmentNo,

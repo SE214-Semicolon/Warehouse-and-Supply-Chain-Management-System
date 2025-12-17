@@ -18,9 +18,8 @@ import { UsersModule } from './modules/users/users.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { ProductModule } from './modules/product/product.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
-import { SupplierModule } from './modules/procurement/supplier/supplier.module';
-import { PurchaseOrderModule } from './modules/procurement/purchase-order/purchase-order.module';
-import { SalesOrderModule } from './modules/sales/sales-order/sales-order.module';
+import { ProcurementModule } from './modules/procurement/procurement.module';
+import { SalesModule } from './modules/sales/sales.module';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { DemandPlanningModule } from './modules/demand-planning/demand-planning.module';
@@ -63,9 +62,8 @@ import { MetricsModule, MetricsInterceptor } from './common/metrics';
     ProductModule,
     WarehouseModule,
     InventoryModule,
-    SupplierModule,
-    PurchaseOrderModule,
-    SalesOrderModule,
+    ProcurementModule,
+    SalesModule,
     AuditLogModule,
     AlertsModule,
     DemandPlanningModule,
