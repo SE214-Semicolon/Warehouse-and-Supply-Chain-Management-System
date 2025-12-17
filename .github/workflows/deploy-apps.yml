@@ -71,20 +71,73 @@ jobs:
           backend/package-lock.json
           frontend/package-lock.json
 
-    # Note: Linting and type checking are already done in code-check job
-    # Tests are commented out until implemented by backend/frontend team
-    
-    # TODO: Uncomment when tests are ready
-    # - name: Install backend dependencies
+    # ============================================
+    # UNIT TESTS
+    # ============================================
+    - name: Install backend dependencies
+      if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+      working-directory: ./backend
+      run: npm ci
+
+    - name: Generate Prisma Client
+      if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+      working-directory: ./backend
+      run: npx prisma generate
+
+    - name: Run Backend Unit Tests
+      if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+      working-directory: ./backend
+      run: |
+        chmod +x scripts/run-tests-by-type.sh
+        ./scripts/run-tests-by-type.sh unit
+      env:
+        NODE_ENV: test
+
+    # ============================================
+    # INTEGRATION TESTS (TODO: Enable when ready)
+    # ============================================
+    # - name: Run Backend Integration Tests
     #   if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
     #   working-directory: ./backend
-    #   run: npm ci
+    #   run: |
+    #     chmod +x scripts/run-tests-by-type.sh
+    #     ./scripts/run-tests-by-type.sh integration
+    #   env:
+    #     NODE_ENV: test
+    #     DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
     #
-    # - name: Run backend tests
+    # NOTE: For integration tests, add this service at job level:
+    # services:
+    #   postgres:
+    #     image: postgres:15
+    #     env:
+    #       POSTGRES_USER: test_user
+    #       POSTGRES_PASSWORD: test_password
+    #       POSTGRES_DB: test_db
+    #     ports:
+    #       - 5432:5432
+    #     options: >-
+    #       --health-cmd pg_isready
+    #       --health-interval 10s
+    #       --health-timeout 5s
+    #       --health-retries 5
+
+    # ============================================
+    # SMOKE TESTS (TODO: Enable when ready)
+    # ============================================
+    # - name: Run Backend Smoke Tests
     #   if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
     #   working-directory: ./backend
-    #   run: npm run test
-    #
+    #   run: |
+    #     chmod +x scripts/run-tests-by-type.sh
+    #     ./scripts/run-tests-by-type.sh smoke
+    #   env:
+    #     NODE_ENV: test
+    #     DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+
+    # ============================================
+    # FRONTEND TESTS (TODO: Enable when ready)
+    # ============================================
     # - name: Install frontend dependencies
     #   if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
     #   working-directory: ./frontend

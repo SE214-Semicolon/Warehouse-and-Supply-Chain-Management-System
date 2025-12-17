@@ -173,6 +173,24 @@ export interface IInventoryRepository {
     totalPages: number;
   }>;
 
+  getMovementsByProductBatch(
+    productBatchId: string,
+    movementType?: string,
+    locationId?: string,
+    startDate?: string,
+    endDate?: string,
+    page?: number,
+    limit?: number,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc',
+  ): Promise<{
+    movements: StockMovement[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }>;
+
   generateValuationReport(
     locationId?: string,
     productId?: string,

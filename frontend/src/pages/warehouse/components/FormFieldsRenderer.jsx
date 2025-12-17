@@ -244,9 +244,9 @@ export default function FormFieldsRenderer({
           }
 
           const disabled =
-            selectedMenu === "locations" &&
-            field.id === "warehouseId" &&
-            isEdit;
+            isEdit &&
+            ((selectedMenu === "locations" && field.id === "warehouseId") ||
+              (selectedMenu === "batches" && field.id === "productId"));
 
           return (
             <FormInput

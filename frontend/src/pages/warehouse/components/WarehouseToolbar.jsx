@@ -1,4 +1,4 @@
-import { Stack, Button } from "@mui/material";
+import { Stack, Button, Paper } from "@mui/material"; // Nhớ import Paper
 
 export default function WarehouseToolbar({
   menuItems,
@@ -6,53 +6,58 @@ export default function WarehouseToolbar({
   onSelect,
 }) {
   return (
-    <Stack
-      direction="row"
-      justifyContent="space-between"
-      // gap={7}
+    <Paper
+      elevation={3}
       sx={{
-        background: "#fafafa",
-        borderRadius: 1,
-        p: 1.5,
-        border: "1px solid #eee",
+        p: 1,
+        borderRadius: 2,
+        bgcolor: "background.paper",
+        mb: 2,
       }}
     >
-      {menuItems.map((item) => {
-        const isActive = selectedMenu === item.id;
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        // gap={7}
+      >
+        {menuItems.map((item) => {
+          const isActive = selectedMenu === item.id;
 
-        return (
-          <Button
-            key={item.id}
-            startIcon={item.icon}
-            onClick={() => onSelect(item.id)}
-            sx={{
-              color: isActive ? "primary.main" : "text.primary",
-              fontWeight: isActive ? 600 : 400,
-              fontSize: "14.5px",
-              position: "relative",
-              borderRadius: 0,
-              px: 2,
-              py: 1,
-              "&:hover": {
-                backgroundColor: "rgba(25,118,210,0.08)",
-              },
-              "&::after": {
-                content: '""',
-                position: "absolute",
-                left: 8,
-                right: 8,
-                bottom: 0,
-                height: "3px",
-                borderRadius: "3px",
-                backgroundColor: isActive ? "primary.main" : "transparent",
-                transition: "0.2s",
-              },
-            }}
-          >
-            {item.label}
-          </Button>
-        );
-      })}
-    </Stack>
+          return (
+            <Button
+              key={item.id}
+              startIcon={item.icon}
+              onClick={() => onSelect(item.id)}
+              sx={{
+                color: isActive ? "primary.main" : "text.secondary",
+                fontWeight: isActive ? 600 : 500,
+                fontSize: "14.5px",
+                position: "relative",
+                borderRadius: 1,
+                px: 2,
+                py: 1,
+                "&:hover": {
+                  backgroundColor: "action.hover",
+                },
+                "::after": {
+                  content: '""',
+                  position: "absolute",
+                  left: 12,
+                  right: 12,
+                  bottom: 4,
+                  height: "3px",
+                  borderRadius: "3px",
+                  backgroundColor: isActive ? "primary.main" : "transparent",
+                  transition: "0.2s scaleX",
+                  transform: isActive ? "scaleX(1)" : "scaleX(0)",
+                },
+              }}
+            >
+              {item.label}
+            </Button>
+          );
+        })}
+      </Stack>
+    </Paper>
   );
 }
