@@ -70,8 +70,8 @@ describe('AlertService', () => {
       const result = await service.createAlert(dto);
 
       expect(result.success).toBe(true);
-      expect(result.alert.id).toBe('507f1f77bcf86cd799439011');
-      expect(result.alert.type).toBe(AlertType.LOW_STOCK);
+      expect(result.data.id).toBe('507f1f77bcf86cd799439011');
+      expect(result.data.type).toBe(AlertType.LOW_STOCK);
       expect(result.message).toBe('Alert created successfully');
       expect(repository.write).toHaveBeenCalledWith(dto);
       expect(cacheService.deleteByPrefix).toHaveBeenCalled();
@@ -91,7 +91,7 @@ describe('AlertService', () => {
       const result = await service.createAlert(dto);
 
       expect(result.success).toBe(true);
-      expect(result.alert.relatedEntity).toBeUndefined();
+      expect(result.data.relatedEntity).toBeUndefined();
       expect(repository.write).toHaveBeenCalledWith(dto);
     });
 
@@ -127,7 +127,7 @@ describe('AlertService', () => {
       const result = await service.getAlerts(dto);
 
       expect(result.success).toBe(true);
-      expect(result.alerts).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
       expect(result.page).toBe(1);
       expect(result.limit).toBe(20);
@@ -201,7 +201,7 @@ describe('AlertService', () => {
       const result = await service.getAlertById(alertId);
 
       expect(result.success).toBe(true);
-      expect(result.alert.id).toBe(alertId);
+      expect(result.data.id).toBe(alertId);
       expect(repository.findById).toHaveBeenCalledWith(alertId);
     });
 
@@ -230,7 +230,7 @@ describe('AlertService', () => {
       const result = await service.markAsRead(alertId);
 
       expect(result.success).toBe(true);
-      expect(result.alert.isRead).toBe(true);
+      expect(result.data.isRead).toBe(true);
       expect(result.message).toBe('Alert marked as read');
       expect(repository.markAsRead).toHaveBeenCalledWith(alertId);
       expect(cacheService.deleteByPrefix).toHaveBeenCalled();

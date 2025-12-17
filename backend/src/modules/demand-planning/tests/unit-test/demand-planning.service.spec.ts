@@ -84,7 +84,7 @@ describe('DemandPlanningService', () => {
       const result = await service.createForecast(dto);
 
       expect(result.success).toBe(true);
-      expect(result.forecast).toEqual(mockForecast);
+      expect(result.data).toEqual(mockForecast);
       expect(repository.findProduct).toHaveBeenCalledWith(dto.productId);
       expect(repository.create).toHaveBeenCalled();
       expect(cacheService.deleteByPrefix).toHaveBeenCalled();
@@ -265,7 +265,7 @@ describe('DemandPlanningService', () => {
       const result = await service.updateForecast('forecast-cuid-123', dto);
 
       expect(result.success).toBe(true);
-      expect(result.forecast.forecastedQuantity).toBe(200);
+      expect(result.data.forecastedQuantity).toBe(200);
       expect(repository.update).toHaveBeenCalled();
       expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });

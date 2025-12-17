@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { PurchaseOrderService } from '../../services/purchase-order.service';
-import { PurchaseOrderRepository } from '../../repositories/purchase-order.repository';
+import { PurchaseOrderService } from '../../../services/purchase-order.service';
+import { PurchaseOrderRepository } from '../../../repositories/purchase-order.repository';
 import { InventoryService } from '../../../../inventory/services/inventory.service';
 import { PoStatus } from '@prisma/client';
 
@@ -110,9 +110,11 @@ describe('Purchase Order Service', () => {
 
       const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
-      expect(result).toEqual(mockPurchaseOrder);
-      expect(result.status).toBe(PoStatus.draft);
-      expect(result.poNo).toMatch(/^PO-\d{6}-[A-Z0-9]{6}$/);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockPurchaseOrder);
+      expect(result.data.status).toBe(PoStatus.draft);
+      expect(result.data.poNo).toMatch(/^PO-\d{6}-[A-Z0-9]{6}$/);
+      expect(result.message).toBe('Purchase order created successfully');
       expect(poRepo.createDraft).toHaveBeenCalled();
       expect(poRepo.updateTotals).toHaveBeenCalled();
     });
@@ -140,7 +142,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
-      expect(result.supplierId).toBeNull();
+      expect(result.success).toBe(true);
+      expect(result.data.supplierId).toBeNull();
+      expect(result.message).toBe('Purchase order created successfully');
     });
 
     // PO-TC03: Create without items
@@ -158,8 +162,10 @@ describe('Purchase Order Service', () => {
 
       const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
-      expect((result as any).items).toEqual([]);
-      expect(result.totalAmount).toBe(0);
+      expect(result.success).toBe(true);
+      expect((result.data as any).items).toEqual([]);
+      expect(result.data.totalAmount).toBe(0);
+      expect(result.message).toBe('Purchase order created successfully');
     });
 
     // PO-TC04: Create with items missing unitPrice
@@ -192,8 +198,10 @@ describe('Purchase Order Service', () => {
 
       const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
-      expect((result as any).items[0].unitPrice).toBeNull();
-      expect((result as any).items[0].lineTotal).toBeNull();
+      expect(result.success).toBe(true);
+      expect((result.data as any).items[0].unitPrice).toBeNull();
+      expect((result.data as any).items[0].lineTotal).toBeNull();
+      expect(result.message).toBe('Purchase order created successfully');
     });
 
     // PO-TC05: Create with multiple items
@@ -236,8 +244,10 @@ describe('Purchase Order Service', () => {
 
       const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
-      expect((result as any).items).toHaveLength(2);
-      expect(result.totalAmount).toBe(1100);
+      expect(result.success).toBe(true);
+      expect((result.data as any).items).toHaveLength(2);
+      expect(result.data.totalAmount).toBe(1100);
+      expect(result.message).toBe('Purchase order created successfully');
     });
 
     // PO-TC06: Create with invalid productId (tested by DTO)
@@ -265,7 +275,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
-      expect(result.placedAt).toEqual(new Date('2020-01-15T10:00:00Z'));
+      expect(result.success).toBe(true);
+      expect(result.data.placedAt).toEqual(new Date('2020-01-15T10:00:00Z'));
+      expect(result.message).toBe('Purchase order created successfully');
     });
 
     // PO-TC10: Create with expectedArrival before placedAt (TODO: add validation)
@@ -291,7 +303,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.createPurchaseOrder(createDto, 'user-uuid-1');
 
-      expect(result.expectedArrival!.getTime()).toBeLessThan(result.placedAt!.getTime());
+      expect(result.success).toBe(true);
+      expect(result.data.expectedArrival!.getTime()).toBeLessThan(result.data.placedAt!.getTime());
+      expect(result.message).toBe('Purchase order created successfully');
       // TODO: Should add validation to prevent this
     });
   });
@@ -309,7 +323,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.submitPurchaseOrder('po-uuid-1', submitDto);
 
-      expect(result.status).toBe(PoStatus.ordered);
+      expect(result.success).toBe(true);
+      expect(result.data.status).toBe(PoStatus.ordered);
+      expect(result.message).toBe('Purchase order submitted successfully');
       expect(poRepo.submit).toHaveBeenCalledWith('po-uuid-1');
     });
 
@@ -367,7 +383,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.findById('po-uuid-1');
 
-      expect(result).toEqual(mockPurchaseOrder);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockPurchaseOrder);
+      expect(result.message).toBe('Purchase order retrieved successfully');
       expect(poRepo.findById).toHaveBeenCalledWith('po-uuid-1');
     });
 
@@ -782,10 +800,12 @@ describe('Purchase Order Service', () => {
 
       const result = await service.list(query);
 
+      expect(result.success).toBe(true);
       expect(result.data).toEqual([mockPurchaseOrder]);
       expect(result.total).toBe(1);
       expect(result.page).toBe(1);
       expect(result.pageSize).toBe(20);
+      expect(result.message).toBe('Purchase orders retrieved successfully');
     });
 
     // PO-TC40: Filter by poNo
@@ -803,7 +823,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.list(query);
 
+      expect(result.success).toBe(true);
       expect(result.data).toEqual([mockPurchaseOrder]);
+      expect(result.message).toBe('Purchase orders retrieved successfully');
       expect(poRepo.list).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -831,7 +853,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.list(query);
 
+      expect(result.success).toBe(true);
       expect(result.data).toEqual([mockPurchaseOrder]);
+      expect(result.message).toBe('Purchase orders retrieved successfully');
       expect(poRepo.list).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -856,7 +880,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.list(query);
 
+      expect(result.success).toBe(true);
       expect(result.data).toEqual([mockPurchaseOrder]);
+      expect(result.message).toBe('Purchase orders retrieved successfully');
       expect(poRepo.list).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -881,7 +907,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.list(query);
 
+      expect(result.success).toBe(true);
       expect(result.data).toEqual([mockPurchaseOrder]);
+      expect(result.message).toBe('Purchase orders retrieved successfully');
       expect(poRepo.list).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -908,7 +936,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.list(query);
 
+      expect(result.success).toBe(true);
       expect(result.data).toEqual([mockPurchaseOrder]);
+      expect(result.message).toBe('Purchase orders retrieved successfully');
       expect(poRepo.list).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -936,7 +966,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.list(query);
 
+      expect(result.success).toBe(true);
       expect(result.data).toEqual([mockPurchaseOrder]);
+      expect(result.message).toBe('Purchase orders retrieved successfully');
       expect(poRepo.list).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -963,9 +995,11 @@ describe('Purchase Order Service', () => {
 
       const result = await service.list(query);
 
+      expect(result.success).toBe(true);
       expect(result.page).toBe(2);
       expect(result.pageSize).toBe(10);
       expect(result.total).toBe(25);
+      expect(result.message).toBe('Purchase orders retrieved successfully');
       expect(poRepo.list).toHaveBeenCalledWith(
         expect.objectContaining({
           skip: 10,
@@ -989,7 +1023,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.list(query);
 
+      expect(result.success).toBe(true);
       expect(result.data).toEqual([mockPurchaseOrder]);
+      expect(result.message).toBe('Purchase orders retrieved successfully');
       expect(poRepo.list).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: [{ placedAt: 'asc' }],
@@ -1012,7 +1048,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.list(query);
 
+      expect(result.success).toBe(true);
       expect(result.data).toEqual([mockPurchaseOrder]);
+      expect(result.message).toBe('Purchase orders retrieved successfully');
       expect(poRepo.list).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: [{ status: 'desc' }],
@@ -1038,7 +1076,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.list(query);
 
+      expect(result.success).toBe(true);
       expect(result.data).toEqual([mockPurchaseOrder]);
+      expect(result.message).toBe('Purchase orders retrieved successfully');
       expect(poRepo.list).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -1065,7 +1105,9 @@ describe('Purchase Order Service', () => {
 
       const result = await service.list(query);
 
+      expect(result.success).toBe(true);
       expect(result.data).toEqual([]);
+      expect(result.message).toBe('Purchase orders retrieved successfully');
       // Prisma will escape the input, preventing SQL injection
       expect(poRepo.list).toHaveBeenCalledWith(
         expect.objectContaining({

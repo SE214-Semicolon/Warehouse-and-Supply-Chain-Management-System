@@ -107,7 +107,8 @@ describe('SalesOrderService', () => {
 
       const result = await service.createSalesOrder(createDto, 'user-uuid-1');
 
-      expect(result).toEqual(mockSalesOrder);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockSalesOrder);
       expect(soRepo.createDraft).toHaveBeenCalled();
       expect(soRepo.updateTotals).toHaveBeenCalledWith(mockSalesOrder.id);
     });
@@ -126,7 +127,7 @@ describe('SalesOrderService', () => {
 
       const result = await service.createSalesOrder(createDto, 'user-uuid-1');
 
-      expect(result.customerId).toBeNull();
+      expect(result.data.customerId).toBeNull();
     });
 
     // SO-TC03: Create without items
@@ -143,7 +144,7 @@ describe('SalesOrderService', () => {
 
       const result = await service.createSalesOrder(createDto, 'user-uuid-1');
 
-      expect((result as any).items).toHaveLength(0);
+      expect((result.data as any).items).toHaveLength(0);
     });
 
     // SO-TC04: Create with items missing unitPrice
@@ -168,8 +169,8 @@ describe('SalesOrderService', () => {
 
       const result = await service.createSalesOrder(createDto, 'user-uuid-1');
 
-      expect((result as any).items[0].unitPrice).toBeNull();
-      expect((result as any).items[0].lineTotal).toBeNull();
+      expect((result.data as any).items[0].unitPrice).toBeNull();
+      expect((result.data as any).items[0].lineTotal).toBeNull();
     });
 
     // SO-TC05: Create with multiple items
@@ -203,7 +204,7 @@ describe('SalesOrderService', () => {
 
       const result = await service.createSalesOrder(createDto, 'user-uuid-1');
 
-      expect((result as any).items).toHaveLength(2);
+      expect((result.data as any).items).toHaveLength(2);
     });
 
     // SO-TC09: Create with placedAt in past
@@ -300,7 +301,8 @@ describe('SalesOrderService', () => {
 
       const result = await service.findById('so-uuid-1');
 
-      expect(result).toEqual(mockSalesOrder);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockSalesOrder);
       expect(soRepo.findById).toHaveBeenCalledWith('so-uuid-1');
     });
 

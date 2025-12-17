@@ -111,7 +111,7 @@ describe('LocationService', () => {
       const result = await service.create(createDto);
 
       expect(result.success).toBe(true);
-      expect(result.location).toEqual(mockLocation);
+      expect(result.data).toEqual(mockLocation);
       expect(warehouseRepo.findOne).toHaveBeenCalledWith(createDto.warehouseId);
       expect(locationRepo.create).toHaveBeenCalled();
       expect(cacheService.deleteByPrefix).toHaveBeenCalled();
@@ -167,7 +167,7 @@ describe('LocationService', () => {
       const result = await service.create(createDto);
 
       expect(result.success).toBe(true);
-      expect(result.location.capacity).toBe(0);
+      expect(result.data.capacity).toBe(0);
     });
 
     // LOC-TC11: Very large capacity
@@ -188,7 +188,7 @@ describe('LocationService', () => {
       const result = await service.create(createDto);
 
       expect(result.success).toBe(true);
-      expect(result.location.capacity).toBe(999999);
+      expect(result.data.capacity).toBe(999999);
     });
 
     // LOC-TC12: Code with special characters
@@ -209,7 +209,7 @@ describe('LocationService', () => {
       const result = await service.create(createDto);
 
       expect(result.success).toBe(true);
-      expect(result.location.code).toBe('A-01-01@SPECIAL');
+      expect(result.data.code).toBe('A-01-01@SPECIAL');
     });
 
     // LOC-TC13: Very long code (tested by DTO)
@@ -250,7 +250,7 @@ describe('LocationService', () => {
       const result = await service.create(createDto);
 
       expect(result.success).toBe(true);
-      expect(result.location.warehouseId).toBe('warehouse-uuid-2');
+      expect(result.data.warehouseId).toBe('warehouse-uuid-2');
     });
 
     // LOC-TC17: SQL injection in code (Prisma handles)
@@ -277,7 +277,7 @@ describe('LocationService', () => {
       const result = await service.create(createDto);
 
       expect(result.success).toBe(true);
-      expect(result.location.properties).toEqual(createDto.properties);
+      expect(result.data.properties).toEqual(createDto.properties);
     });
   });
 
@@ -297,7 +297,7 @@ describe('LocationService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.locations).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
       expect(result.page).toBe(1);
       expect(result.limit).toBe(20);
@@ -319,7 +319,7 @@ describe('LocationService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.locations).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
     });
 
     // LOC-TC09: Filter by type
@@ -338,7 +338,7 @@ describe('LocationService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.locations).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
     });
 
     // LOC-TC10: Filter by search
@@ -357,7 +357,7 @@ describe('LocationService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.locations).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
     });
 
     // LOC-TC11: Pagination page 1
@@ -435,7 +435,7 @@ describe('LocationService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.locations).toHaveLength(0);
+      expect(result.data).toHaveLength(0);
     });
 
     // LOC-TC33: Filter warehouse + type
@@ -455,7 +455,7 @@ describe('LocationService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.locations).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
     });
 
     // LOC-TC34: Filter warehouse + search
@@ -475,7 +475,7 @@ describe('LocationService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.locations).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
     });
 
     // LOC-TC35: Filter type + search
@@ -495,7 +495,7 @@ describe('LocationService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.locations).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
     });
 
     // LOC-TC36: All filters combined
@@ -516,7 +516,7 @@ describe('LocationService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.locations).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
     });
 
     // LOC-TC37: Invalid warehouse ID filter
@@ -535,7 +535,7 @@ describe('LocationService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.locations).toHaveLength(0);
+      expect(result.data).toHaveLength(0);
     });
 
     // LOC-TC38-42: Case insensitive, partial match, sort (Prisma handles)
@@ -558,7 +558,7 @@ describe('LocationService', () => {
       const result = await service.findOne('location-uuid-1');
 
       expect(result.success).toBe(true);
-      expect(result.location).toEqual(mockLocation);
+      expect(result.data).toEqual(mockLocation);
       expect(result.stats).toBeDefined();
       expect(cacheService.getOrSet).toHaveBeenCalled();
     });
@@ -594,7 +594,7 @@ describe('LocationService', () => {
       const result = await service.findByCode('warehouse-uuid-1', 'A-01-01');
 
       expect(result.success).toBe(true);
-      expect(result.location).toEqual(mockLocation);
+      expect(result.data).toEqual(mockLocation);
       expect(result.stats).toBeDefined();
       expect(cacheService.getOrSet).toHaveBeenCalled();
     });
@@ -645,7 +645,7 @@ describe('LocationService', () => {
       const result = await service.findByWarehouse('warehouse-uuid-1');
 
       expect(result.success).toBe(true);
-      expect(result.locations).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
       expect(result.warehouse).toBeDefined();
       expect(cacheService.getOrSet).toHaveBeenCalled();
@@ -693,7 +693,7 @@ describe('LocationService', () => {
       const result = await service.findAvailableLocations('warehouse-uuid-1');
 
       expect(result.success).toBe(true);
-      expect(result.locations).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
       expect(result.warehouseId).toBe('warehouse-uuid-1');
     });
 
@@ -735,7 +735,7 @@ describe('LocationService', () => {
       const result = await service.findAvailableLocations('warehouse-uuid-1');
 
       expect(result.success).toBe(true);
-      expect(result.locations).toHaveLength(0);
+      expect(result.data).toHaveLength(0);
     });
 
     // LOC-TC30: No authentication tested by guard
@@ -755,7 +755,7 @@ describe('LocationService', () => {
       const result = await service.update('location-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.location.name).toBe('Updated Location');
+      expect(result.data.name).toBe('Updated Location');
     });
 
     // LOC-TC32: Update with duplicate code
@@ -794,8 +794,8 @@ describe('LocationService', () => {
       const result = await service.update('location-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.location.name).toBe('New Name Only');
-      expect(result.location.code).toBe(mockLocation.code);
+      expect(result.data.name).toBe('New Name Only');
+      expect(result.data.code).toBe(mockLocation.code);
     });
 
     // LOC-TC88: Update only code
@@ -810,7 +810,7 @@ describe('LocationService', () => {
       const result = await service.update('location-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.location.code).toBe('A-NEW-01');
+      expect(result.data.code).toBe('A-NEW-01');
     });
 
     // LOC-TC89: Update only capacity
@@ -824,7 +824,7 @@ describe('LocationService', () => {
       const result = await service.update('location-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.location.capacity).toBe(200);
+      expect(result.data.capacity).toBe(200);
     });
 
     // LOC-TC90: Update only type
@@ -838,7 +838,7 @@ describe('LocationService', () => {
       const result = await service.update('location-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.location.type).toBe('pallet');
+      expect(result.data.type).toBe('pallet');
     });
 
     // LOC-TC91: Update only properties
@@ -852,7 +852,7 @@ describe('LocationService', () => {
       const result = await service.update('location-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.location.properties).toEqual({ updated: true });
+      expect(result.data.properties).toEqual({ updated: true });
     });
 
     // LOC-TC92: Update all fields at once
@@ -873,9 +873,9 @@ describe('LocationService', () => {
       const result = await service.update('location-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.location.code).toBe('A-UPDATED');
-      expect(result.location.name).toBe('Updated Name');
-      expect(result.location.capacity).toBe(150);
+      expect(result.data.code).toBe('A-UPDATED');
+      expect(result.data.name).toBe('Updated Name');
+      expect(result.data.capacity).toBe(150);
     });
 
     // LOC-TC93: Update with empty object
@@ -889,7 +889,7 @@ describe('LocationService', () => {
       const result = await service.update('location-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.location).toEqual(mockLocation);
+      expect(result.data).toEqual(mockLocation);
     });
 
     // LOC-TC94: Update code to same value
@@ -918,7 +918,7 @@ describe('LocationService', () => {
       const result = await service.update('location-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.location.capacity).toBe(0);
+      expect(result.data.capacity).toBe(0);
     });
 
     // LOC-TC97: Update capacity smaller than current usage (business logic not in service)

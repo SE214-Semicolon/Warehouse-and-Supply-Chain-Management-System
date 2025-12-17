@@ -2,11 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SupplierService } from '../../services/supplier.service';
 import { SupplierRepository } from '../../repositories/supplier.repository';
+import { CacheService } from 'src/cache/cache.service';
 import { Supplier } from '@prisma/client';
 
 describe('SupplierService', () => {
   let service: SupplierService;
   let repo: jest.Mocked<SupplierRepository>;
+  let cacheService: jest.Mocked<CacheService>;
 
   const mockSupplier: Supplier = {
     id: 'supplier-uuid-1',
@@ -34,6 +36,13 @@ describe('SupplierService', () => {
       countActivePurchaseOrders: jest.fn(),
     };
 
+    const mockCache = {
+      get: jest.fn(),
+      set: jest.fn(),
+      del: jest.fn(),
+      delete: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SupplierService,
@@ -41,11 +50,16 @@ describe('SupplierService', () => {
           provide: SupplierRepository,
           useValue: mockRepo,
         },
+        {
+          provide: CacheService,
+          useValue: mockCache,
+        },
       ],
     }).compile();
 
     service = module.get<SupplierService>(SupplierService);
     repo = module.get(SupplierRepository);
+    cacheService = module.get(CacheService);
   });
 
   it('should be defined', () => {
@@ -71,7 +85,9 @@ describe('SupplierService', () => {
 
       const result = await service.create(createDto);
 
-      expect(result).toEqual(mockSupplier);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockSupplier);
+      expect(result.message).toBe('Supplier created successfully');
       expect(repo.findUnique).toHaveBeenCalledWith({ code: createDto.code });
       expect(repo.create).toHaveBeenCalledWith(createDto);
     });
@@ -105,7 +121,9 @@ describe('SupplierService', () => {
 
       const result = await service.create(createDto);
 
-      expect(result).toEqual(supplierWithoutCode);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(supplierWithoutCode);
+      expect(result.message).toBe('Supplier created successfully');
       expect(repo.findUnique).not.toHaveBeenCalled();
       expect(repo.create).toHaveBeenCalledWith(createDto);
     });
@@ -125,7 +143,9 @@ describe('SupplierService', () => {
 
       const result = await service.create(createDto);
 
-      expect(result).toEqual(supplierWithoutContact);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(supplierWithoutContact);
+      expect(result.message).toBe('Supplier created successfully');
       expect(repo.create).toHaveBeenCalledWith(createDto);
     });
 
@@ -145,7 +165,9 @@ describe('SupplierService', () => {
 
       const result = await service.create(createDto);
 
-      expect(result).toEqual(supplierWithoutAddress);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(supplierWithoutAddress);
+      expect(result.message).toBe('Supplier created successfully');
       expect(repo.create).toHaveBeenCalledWith(createDto);
     });
 
@@ -468,12 +490,16 @@ describe('SupplierService', () => {
   describe('findOne', () => {
     // SUP-TC29: Find by valid ID
     it('should return a supplier by valid ID', async () => {
+      cacheService.get.mockResolvedValue(null);
       repo.findById.mockResolvedValue(mockSupplier);
 
       const result = await service.findOne('supplier-uuid-1');
 
-      expect(result).toEqual(mockSupplier);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockSupplier);
+      expect(result.message).toBe('Supplier retrieved successfully');
       expect(repo.findById).toHaveBeenCalledWith('supplier-uuid-1');
+      expect(cacheService.set).toHaveBeenCalled();
     });
 
     // SUP-TC30: Supplier not found
@@ -500,13 +526,16 @@ describe('SupplierService', () => {
 
       const result = await service.update('supplier-uuid-1', updateDto);
 
-      expect(result.name).toBe('Updated Supplier');
+      expect(result.success).toBe(true);
+      expect(result.data.name).toBe('Updated Supplier');
+      expect(result.message).toBe('Supplier updated successfully');
       expect(repo.update).toHaveBeenCalledWith(
         'supplier-uuid-1',
         expect.objectContaining({
           name: 'Updated Supplier',
         }),
       );
+      expect(cacheService.delete).toHaveBeenCalled();
     });
 
     // SUP-TC33: Update code successfully
@@ -521,8 +550,10 @@ describe('SupplierService', () => {
 
       const result = await service.update('supplier-uuid-1', updateDto);
 
-      expect(result.code).toBe('SUP-002');
+      expect(result.success).toBe(true);
+      expect(result.data.code).toBe('SUP-002');
       expect(repo.findUnique).toHaveBeenCalledWith({ code: 'SUP-002' });
+      expect(cacheService.delete).toHaveBeenCalled();
     });
 
     // SUP-TC34: Update code with duplicate value
@@ -560,7 +591,9 @@ describe('SupplierService', () => {
 
       const result = await service.update('supplier-uuid-1', updateDto);
 
-      expect(result.contactInfo).toEqual(updateDto.contactInfo);
+      expect(result.success).toBe(true);
+      expect(result.data.contactInfo).toEqual(updateDto.contactInfo);
+      expect(cacheService.delete).toHaveBeenCalled();
     });
 
     // SUP-TC36: Update address
@@ -574,7 +607,9 @@ describe('SupplierService', () => {
 
       const result = await service.update('supplier-uuid-1', updateDto);
 
-      expect(result.address).toBe('New Address');
+      expect(result.success).toBe(true);
+      expect(result.data.address).toBe('New Address');
+      expect(cacheService.delete).toHaveBeenCalled();
     });
 
     // SUP-TC37: Update multiple fields at once
@@ -597,9 +632,11 @@ describe('SupplierService', () => {
 
       const result = await service.update('supplier-uuid-1', updateDto);
 
-      expect(result.code).toBe('SUP-003');
-      expect(result.name).toBe('New Supplier Name');
-      expect(result.address).toBe('New Address');
+      expect(result.success).toBe(true);
+      expect(result.data.code).toBe('SUP-003');
+      expect(result.data.name).toBe('New Supplier Name');
+      expect(result.data.address).toBe('New Address');
+      expect(cacheService.delete).toHaveBeenCalled();
     });
 
     // SUP-TC38: Update non-existent supplier
@@ -623,7 +660,9 @@ describe('SupplierService', () => {
 
       const result = await service.update('supplier-uuid-1', updateDto);
 
-      expect(result).toEqual(mockSupplier);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockSupplier);
+      expect(cacheService.delete).toHaveBeenCalled();
     });
 
     // SUP-TC40: Permission denied (tested by guard)

@@ -42,7 +42,7 @@ export class AlertService {
 
       return {
         success: true,
-        alert: this.mapToResponseDto(alert),
+        data: this.mapToResponseDto(alert),
         message: 'Alert created successfully',
       };
     } catch (error) {
@@ -94,7 +94,7 @@ export class AlertService {
 
     return {
       success: true,
-      alerts: result.alerts.map((alert) => this.mapToResponseDto(alert)),
+      data: result.alerts.map((alert) => this.mapToResponseDto(alert)),
       total: result.total,
       page: result.page,
       limit: result.limit,
@@ -132,7 +132,7 @@ export class AlertService {
 
     return {
       success: true,
-      alert: this.mapToResponseDto(alert),
+      data: this.mapToResponseDto(alert),
     };
   }
 
@@ -158,7 +158,7 @@ export class AlertService {
 
     return {
       success: true,
-      alert: this.mapToResponseDto(alert),
+      data: this.mapToResponseDto(alert),
       message: 'Alert marked as read',
     };
   }

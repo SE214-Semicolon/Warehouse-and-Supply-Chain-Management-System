@@ -39,7 +39,7 @@ export class DemandPlanningService {
       // Invalidate cache
       await this.invalidateForecastCache();
 
-      return { success: true, forecast };
+      return { success: true, data: forecast };
     } catch (error: any) {
       // Handle unique constraint violation (productId + forecastDate)
       if (error.code === 'P2002') {
@@ -117,7 +117,7 @@ export class DemandPlanningService {
       // Invalidate cache
       await this.invalidateForecastCache();
 
-      return { success: true, forecast };
+      return { success: true, data: forecast };
     } catch (error: any) {
       if (error.code === 'P2002') {
         throw new BadRequestException(
