@@ -59,6 +59,25 @@ export class InventoryService {
       throw new NotFoundException(`ProductBatch not found: ${dto.productBatchId}`);
     }
 
+    // Warn if receiving expired or near-expiry batch
+    if (batch.expiryDate) {
+      const now = new Date();
+      if (batch.expiryDate < now) {
+        this.logger.warn(
+          `Receiving EXPIRED batch ${batch.batchNo || batch.id}. Expired on ${batch.expiryDate.toISOString().split('T')[0]}`,
+        );
+      } else {
+        const daysUntilExpiry = Math.floor(
+          (batch.expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+        );
+        if (daysUntilExpiry <= 30) {
+          this.logger.warn(
+            `Receiving near-expiry batch ${batch.batchNo || batch.id}. Expires in ${daysUntilExpiry} days (${batch.expiryDate.toISOString().split('T')[0]})`,
+          );
+        }
+      }
+    }
+
     const location = await this.inventoryRepo.findLocation(dto.locationId);
     if (!location) {
       throw new NotFoundException(`Location not found: ${dto.locationId}`);
@@ -129,6 +148,13 @@ export class InventoryService {
     const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
     if (!batch) {
       throw new NotFoundException(`ProductBatch not found: ${dto.productBatchId}`);
+    }
+
+    // Validate batch expiry
+    if (batch.expiryDate && batch.expiryDate < new Date()) {
+      throw new BadRequestException(
+        `Cannot dispatch expired batch ${batch.batchNo || batch.id}. Expired on ${batch.expiryDate.toISOString().split('T')[0]}`,
+      );
     }
 
     const location = await this.inventoryRepo.findLocation(dto.locationId);
@@ -396,6 +422,13 @@ export class InventoryService {
     const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
     if (!batch) {
       throw new NotFoundException(`ProductBatch not found: ${dto.productBatchId}`);
+    }
+
+    // Validate batch expiry - don't reserve expired batches
+    if (batch.expiryDate && batch.expiryDate < new Date()) {
+      throw new BadRequestException(
+        `Cannot reserve expired batch ${batch.batchNo || batch.id}. Expired on ${batch.expiryDate.toISOString().split('T')[0]}`,
+      );
     }
 
     const location = await this.inventoryRepo.findLocation(dto.locationId);

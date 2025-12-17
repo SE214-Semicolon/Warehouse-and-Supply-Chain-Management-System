@@ -29,6 +29,7 @@ export class SalesOrderRepository {
             salesOrderId: so.id,
             productId: it.productId,
             productBatchId: it.productBatchId ?? null,
+            locationId: it.locationId ?? null, // Include locationId for inventory reservation
             qty: it.qty,
             unitPrice: it.unitPrice ?? null,
             lineTotal: it.lineTotal ?? null,

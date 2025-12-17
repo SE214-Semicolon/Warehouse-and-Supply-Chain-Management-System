@@ -21,6 +21,11 @@ class CreateSOItemDto {
   @IsUUID()
   productBatchId?: string;
 
+  @ApiProperty({ description: 'Location ID for inventory reservation', required: false })
+  @IsOptional()
+  @IsUUID()
+  locationId?: string;
+
   @ApiProperty({ description: 'Quantity to order' })
   @IsNumber()
   @Min(1)

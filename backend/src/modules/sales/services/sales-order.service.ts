@@ -13,6 +13,7 @@ import { InventoryService } from '../../inventory/services/inventory.service';
 import { DispatchInventoryDto } from '../../inventory/dto/dispatch-inventory.dto';
 import { OrderStatus, SalesOrder, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { PrismaService } from '../../../database/prisma/prisma.service';
 
 @Injectable()
 export class SalesOrderService {
@@ -21,6 +22,7 @@ export class SalesOrderService {
   constructor(
     private readonly soRepo: SalesOrderRepository,
     private readonly inventorySvc: InventoryService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -63,6 +65,7 @@ export class SalesOrderService {
     ).map((it) => ({
       productId: it.productId,
       productBatchId: it.productBatchId ?? null,
+      locationId: it.locationId ?? null, // Store locationId for inventory reservation
       qty: it.qty,
       unitPrice: it.unitPrice ?? null,
       lineTotal: it.unitPrice ? it.unitPrice * it.qty : null,
@@ -101,6 +104,7 @@ export class SalesOrderService {
    * - SO-TC16: No authentication (401, tested by guard)
    */
   async submitSalesOrder(id: string, dto: SubmitSalesOrderDto) {
+    this.logger.log(`Submitting sales order: ${id}`);
     if (!dto?.userId) {
       throw new BadRequestException('userId is required');
     }
@@ -109,9 +113,38 @@ export class SalesOrderService {
     if (so.status !== OrderStatus.pending) {
       throw new BadRequestException('Only pending SO can be submitted');
     }
+
+    // Reserve inventory for items that have both productBatchId and locationId
+    for (const item of so.items || []) {
+      if (item.productBatchId && item.locationId) {
+        try {
+          await this.inventorySvc.reserveInventory({
+            productBatchId: item.productBatchId,
+            locationId: item.locationId,
+            quantity: item.qty,
+            orderId: so.id,
+            createdById: dto.userId,
+            idempotencyKey: `SO-${so.id}-${item.id}`,
+            note: `Reservation for Sales Order ${so.soNo}`,
+          });
+          this.logger.log(`Reserved ${item.qty} units for SO ${so.soNo}, item ${item.id}`);
+        } catch (error) {
+          this.logger.error(`Failed to reserve inventory for SO ${so.soNo}:`, error);
+          throw new BadRequestException(
+            `Failed to reserve inventory: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+        }
+      } else {
+        this.logger.warn(
+          `SO item ${item.id} missing productBatchId or locationId, skipping reservation`,
+        );
+      }
+    }
+
     await this.soRepo.submit(id);
     const updated = await this.soRepo.findById(id);
     if (!updated) throw new NotFoundException('SO not found after submit');
+    this.logger.log(`Sales order submitted successfully: ${id}`);
     return updated;
   }
 
@@ -302,8 +335,63 @@ export class SalesOrderService {
       }
     }
 
-    // Dispatch inventory for each item
+    // Validate batch expiry dates for all items before fulfilling
     for (const r of dto.items) {
+      if (r.productBatchId) {
+        const batch = await this.prisma.productBatch.findUnique({
+          where: { id: r.productBatchId },
+          select: { id: true, batchNo: true, expiryDate: true },
+        });
+
+        if (!batch) {
+          throw new BadRequestException(
+            `ProductBatch ${r.productBatchId} not found for fulfillment`,
+          );
+        }
+
+        if (batch.expiryDate) {
+          const now = new Date();
+          if (batch.expiryDate < now) {
+            throw new BadRequestException(
+              `Cannot fulfill with expired batch ${batch.batchNo || batch.id}. Expiry date: ${batch.expiryDate.toISOString()}`,
+            );
+          }
+        }
+      }
+    }
+
+    // Dispatch inventory for each item
+    // For items with reservations, we need to release the reservation before dispatching
+    for (const r of dto.items) {
+      const soItem = existing.find((e) => e.id === r.soItemId)!;
+
+      // If item has both productBatchId and locationId, it means we made a reservation
+      // Release the reservation first, then dispatch
+      if (soItem.productBatchId && soItem.locationId) {
+        try {
+          await this.inventorySvc.releaseReservation({
+            productBatchId: soItem.productBatchId,
+            locationId: soItem.locationId,
+            quantity: r.qtyToFulfill,
+            orderId: so.id,
+            idempotencyKey: `SO-FULFILL-REL-${so.id}-${r.soItemId}`,
+            note: `Release reservation for SO ${so.soNo} fulfillment`,
+          });
+          this.logger.log(
+            `Released ${r.qtyToFulfill} units reservation for SO ${so.soNo}, item ${r.soItemId}`,
+          );
+        } catch (error) {
+          this.logger.error(
+            `Failed to release reservation for SO ${so.soNo}, item ${r.soItemId}:`,
+            error,
+          );
+          throw new BadRequestException(
+            'Failed to release inventory reservation. Please try again.',
+          );
+        }
+      }
+
+      // Dispatch the actual inventory
       const payload: DispatchInventoryDto = {
         productBatchId: r.productBatchId,
         locationId: r.locationId,
@@ -360,15 +448,42 @@ export class SalesOrderService {
    * - Edge case: Multiple partial fulfillments leading to shipped status
    */
   async cancelSalesOrder(id: string) {
+    this.logger.log(`Cancelling sales order: ${id}`);
     const so = await this.soRepo.findById(id);
     if (!so) throw new NotFoundException('SO not found');
     if (so.status === OrderStatus.shipped || so.status === OrderStatus.cancelled) {
       throw new BadRequestException(`Cannot cancel SO with status: ${so.status}`);
     }
 
+    // Release inventory reservations for items that have both productBatchId and locationId
+    for (const item of so.items || []) {
+      if (item.productBatchId && item.locationId) {
+        try {
+          await this.inventorySvc.releaseReservation({
+            productBatchId: item.productBatchId,
+            locationId: item.locationId,
+            quantity: item.qty,
+            orderId: so.id,
+            idempotencyKey: `SO-CANCEL-${so.id}-${item.id}`,
+            note: `Cancellation of Sales Order ${so.soNo}`,
+          });
+          this.logger.log(
+            `Released ${item.qty} units for cancelled SO ${so.soNo}, item ${item.id}`,
+          );
+        } catch (error) {
+          this.logger.warn(
+            `Failed to release reservation for SO ${so.soNo}, item ${item.id}:`,
+            error,
+          );
+          // Continue cancelling even if release fails (graceful degradation)
+        }
+      }
+    }
+
     await this.soRepo.cancel(id);
     const updated = await this.soRepo.findById(id);
     if (!updated) throw new NotFoundException('SO not found after cancel');
+    this.logger.log(`Sales order cancelled successfully: ${id}`);
     return updated;
   }
 }

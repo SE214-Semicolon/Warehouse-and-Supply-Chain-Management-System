@@ -3,12 +3,14 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SalesOrderService } from '../../../services/sales-order.service';
 import { SalesOrderRepository } from '../../../repositories/sales-order.repository';
 import { InventoryService } from '../../../../inventory/services/inventory.service';
+import { PrismaService } from '../../../../../database/prisma/prisma.service';
 import { OrderStatus } from '@prisma/client';
 
 describe('SalesOrderService', () => {
   let service: SalesOrderService;
   let soRepo: jest.Mocked<SalesOrderRepository>;
   let inventorySvc: jest.Mocked<InventoryService>;
+  let prisma: jest.Mocked<PrismaService>;
 
   const mockSalesOrder: any = {
     id: 'so-uuid-1',
@@ -61,6 +63,14 @@ describe('SalesOrderService', () => {
 
     const mockInventorySvc = {
       dispatchInventory: jest.fn(),
+      reserveInventory: jest.fn(),
+      releaseReservation: jest.fn(),
+    };
+
+    const mockPrisma = {
+      productBatch: {
+        findUnique: jest.fn(),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -74,12 +84,17 @@ describe('SalesOrderService', () => {
           provide: InventoryService,
           useValue: mockInventorySvc,
         },
+        {
+          provide: PrismaService,
+          useValue: mockPrisma,
+        },
       ],
     }).compile();
 
     service = module.get<SalesOrderService>(SalesOrderService);
     soRepo = module.get(SalesOrderRepository);
     inventorySvc = module.get(InventoryService);
+    prisma = module.get(PrismaService);
   });
 
   it('should be defined', () => {
@@ -480,6 +495,12 @@ describe('SalesOrderService', () => {
 
       soRepo.findById.mockResolvedValueOnce(approvedSo);
       soRepo.findItemsByIds.mockResolvedValueOnce([mockSalesOrder.items[0]]);
+      prisma.productBatch.findUnique.mockResolvedValueOnce({
+        id: 'batch-uuid-1',
+        batchNo: 'BATCH-001',
+        expiryDate: new Date('2025-12-31'), // Valid batch with future expiry
+      } as any);
+      inventorySvc.releaseReservation.mockResolvedValue(undefined as any);
       inventorySvc.dispatchInventory.mockResolvedValue(undefined as any);
       soRepo.updateItemFulfilled.mockResolvedValue(itemWithFulfillment);
       soRepo.findItemsByIds.mockResolvedValueOnce([itemWithFulfillment]);
@@ -513,6 +534,12 @@ describe('SalesOrderService', () => {
 
       soRepo.findById.mockResolvedValueOnce(approvedSo);
       soRepo.findItemsByIds.mockResolvedValueOnce([mockSalesOrder.items[0]]);
+      prisma.productBatch.findUnique.mockResolvedValueOnce({
+        id: 'batch-uuid-1',
+        batchNo: 'BATCH-001',
+        expiryDate: new Date('2025-12-31'), // Valid batch with future expiry
+      } as any);
+      inventorySvc.releaseReservation.mockResolvedValue(undefined as any);
       inventorySvc.dispatchInventory.mockResolvedValue(undefined as any);
       soRepo.updateItemFulfilled.mockResolvedValue(itemFullyFulfilled);
       soRepo.findItemsByIds.mockResolvedValueOnce([itemFullyFulfilled]);
