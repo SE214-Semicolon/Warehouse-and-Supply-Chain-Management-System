@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from 'src/database/prisma/prisma.module';
-import { ShipmentController } from './shipment.controller';
+import { ShipmentController } from './controllers/shipment.controller';
 import { ShipmentService } from './services/shipment.service';
 import { ShipmentRepository } from './repositories/shipment.repository';
 import { WarehouseModule } from '../warehouse/warehouse.module';

@@ -1,15 +1,15 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from 'src/modules/auth/jwt.guard';
+import { RolesGuard } from 'src/modules/auth/roles.guard';
+import { Roles } from 'src/modules/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
-import { ShipmentService } from './services/shipment.service';
-import { CreateShipmentDto } from './dto/create-shipment.dto';
-import { UpdateShipmentDto } from './dto/update-shipment.dto';
-import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
-import { AddTrackingEventDto } from './dto/add-tracking-event.dto';
-import { QueryShipmentDto } from './dto/query-shipment.dto';
+import { ShipmentService } from '../services/shipment.service';
+import { CreateShipmentDto } from '../dto/create-shipment.dto';
+import { UpdateShipmentDto } from '../dto/update-shipment.dto';
+import { UpdateShipmentStatusDto } from '../dto/update-shipment-status.dto';
+import { AddTrackingEventDto } from '../dto/add-tracking-event.dto';
+import { QueryShipmentDto } from '../dto/query-shipment.dto';
 
 @ApiTags('shipments')
 @Controller('shipments')
