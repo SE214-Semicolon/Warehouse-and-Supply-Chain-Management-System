@@ -115,6 +115,7 @@ export class SalesOrderService {
     }
 
     // Reserve inventory for items that have both productBatchId and locationId
+    // Note: If reservation succeeds but submit fails, retry will be idempotent
     for (const item of so.items || []) {
       if (item.productBatchId && item.locationId) {
         try {
@@ -141,7 +142,16 @@ export class SalesOrderService {
       }
     }
 
-    await this.soRepo.submit(id);
+    // Update SO status to approved
+    try {
+      await this.soRepo.submit(id);
+    } catch (error) {
+      this.logger.error(`Failed to update SO status after reservation for ${so.soNo}:`, error);
+      throw new BadRequestException(
+        'Inventory reserved but failed to update order status. Please retry - operation is idempotent.',
+      );
+    }
+
     const updated = await this.soRepo.findById(id);
     if (!updated) throw new NotFoundException('SO not found after submit');
     this.logger.log(`Sales order submitted successfully: ${id}`);

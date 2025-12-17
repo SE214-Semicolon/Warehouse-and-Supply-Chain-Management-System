@@ -188,7 +188,17 @@ export class PurchaseOrderService {
       throw new BadRequestException('Some items not found in PO');
     }
 
-    // 2) Gọi Inventory receive cho từng dòng (Inventory hỗ trợ idempotencyKey)
+    // 2) Validate over-receive TRƯỚC KHI gọi inventory service để tránh data inconsistency
+    for (const r of dto.items) {
+      const item = existing.find((e) => e.id === r.poItemId)!;
+      if (item.qtyReceived + r.qtyToReceive > item.qtyOrdered) {
+        throw new BadRequestException(
+          `Receive quantity ${r.qtyToReceive} for item ${item.id} exceeds remaining quantity ${item.qtyOrdered - item.qtyReceived}`,
+        );
+      }
+    }
+
+    // 3) Gọi Inventory receive cho từng dòng (Inventory hỗ trợ idempotencyKey)
     //    -> Nếu Inventory trả về idempotent=true, KHÔNG được tăng qtyReceived lần nữa.
     const increments: { poItemId: string; qtyInc: number }[] = [];
     for (const r of dto.items) {
@@ -201,21 +211,19 @@ export class PurchaseOrderService {
       };
       const invResult: any = await this.inventorySvc.receiveInventory(payload);
 
-      // Validate over-receive only when this call is not idempotently ignored
+      // Track increments only when this call is not idempotently ignored
       if (!invResult?.idempotent) {
-        const item = existing.find((e) => e.id === r.poItemId)!;
-        if (item.qtyReceived + r.qtyToReceive > item.qtyOrdered) {
-          throw new BadRequestException('Receive exceeds ordered quantity');
-        }
         increments.push({ poItemId: r.poItemId, qtyInc: r.qtyToReceive });
       }
     }
 
-    // 3) Cập nhật qtyReceived và trạng thái PO trong transaction
+    // 4) Cập nhật qtyReceived và trạng thái PO trong transaction
+    // Note: If inventory received but PO update fails, retry will be idempotent
     let updatedPo: PurchaseOrder;
     try {
       // If everything was idempotent, do not mutate PO again; just return current state.
       if (increments.length === 0) {
+        this.logger.log(`All items were idempotently received for PO: ${poId}`);
         const current = await this.poRepo.findById(poId);
         if (!current) throw new NotFoundException('PO not found after receive');
         return current;
@@ -223,18 +231,27 @@ export class PurchaseOrderService {
 
       updatedPo = await this.poRepo.receiveItems(poId, increments);
     } catch (e) {
+      this.logger.error(`Failed to update PO after inventory receipt for ${poId}:`, e);
       if (e instanceof Error) {
         if (e.message === 'PO_STATUS_INVALID') {
-          throw new BadRequestException('PO status is not eligible for receiving');
+          throw new BadRequestException(
+            'PO status changed during receive. Inventory received - please check and retry if needed.',
+          );
         }
         if (e.message === 'ITEM_NOT_FOUND') {
-          throw new BadRequestException('PO item not found');
+          throw new BadRequestException(
+            'PO item not found. Inventory received - please check data consistency.',
+          );
         }
         if (e.message === 'OVER_RECEIVE') {
-          throw new BadRequestException('Receive exceeds ordered quantity');
+          throw new BadRequestException(
+            'Receive exceeds ordered quantity. This should not happen - validation was done before receive.',
+          );
         }
       }
-      throw e;
+      throw new BadRequestException(
+        'Inventory received but failed to update PO. Operation is idempotent - safe to retry.',
+      );
     }
     const result = await this.poRepo.findById(updatedPo.id);
     if (!result) throw new NotFoundException('PO not found after receive');

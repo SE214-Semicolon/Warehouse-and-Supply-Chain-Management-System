@@ -597,7 +597,7 @@ describe('Purchase Order Service', () => {
         BadRequestException,
       );
       await expect(service.receivePurchaseOrder('po-uuid-1', exceedDto)).rejects.toThrow(
-        'Receive exceeds ordered quantity',
+        'exceeds remaining quantity',
       );
     });
 
@@ -620,7 +620,7 @@ describe('Purchase Order Service', () => {
         BadRequestException,
       );
       await expect(service.receivePurchaseOrder('po-uuid-1', exceedDto)).rejects.toThrow(
-        'Receive exceeds ordered quantity',
+        'exceeds remaining quantity',
       );
     });
 
