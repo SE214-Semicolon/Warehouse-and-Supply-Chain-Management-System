@@ -170,6 +170,8 @@ export class InviteService {
 
   /**
    * Validate invite token và return role
+   * Note: This method is now primarily used for non-transaction contexts.
+   * For signup flow, the consumption happens atomically within auth.service transaction.
    */
   async validateAndConsumeInvite(token: string, userId: string): Promise<UserRole> {
     const invite = await this.getInviteByToken(token);
@@ -186,14 +188,23 @@ export class InviteService {
       throw new BadRequestException('Invite token expired');
     }
 
-    // Mark as used
-    await this.prisma.userInvite.update({
-      where: { id: invite.id },
-      data: {
-        usedAt: new Date(),
-        usedById: userId,
-      },
-    });
+    // Mark as used with proper error handling
+    try {
+      await this.prisma.userInvite.update({
+        where: { id: invite.id },
+        data: {
+          usedAt: new Date(),
+          usedById: userId,
+        },
+      });
+    } catch (error) {
+      // Log error for debugging
+      console.error('Failed to mark invite as consumed:', error);
+      throw new BadRequestException(
+        'Failed to consume invite token. The operation is safe to retry. ' +
+          'If the issue persists, please contact support.',
+      );
+    }
 
     return invite.role;
   }

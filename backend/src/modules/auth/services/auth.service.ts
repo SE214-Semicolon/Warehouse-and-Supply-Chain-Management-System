@@ -21,11 +21,9 @@ export class AuthService {
 
     const passwordHash = await bcryptjs.hash(password, 10);
 
-    // Determine role based on invite token
+    // Pre-validate invite token before transaction (fail fast)
     let role: UserRole | undefined;
     if (inviteToken) {
-      // Validate invite token (will throw if invalid/expired/used)
-      // Note: We'll mark as used after user creation succeeds
       const invite = await this.inviteService.getInviteByToken(inviteToken);
       if (!invite) {
         throw new UnauthorizedException('Invalid invite token');
@@ -42,18 +40,45 @@ export class AuthService {
       role = invite.role;
     }
 
-    // Create user with role from invite (or default warehouse_staff)
-    const user = await this.usersService.createUser({
-      email,
-      passwordHash,
-      fullName,
-      role,
-    });
+    // ATOMIC: Create user + Consume invite in single transaction
+    // This prevents race condition where multiple users could signup with same invite
+    const user = await this.prisma.$transaction(async (tx) => {
+      // Step 1: Create user
+      const newUser = await tx.user.create({
+        data: {
+          username: email, // simple default mapping
+          email,
+          passwordHash,
+          fullName: fullName ?? null,
+          role: role ?? ('warehouse_staff' as unknown as UserRole),
+        },
+      });
 
-    // If invite was used, mark it as consumed
-    if (inviteToken) {
-      await this.inviteService.validateAndConsumeInvite(inviteToken, user.id);
-    }
+      // Step 2: Consume invite if provided
+      if (inviteToken) {
+        // Double-check invite hasn't been used (race condition protection)
+        const invite = await tx.userInvite.findUnique({
+          where: { token: inviteToken },
+        });
+
+        if (!invite || invite.usedAt) {
+          throw new UnauthorizedException(
+            'Invite token no longer valid. It may have been used by another signup.',
+          );
+        }
+
+        // Mark as consumed
+        await tx.userInvite.update({
+          where: { token: inviteToken },
+          data: {
+            usedAt: new Date(),
+            usedById: newUser.id,
+          },
+        });
+      }
+
+      return newUser;
+    });
 
     return this.issueTokens(user.id, user.email!, user.role);
   }
