@@ -334,4 +334,148 @@ export class AlertGenerationService {
       return 0;
     }
   }
+
+  /**
+   * Check if late delivery alert should be created for a Purchase Order
+   * Alert when: status = 'ordered' AND expectedDeliveryDate < now
+   */
+  async checkPOLateDelivery(): Promise<number> {
+    try {
+      const now = new Date();
+
+      // Find all ordered POs with past expected delivery date
+      const latePOs = await this.prisma.purchaseOrder.findMany({
+        where: {
+          status: 'ordered',
+          expectedArrival: {
+            not: null,
+            lt: now,
+          },
+        },
+        include: {
+          supplier: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      let alertsCreated = 0;
+
+      for (const po of latePOs) {
+        if (!po.expectedArrival) continue;
+
+        const daysLate = Math.ceil(
+          (now.getTime() - po.expectedArrival.getTime()) / (1000 * 60 * 60 * 24),
+        );
+
+        const severity = daysLate > 7 ? AlertSeverity.CRITICAL : AlertSeverity.WARNING;
+
+        const message = `Purchase Order ${po.poNo} from supplier ${po.supplier?.name || 'Unknown'} is ${daysLate} day(s) late. Expected arrival: ${po.expectedArrival.toISOString().split('T')[0]}`;
+
+        // Check if alert already exists for this PO (simple check - skip if duplicate)
+        const existingAlerts = await this.alertRepo.query({
+          type: AlertType.PO_LATE_DELIVERY,
+        });
+
+        const isDuplicate = existingAlerts.alerts.some(
+          (alert) => alert.relatedEntity?.id === po.id,
+        );
+
+        if (!isDuplicate) {
+          await this.alertRepo.write({
+            type: AlertType.PO_LATE_DELIVERY,
+            severity,
+            message,
+            relatedEntity: {
+              type: 'PurchaseOrder' as any, // Type assertion for new entity type
+              id: po.id,
+            },
+          });
+
+          alertsCreated++;
+          this.logger.log(`Late PO alert created: ${po.poNo} - ${daysLate} days late`);
+        }
+      }
+
+      this.logger.log(`PO late delivery scan completed: ${alertsCreated} alerts created`);
+      return alertsCreated;
+    } catch (error) {
+      this.logger.error('Error checking PO late deliveries:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Check if pending too long alert should be created for a Sales Order
+   * Alert when: status = 'pending' AND createdAt < (now - 24 hours)
+   */
+  async checkSOPendingTooLong(): Promise<number> {
+    try {
+      const now = new Date();
+      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+      // Find all pending SOs older than 24 hours
+      const pendingSOs = await this.prisma.salesOrder.findMany({
+        where: {
+          status: 'pending',
+          createdAt: {
+            lt: twentyFourHoursAgo,
+          },
+        },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      let alertsCreated = 0;
+
+      for (const so of pendingSOs) {
+        const hoursWaiting = Math.floor(
+          (now.getTime() - so.createdAt.getTime()) / (1000 * 60 * 60),
+        );
+
+        const severity = hoursWaiting > 72 ? AlertSeverity.CRITICAL : AlertSeverity.WARNING;
+
+        const message = `Sales Order ${so.soNo} for customer ${so.customer?.name || 'Unknown'} has been pending for ${hoursWaiting} hours. Created: ${so.createdAt.toISOString().split('T')[0]}`;
+
+        // Check if alert already exists for this SO (simple check - skip if duplicate)
+        const existingAlerts = await this.alertRepo.query({
+          type: AlertType.SO_PENDING_TOO_LONG,
+        });
+
+        const isDuplicate = existingAlerts.alerts.some(
+          (alert) => alert.relatedEntity?.id === so.id,
+        );
+
+        if (!isDuplicate) {
+          await this.alertRepo.write({
+            type: AlertType.SO_PENDING_TOO_LONG,
+            severity,
+            message,
+            relatedEntity: {
+              type: 'SalesOrder' as any, // Type assertion for new entity type
+              id: so.id,
+            },
+          });
+
+          alertsCreated++;
+          this.logger.log(`Pending SO alert created: ${so.soNo} - ${hoursWaiting} hours waiting`);
+        }
+      }
+
+      this.logger.log(`SO pending too long scan completed: ${alertsCreated} alerts created`);
+      return alertsCreated;
+    } catch (error) {
+      this.logger.error('Error checking pending SOs:', error);
+      return 0;
+    }
+  }
 }

@@ -7,11 +7,11 @@ class RelatedEntityDto {
   @ApiProperty({
     example: 'Product',
     description: 'Entity type',
-    enum: ['Product', 'Inventory'],
+    enum: ['Product', 'Inventory', 'PurchaseOrder', 'SalesOrder'],
   })
   @IsString()
   @IsNotEmpty()
-  type: 'Product' | 'Inventory';
+  type: 'Product' | 'Inventory' | 'PurchaseOrder' | 'SalesOrder';
 
   @ApiProperty({
     example: '507f1f77bcf86cd799439011',

@@ -313,4 +313,85 @@ describe('AuditLogService - Unit Tests', () => {
       await expect(service.query(queryDto)).rejects.toThrow('MongoDB query failed');
     });
   });
+
+  // NEW: Test audit logging for expanded entities
+  describe('Expanded Entity Support (PO, SO, Shipment)', () => {
+    it('should log PurchaseOrder creation', async () => {
+      const poAuditEntry = {
+        ...mockAuditEntry,
+        entityType: 'PurchaseOrder',
+        entityId: 'po-uuid-001',
+        path: '/api/procurement/purchase-orders',
+        after: { poNo: 'PO-2025-001', status: 'draft', supplierId: 'supplier-uuid' },
+      };
+
+      repository.insert.mockResolvedValue(undefined);
+
+      await service.write(poAuditEntry);
+
+      expect(repository.insert).toHaveBeenCalledWith(poAuditEntry);
+    });
+
+    it('should log SalesOrder updates', async () => {
+      const soAuditEntry = {
+        ...mockAuditEntry,
+        entityType: 'SalesOrder',
+        entityId: 'so-uuid-001',
+        action: 'UPDATE',
+        path: '/api/sales/sales-orders/so-uuid-001',
+        before: { status: 'draft' },
+        after: { status: 'submitted' },
+      };
+
+      repository.insert.mockResolvedValue(undefined);
+
+      await service.write(soAuditEntry);
+
+      expect(repository.insert).toHaveBeenCalledWith(soAuditEntry);
+    });
+
+    it('should log Shipment status changes', async () => {
+      const shipmentAuditEntry = {
+        ...mockAuditEntry,
+        entityType: 'Shipment',
+        entityId: 'shipment-uuid-001',
+        action: 'UPDATE',
+        path: '/api/shipments/shipment-uuid-001',
+        before: { status: 'pending' },
+        after: { status: 'in_transit', trackingNumber: 'TRACK-001' },
+      };
+
+      repository.insert.mockResolvedValue(undefined);
+
+      await service.write(shipmentAuditEntry);
+
+      expect(repository.insert).toHaveBeenCalledWith(shipmentAuditEntry);
+    });
+
+    it('should query audit logs for PurchaseOrder entity', async () => {
+      const poLogs = {
+        logs: [
+          {
+            ...mockAuditEntry,
+            entityType: 'PurchaseOrder',
+            entityId: 'po-uuid-001',
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 50,
+      };
+
+      repository.query.mockResolvedValue(poLogs);
+
+      const result = await service.query({ entityType: 'PurchaseOrder', page: 1, limit: 50 });
+
+      expect(result).toEqual(poLogs);
+      expect(repository.query).toHaveBeenCalledWith({
+        entityType: 'PurchaseOrder',
+        page: 1,
+        limit: 50,
+      });
+    });
+  });
 });
