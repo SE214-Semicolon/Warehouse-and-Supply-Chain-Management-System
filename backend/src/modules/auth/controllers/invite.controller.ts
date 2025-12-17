@@ -1,12 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from './jwt.guard';
-import { RolesGuard } from './roles.guard';
-import { Roles } from './decorators/roles.decorator';
+import { JwtAuthGuard } from '../guards/jwt.guard';
+import { RolesGuard } from '../guards/roles.guard';
+import { Roles } from '../decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
-import { InviteService } from './invite.service';
-import { CreateInviteDto } from './dto/create-invite.dto';
-import { QueryInviteDto } from './dto/query-invite.dto';
+import { InviteService } from '../services/invite.service';
+import { CreateInviteDto } from '../dto/create-invite.dto';
+import { QueryInviteDto } from '../dto/query-invite.dto';
 
 @ApiTags('invites')
 @Controller('invites')

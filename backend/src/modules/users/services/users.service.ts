@@ -2,10 +2,10 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from 'src/database/prisma/prisma.service';
 import { Prisma, UserRole } from '@prisma/client';
 import bcryptjs from 'bcryptjs';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { QueryUserDto } from './dto/query-user.dto';
-import { UserResponseDto } from './dto/user-response.dto';
+import { CreateUserDto } from '../dto/create-user.dto';
+import { UpdateUserDto } from '../dto/update-user.dto';
+import { QueryUserDto } from '../dto/query-user.dto';
+import { UserResponseDto } from '../dto/user-response.dto';
 
 @Injectable()
 export class UsersService {
