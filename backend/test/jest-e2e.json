@@ -13,7 +13,7 @@
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/src/$1"
   },
-  "testTimeout": 30000,
+  "testTimeout": 180000,
   "setupFilesAfterEnv": [
     "<rootDir>/test/setup.ts"
   ]

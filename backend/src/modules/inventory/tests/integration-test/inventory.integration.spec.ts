@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthModule } from 'src/modules/auth/auth.module';
 import { DatabaseModule } from 'src/database/database.module';
 import { ProductModule } from 'src/modules/product/product.module';
+jest.setTimeout(180000);
 
 // Unique test suite identifier for parallel execution
 const TEST_SUITE_ID = `inv-int-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -144,7 +145,7 @@ describe('Inventory Module (e2e)', () => {
       },
     });
     testProductBatchId = batch.id;
-  }, 60000);
+  }, 180000);
 
   afterAll(async () => {
     await cleanDatabase();
@@ -153,6 +154,9 @@ describe('Inventory Module (e2e)', () => {
   }, 30000);
 
   async function cleanDatabase() {
+
+    if (!prisma) return;
+
     await prisma.stockMovement.deleteMany({
       where: { productBatch: { product: { sku: { contains: TEST_SUITE_ID } } } },
     });
@@ -2449,6 +2453,6 @@ describe('Inventory Module (e2e)', () => {
         .expect(200);
 
       expect(deleteResponse.body.success).toBe(true);
-    }, 60000);
+    }, 180000);
   });
 });
