@@ -39,4 +39,36 @@ export class AlertSchedulerService {
       this.logger.error('Expiry scan failed:', error);
     }
   }
+
+  /**
+   * Scan for late Purchase Orders daily at 6:00 AM
+   * Check all ordered POs with past expected delivery dates
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_6AM)
+  async scanLatePurchaseOrders() {
+    this.logger.log('Starting scheduled late PO scan...');
+
+    try {
+      const alertsCreated = await this.alertGenService.checkPOLateDelivery();
+      this.logger.log(`Late PO scan completed: ${alertsCreated} alerts created`);
+    } catch (error) {
+      this.logger.error('Late PO scan failed:', error);
+    }
+  }
+
+  /**
+   * Scan for pending Sales Orders every 6 hours
+   * Check all pending SOs older than 24 hours
+   */
+  @Cron(CronExpression.EVERY_6_HOURS)
+  async scanPendingSalesOrders() {
+    this.logger.log('Starting scheduled pending SO scan...');
+
+    try {
+      const alertsCreated = await this.alertGenService.checkSOPendingTooLong();
+      this.logger.log(`Pending SO scan completed: ${alertsCreated} alerts created`);
+    } catch (error) {
+      this.logger.error('Pending SO scan failed:', error);
+    }
+  }
 }

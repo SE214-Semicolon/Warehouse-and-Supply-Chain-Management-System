@@ -16,14 +16,27 @@ export interface AuditLogEntry {
 
 /**
  * Audited entities (as defined in audit.middleware.ts):
+ *
+ * Core Product & Warehouse Module:
  * - Product, ProductBatch, ProductCategory
  * - Inventory, Warehouse, Location
  * - StockMovement
  *
- * NOT audited (managed by other teams, not yet standardized):
- * - User, Supplier, Customer, Order, etc.
+ * Procurement Module (NEW):
+ * - PurchaseOrder, PurchaseOrderItem
+ *
+ * Sales Module (NEW):
+ * - SalesOrder, SalesOrderItem
+ *
+ * Logistics Module (NEW):
+ * - Shipment
+ *
+ * NOT audited (infrastructure, handled separately):
+ * - User (auth module)
+ * - Supplier, Customer (may be added later)
  */
 export const AUDITED_ENTITIES = [
+  // Core modules
   'Product',
   'ProductBatch',
   'ProductCategory',
@@ -31,6 +44,17 @@ export const AUDITED_ENTITIES = [
   'Warehouse',
   'Location',
   'StockMovement',
+
+  // Procurement module
+  'PurchaseOrder',
+  'PurchaseOrderItem',
+
+  // Sales module
+  'SalesOrder',
+  'SalesOrderItem',
+
+  // Logistics module
+  'Shipment',
 ] as const;
 
 export type AuditedEntityType = (typeof AUDITED_ENTITIES)[number];

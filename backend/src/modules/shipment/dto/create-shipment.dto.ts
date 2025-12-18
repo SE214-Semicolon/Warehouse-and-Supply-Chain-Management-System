@@ -35,12 +35,18 @@ export class CreateShipmentItemDto {
 }
 
 export class CreateShipmentDto {
-  @ApiProperty({ description: 'Sales Order ID (required)', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiProperty({
+    description: 'Sales Order ID (required)',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
   @IsNotEmpty()
   @IsUUID()
   salesOrderId: string;
 
-  @ApiProperty({ description: 'Warehouse ID (required)', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiProperty({
+    description: 'Warehouse ID (required)',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
   @IsNotEmpty()
   @IsUUID()
   warehouseId: string;

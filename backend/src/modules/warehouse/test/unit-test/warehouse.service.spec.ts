@@ -81,7 +81,7 @@ describe('WarehouseService', () => {
       const result = await service.create(createDto);
 
       expect(result.success).toBe(true);
-      expect(result.warehouse).toEqual(mockWarehouse);
+      expect(result.data).toEqual(mockWarehouse);
       expect(repository.checkCodeExists).toHaveBeenCalledWith(createDto.code);
       expect(repository.create).toHaveBeenCalled();
       expect(cacheService.deleteByPrefix).toHaveBeenCalled();
@@ -120,7 +120,7 @@ describe('WarehouseService', () => {
       const result = await service.create(createDto);
 
       expect(result.success).toBe(true);
-      expect(result.warehouse.code).toBe('WH-001@TEST');
+      expect(result.data.code).toBe('WH-001@TEST');
     });
 
     // WH-TC09: Very long code (tested by DTO max length validation)
@@ -154,7 +154,7 @@ describe('WarehouseService', () => {
       const result = await service.create(createDto);
 
       expect(result.success).toBe(true);
-      expect(result.warehouse.metadata).toEqual({});
+      expect(result.data.metadata).toEqual({});
     });
 
     // WH-TC14: Create with complex nested metadata
@@ -179,7 +179,7 @@ describe('WarehouseService', () => {
       const result = await service.create(createDto);
 
       expect(result.success).toBe(true);
-      expect(result.warehouse.metadata).toEqual(createDto.metadata);
+      expect(result.data.metadata).toEqual(createDto.metadata);
     });
 
     // WH-TC15: Concurrent create with same code (race condition - repository handles)
@@ -201,7 +201,7 @@ describe('WarehouseService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.warehouses).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
       expect(result.page).toBe(1);
       expect(result.limit).toBe(20);
@@ -224,7 +224,7 @@ describe('WarehouseService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.warehouses).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
     });
 
     // WH-TC08: Filter by search
@@ -243,7 +243,7 @@ describe('WarehouseService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.warehouses).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
     });
 
@@ -398,7 +398,7 @@ describe('WarehouseService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.warehouses).toHaveLength(0);
+      expect(result.data).toHaveLength(0);
     });
 
     // WH-TC29: Search with special characters
@@ -435,7 +435,7 @@ describe('WarehouseService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.warehouses).toHaveLength(0);
+      expect(result.data).toHaveLength(0);
     });
 
     // WH-TC31: Filter code + search combined
@@ -455,7 +455,7 @@ describe('WarehouseService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.warehouses).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
     });
 
     // WH-TC32: Multiple filters tested above
@@ -475,7 +475,7 @@ describe('WarehouseService', () => {
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
-      expect(result.warehouses).toHaveLength(0);
+      expect(result.data).toHaveLength(0);
       expect(result.page).toBe(100);
     });
 
@@ -499,7 +499,7 @@ describe('WarehouseService', () => {
       const result = await service.findOne('warehouse-uuid-1');
 
       expect(result.success).toBe(true);
-      expect(result.warehouse).toEqual(mockWarehouse);
+      expect(result.data).toEqual(mockWarehouse);
       expect(result.stats).toBeDefined();
       expect(cacheService.getOrSet).toHaveBeenCalled();
     });
@@ -532,7 +532,7 @@ describe('WarehouseService', () => {
       const result = await service.update('warehouse-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.warehouse.name).toBe('Updated Warehouse');
+      expect(result.data.name).toBe('Updated Warehouse');
       expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
@@ -574,8 +574,8 @@ describe('WarehouseService', () => {
       const result = await service.update('warehouse-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.warehouse.name).toBe('New Name Only');
-      expect(result.warehouse.code).toBe(mockWarehouse.code);
+      expect(result.data.name).toBe('New Name Only');
+      expect(result.data.code).toBe(mockWarehouse.code);
     });
 
     // WH-TC58: Update only code
@@ -590,7 +590,7 @@ describe('WarehouseService', () => {
       const result = await service.update('warehouse-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.warehouse.code).toBe('WH-NEW');
+      expect(result.data.code).toBe('WH-NEW');
     });
 
     // WH-TC59: Update only address
@@ -604,7 +604,7 @@ describe('WarehouseService', () => {
       const result = await service.update('warehouse-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.warehouse.address).toBe('New Address');
+      expect(result.data.address).toBe('New Address');
     });
 
     // WH-TC60: Update only metadata
@@ -618,7 +618,7 @@ describe('WarehouseService', () => {
       const result = await service.update('warehouse-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.warehouse.metadata).toEqual({ updated: true });
+      expect(result.data.metadata).toEqual({ updated: true });
     });
 
     // WH-TC61: Update all fields at once
@@ -638,8 +638,8 @@ describe('WarehouseService', () => {
       const result = await service.update('warehouse-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.warehouse.code).toBe('WH-UPDATED');
-      expect(result.warehouse.name).toBe('Updated Name');
+      expect(result.data.code).toBe('WH-UPDATED');
+      expect(result.data.name).toBe('Updated Name');
     });
 
     // WH-TC62: Update with empty object
@@ -653,7 +653,7 @@ describe('WarehouseService', () => {
       const result = await service.update('warehouse-uuid-1', updateDto);
 
       expect(result.success).toBe(true);
-      expect(result.warehouse).toEqual(mockWarehouse);
+      expect(result.data).toEqual(mockWarehouse);
     });
 
     // WH-TC63: Update code to same value
@@ -740,7 +740,7 @@ describe('WarehouseService', () => {
       const result = await service.findByCode('WH-001');
 
       expect(result.success).toBe(true);
-      expect(result.warehouse).toEqual(mockWarehouse);
+      expect(result.data).toEqual(mockWarehouse);
       expect(result.stats).toBeDefined();
       expect(cacheService.getOrSet).toHaveBeenCalled();
       expect(repository.findByCode).toHaveBeenCalledWith('WH-001');

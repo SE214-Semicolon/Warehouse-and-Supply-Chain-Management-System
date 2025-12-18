@@ -63,7 +63,7 @@ export class WarehouseService {
 
     return {
       success: true,
-      warehouse,
+      data: warehouse,
       message: 'Warehouse created successfully',
     };
   }
@@ -121,7 +121,7 @@ export class WarehouseService {
 
     return {
       success: true,
-      warehouses,
+      data: warehouses,
       total,
       page,
       limit,
@@ -160,7 +160,7 @@ export class WarehouseService {
 
         return {
           success: true,
-          warehouse,
+          data: warehouse,
           stats,
         };
       },
@@ -198,7 +198,7 @@ export class WarehouseService {
 
         return {
           success: true,
-          warehouse,
+          data: warehouse,
           stats,
         };
       },
@@ -259,7 +259,7 @@ export class WarehouseService {
 
     return {
       success: true,
-      warehouse: updatedWarehouse,
+      data: updatedWarehouse,
       message: 'Warehouse updated successfully',
     };
   }

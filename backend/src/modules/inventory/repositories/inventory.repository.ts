@@ -1173,4 +1173,43 @@ export class InventoryRepository implements IInventoryRepository {
 
     return Object.values(grouped);
   }
+
+  /**
+   * Find inventory records by productId across multiple locations
+   * Used for inventory availability checks in shipment creation
+   */
+  async findInventoryByProductAndLocations(
+    productId: string,
+    locationIds: string[],
+  ): Promise<InventoryWithRelations[]> {
+    try {
+      this.logger.debug(
+        `Finding inventory for product ${productId} in locations: ${locationIds.join(', ')}`,
+      );
+      return this.prisma.inventory.findMany({
+        where: {
+          locationId: { in: locationIds },
+          productBatch: {
+            productId: productId,
+          },
+          deletedAt: null,
+        },
+        include: {
+          productBatch: {
+            include: {
+              product: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
+          location: true,
+        },
+      });
+    } catch (error) {
+      this.logger.error(`Error finding inventory for product ${productId} in locations:`, error);
+      throw error;
+    }
+  }
 }

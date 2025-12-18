@@ -40,7 +40,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/schedule": "^6.0.1",
     "@nestjs/swagger": "^11.2.0",
-    "@prisma/client": "^6.16.2",
+    "@prisma/client": "^6.19.1",
     "@willsoto/nestjs-prometheus": "^6.0.2",
     "bcryptjs": "^3.0.2",
     "class-transformer": "^0.5.1",
@@ -62,6 +62,7 @@
     "@nestjs/cli": "^11.0.10",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@testcontainers/mongodb": "^11.10.0",
     "@testcontainers/postgresql": "^11.10.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.0",
@@ -87,5 +88,8 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

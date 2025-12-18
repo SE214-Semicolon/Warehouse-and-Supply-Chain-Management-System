@@ -17,9 +17,9 @@ import { CreateForecastDto } from '../dto/create-forecast.dto';
 import { UpdateForecastDto } from '../dto/update-forecast.dto';
 import { QueryForecastDto } from '../dto/query-forecast.dto';
 import { RunAlgorithmDto } from '../dto/run-algorithm.dto';
-import { JwtAuthGuard } from '../../../auth/jwt.guard';
-import { RolesGuard } from '../../../auth/roles.guard';
-import { Roles } from '../../../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt.guard';
+import { RolesGuard } from 'src/modules/auth/guards/roles.guard';
+import { Roles } from 'src/modules/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 

@@ -5,7 +5,7 @@ export interface CreateAlertDto {
   severity: AlertSeverity;
   message: string;
   relatedEntity?: {
-    type: 'Product' | 'Inventory';
+    type: 'Product' | 'Inventory' | 'PurchaseOrder' | 'SalesOrder';
     id: string;
   };
 }

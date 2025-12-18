@@ -53,19 +53,20 @@ model Warehouse {
 }
 
 model Location {
-  id             String          @id @default(uuid()) @db.Uuid
-  warehouseId    String          @db.Uuid
-  code           String          @db.VarChar(100)
-  name           String?         @db.VarChar(200)
-  capacity       Int?
-  type           String?         @db.VarChar(50)
-  properties     Json?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  inventory      Inventory[]
-  warehouse      Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  stockMovesFrom StockMovement[] @relation("FromLoc")
-  stockMovesTo   StockMovement[] @relation("ToLoc")
+  id              String           @id @default(uuid()) @db.Uuid
+  warehouseId     String           @db.Uuid
+  code            String           @db.VarChar(100)
+  name            String?          @db.VarChar(200)
+  capacity        Int?
+  type            String?          @db.VarChar(50)
+  properties      Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  inventory       Inventory[]
+  warehouse       Warehouse        @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  stockMovesFrom  StockMovement[]  @relation("FromLoc")
+  stockMovesTo    StockMovement[]  @relation("ToLoc")
+  salesOrderItems SalesOrderItem[]
 
   @@unique([warehouseId, code])
   @@index([warehouseId], map: "idx_location_warehouse")
@@ -251,6 +252,7 @@ model SalesOrderItem {
   salesOrderId   String        @db.Uuid
   productId      String        @db.Uuid
   productBatchId String?       @db.Uuid
+  locationId     String?       @db.Uuid
   qty            Int
   qtyFulfilled   Int           @default(0)
   unitPrice      Decimal?      @db.Decimal(12, 2)
@@ -258,6 +260,7 @@ model SalesOrderItem {
   productBatch   ProductBatch? @relation(fields: [productBatchId], references: [id])
   product        Product       @relation(fields: [productId], references: [id])
   salesOrder     SalesOrder    @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  location       Location?     @relation(fields: [locationId], references: [id])
 }
 
 model Shipment {
