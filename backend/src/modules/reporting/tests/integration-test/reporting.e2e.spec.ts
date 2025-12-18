@@ -220,9 +220,7 @@ describe('Reporting Module - E2E Integration Tests', () => {
 
   describe('Authorization Tests', () => {
     it('should fail without authentication', async () => {
-      await request(app.getHttpServer())
-        .get('/reports/inventory/low-stock')
-        .expect(401);
+      await request(app.getHttpServer()).get('/reports/inventory/low-stock').expect(401);
     });
   });
 });

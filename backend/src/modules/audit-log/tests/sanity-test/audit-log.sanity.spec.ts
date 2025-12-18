@@ -156,9 +156,7 @@ describe('Audit Log Module - Sanity Tests', () => {
     });
 
     it('should deny unauthenticated access', async () => {
-      await request(app.getHttpServer())
-        .get('/audit-logs')
-        .expect(401);
+      await request(app.getHttpServer()).get('/audit-logs').expect(401);
     });
   });
 

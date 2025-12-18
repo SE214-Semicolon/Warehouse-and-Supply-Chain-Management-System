@@ -81,10 +81,7 @@ describe('Auth Module - Smoke Tests', () => {
     it('should LOGOUT', async () => {
       if (!refreshToken) return;
 
-      await request(app.getHttpServer())
-        .post('/auth/logout')
-        .send({ refreshToken })
-        .expect(200);
+      await request(app.getHttpServer()).post('/auth/logout').send({ refreshToken }).expect(200);
     });
   });
 });

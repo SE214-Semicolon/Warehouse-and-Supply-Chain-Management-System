@@ -115,9 +115,7 @@ describe('Audit Log Module - E2E Integration Tests', () => {
     });
 
     it('should fail without authentication', async () => {
-      await request(app.getHttpServer())
-        .get('/audit-logs')
-        .expect(401);
+      await request(app.getHttpServer()).get('/audit-logs').expect(401);
     });
 
     it('should fail with insufficient permissions (staff)', async () => {

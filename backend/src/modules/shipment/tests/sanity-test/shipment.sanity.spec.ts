@@ -257,9 +257,7 @@ describe('Shipment Module - Sanity Tests', () => {
 
   describe('SANITY-SHIP-05: Authorization', () => {
     it('should require authentication', async () => {
-      await request(app.getHttpServer())
-        .get('/shipments')
-        .expect(401);
+      await request(app.getHttpServer()).get('/shipments').expect(401);
     });
 
     it('should allow logistics role access', async () => {

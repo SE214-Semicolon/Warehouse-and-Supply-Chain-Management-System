@@ -187,17 +187,11 @@ describe('Auth Module - E2E Integration Tests', () => {
     });
 
     it('should logout successfully', async () => {
-      await request(app.getHttpServer())
-        .post('/auth/logout')
-        .send({ refreshToken })
-        .expect(200);
+      await request(app.getHttpServer()).post('/auth/logout').send({ refreshToken }).expect(200);
     });
 
     it('should fail to refresh after logout', async () => {
-      await request(app.getHttpServer())
-        .post('/auth/refresh')
-        .send({ refreshToken })
-        .expect(401);
+      await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken }).expect(401);
     });
   });
 
@@ -276,9 +270,7 @@ describe('Auth Module - E2E Integration Tests', () => {
     });
 
     it('should fail without token', async () => {
-      await request(app.getHttpServer())
-        .get('/auth/me')
-        .expect(401);
+      await request(app.getHttpServer()).get('/auth/me').expect(401);
     });
   });
 });

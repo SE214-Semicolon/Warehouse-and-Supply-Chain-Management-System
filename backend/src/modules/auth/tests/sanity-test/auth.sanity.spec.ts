@@ -52,7 +52,7 @@ describe('Auth Module - Sanity Tests', () => {
       expect(response.body.refreshToken).toBeDefined();
       expect(typeof response.body.accessToken).toBe('string');
       expect(typeof response.body.refreshToken).toBe('string');
-      
+
       accessToken = response.body.accessToken;
       refreshToken = response.body.refreshToken;
     });
@@ -170,15 +170,9 @@ describe('Auth Module - Sanity Tests', () => {
     });
 
     it('should logout and invalidate refresh token', async () => {
-      await request(app.getHttpServer())
-        .post('/auth/logout')
-        .send({ refreshToken })
-        .expect(200);
+      await request(app.getHttpServer()).post('/auth/logout').send({ refreshToken }).expect(200);
 
-      await request(app.getHttpServer())
-        .post('/auth/refresh')
-        .send({ refreshToken })
-        .expect(401);
+      await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken }).expect(401);
     });
   });
 });

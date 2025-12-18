@@ -146,7 +146,7 @@ describe('Reporting Module - Sanity Tests', () => {
 
     it('should support different grouping options', async () => {
       const groupByOptions = ['day', 'week', 'month', 'quarter'];
-      
+
       for (const groupBy of groupByOptions) {
         const response = await request(app.getHttpServer())
           .get('/reports/sales/sales-trends')
@@ -161,9 +161,7 @@ describe('Reporting Module - Sanity Tests', () => {
 
   describe('SANITY-REPORT-04: Authorization & Access', () => {
     it('should require authentication', async () => {
-      await request(app.getHttpServer())
-        .get('/reports/inventory/low-stock')
-        .expect(401);
+      await request(app.getHttpServer()).get('/reports/inventory/low-stock').expect(401);
     });
 
     it('should allow analyst access to all reports', async () => {
@@ -200,7 +198,7 @@ describe('Reporting Module - Sanity Tests', () => {
 
     it('should respond within reasonable time (< 5s)', async () => {
       const startTime = Date.now();
-      
+
       await request(app.getHttpServer())
         .get('/reports/inventory/low-stock')
         .set('Authorization', analystToken)
