@@ -3,10 +3,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { AuthService } from '../services/auth.service';
-import { UsersService } from '../../users/services/users.service';
-import { PrismaService } from '../../../database/prisma/prisma.service';
-import { InviteService } from '../services/invite.service';
+import { AuthService } from '../../services/auth.service';
+import { UsersService } from '../../../users/services/users.service';
+import { PrismaService } from '../../../../database/prisma/prisma.service';
+import { InviteService } from '../../services/invite.service';
 import { UserRole } from '@prisma/client';
 import bcryptjs from 'bcryptjs';
 

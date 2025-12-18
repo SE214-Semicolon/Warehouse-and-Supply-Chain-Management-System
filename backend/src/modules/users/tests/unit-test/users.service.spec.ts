@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { UsersService } from '../services/users.service';
-import { PrismaService } from '../../../database/prisma/prisma.service';
+import { UsersService } from '../../services/users.service';
+import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import bcryptjs from 'bcryptjs';
 

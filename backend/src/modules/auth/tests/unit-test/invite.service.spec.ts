@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { InviteService } from '../services/invite.service';
-import { PrismaService } from '../../../database/prisma/prisma.service';
+import { InviteService } from '../../services/invite.service';
+import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { CreateInviteDto } from '../dto/create-invite.dto';
 import { QueryInviteDto } from '../dto/query-invite.dto';
 import { UserRole } from '@prisma/client';

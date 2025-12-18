@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { InventoryService } from '../services/inventory.service';
-import { InventoryRepository } from '../repositories/inventory.repository';
-import { CacheService } from '../../../cache/cache.service';
-import { AlertGenerationService } from '../../alerts/services/alert-generation.service';
+import { InventoryService } from '../../services/inventory.service';
+import { InventoryRepository } from '../../repositories/inventory.repository';
+import { CacheService } from '../../../../cache/cache.service';
+import { AlertGenerationService } from '../../../alerts/services/alert-generation.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { AdjustmentReason } from '../dto/adjust-inventory.dto';
+import { AdjustmentReason } from '../../dto/adjust-inventory.dto';
 
 describe('InventoryService', () => {
   let service: InventoryService;

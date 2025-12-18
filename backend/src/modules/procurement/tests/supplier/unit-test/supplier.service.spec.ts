@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { SupplierService } from '../../services/supplier.service';
-import { SupplierRepository } from '../../repositories/supplier.repository';
+import { SupplierService } from '../../../services/supplier.service';
+import { SupplierRepository } from '../../../repositories/supplier.repository';
 import { CacheService } from 'src/cache/cache.service';
 import { Supplier } from '@prisma/client';
 

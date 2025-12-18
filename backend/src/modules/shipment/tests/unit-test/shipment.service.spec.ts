@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { ShipmentService } from '../services/shipment.service';
-import { ShipmentRepository } from '../repositories/shipment.repository';
-import { WarehouseRepository } from '../../warehouse/repositories/warehouse.repository';
-import { SalesOrderRepository } from '../../sales/repositories/sales-order.repository';
-import { InventoryRepository } from '../../inventory/repositories/inventory.repository';
+import { ShipmentService } from '../../services/shipment.service';
+import { ShipmentRepository } from '../../repositories/shipment.repository';
+import { WarehouseRepository } from '../../../warehouse/repositories/warehouse.repository';
+import { SalesOrderRepository } from '../../../sales/repositories/sales-order.repository';
+import { InventoryRepository } from '../../../inventory/repositories/inventory.repository';
 import { ShipmentStatus } from '@prisma/client';
 
 describe('ShipmentService', () => {
