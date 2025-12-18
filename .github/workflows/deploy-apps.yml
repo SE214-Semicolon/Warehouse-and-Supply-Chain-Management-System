@@ -111,10 +111,20 @@ jobs:
         ./scripts/run-tests-by-type.sh integration -- --testTimeout=120000
       env:
         NODE_ENV: test
+        # Testcontainers will provision databases dynamically
+        # These are fallback/dummy values for config validation
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
+        POSTGRES_URL: postgresql://test:test@localhost:5432/test
+        MONGODB_URL: mongodb://localhost:27017/test
+        MONGO_URL: mongodb://localhost:27017/test
+        # JWT secrets for authentication in tests
         JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
         JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
         JWT_ACCESS_TTL: 15m
         JWT_REFRESH_TTL: 7d
+        # Testcontainers configuration for GitHub Actions
+        TESTCONTAINERS_HOST_OVERRIDE: localhost
+        TESTCONTAINERS_RYUK_DISABLED: true
         
 
     # ============================================
@@ -128,10 +138,16 @@ jobs:
         ./scripts/run-tests-by-type.sh smoke
       env:
         NODE_ENV: test
+        # Provide dummy values for config validation (smoke tests may mock DB)
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
+        POSTGRES_URL: postgresql://test:test@localhost:5432/test
+        MONGODB_URL: mongodb://localhost:27017/test
+        MONGO_URL: mongodb://localhost:27017/test
         JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
         JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
         JWT_ACCESS_TTL: 15m
         JWT_REFRESH_TTL: 7d
+
 
     # ============================================
     # FRONTEND TESTS (TODO: Enable when ready)

@@ -213,7 +213,7 @@ case "$1" in
     generate_matrix_json
     ;;
   --help|-h|"")
-    echo "Usage: $0 <type> [module]"
+    echo "Usage: $0 <type> [module] [-- jest-args...]"
     echo "       $0 --list-modules    List all modules as JSON"
     echo "       $0 --list-types      List all test types as JSON"
     echo "       $0 --matrix          Output matrix JSON for GitHub Actions"
@@ -224,10 +224,11 @@ case "$1" in
     echo "  $0 unit                   Run unit tests for all modules"
     echo "  $0 unit order             Run unit tests for order module only"
     echo "  $0 integration product    Run integration tests for product module"
+    echo "  $0 integration -- --testTimeout=120000   Pass extra args to Jest"
     echo "  $0 --matrix               Generate GitHub Actions matrix"
     exit 0
     ;;
   *)
-    run_tests "$1" "$2"
+    run_tests "$@"
     ;;
 esac
