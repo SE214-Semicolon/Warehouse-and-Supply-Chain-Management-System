@@ -4,7 +4,7 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 const saltRounds = 10;
 
-async function seedUsers() {
+export async function seedUsers() {
   console.log('🌱 Seeding users...');
 
   const hashedPassword = await bcrypt.hash('admin123', saltRounds);
