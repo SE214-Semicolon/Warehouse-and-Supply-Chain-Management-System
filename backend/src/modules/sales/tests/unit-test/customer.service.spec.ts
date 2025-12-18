@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { CustomerService } from '../../../services/customer.service';
-import { CustomerRepository } from '../../../repositories/customer.repository';
+import { CustomerService } from '../../services/customer.service';
+import { CustomerRepository } from '../../repositories/customer.repository';
 import { Customer } from '@prisma/client';
 
 describe('CustomerService - Unit Tests', () => {

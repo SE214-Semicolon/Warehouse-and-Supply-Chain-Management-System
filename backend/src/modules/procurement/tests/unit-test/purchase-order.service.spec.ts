@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { PurchaseOrderService } from '../../../services/purchase-order.service';
-import { PurchaseOrderRepository } from '../../../repositories/purchase-order.repository';
-import { InventoryService } from '../../../../inventory/services/inventory.service';
+import { PurchaseOrderService } from '../../services/purchase-order.service';
+import { PurchaseOrderRepository } from '../../repositories/purchase-order.repository';
+import { InventoryService } from '../../../inventory/services/inventory.service';
 import { PoStatus } from '@prisma/client';
 
 describe('Purchase Order Service', () => {

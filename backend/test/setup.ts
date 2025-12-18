@@ -2,6 +2,7 @@
 import * as dotenv from 'dotenv';
 import { join } from 'path';
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { MongoDBContainer, StartedMongoDBContainer } from '@testcontainers/mongodb';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -19,22 +20,31 @@ if (result.error) {
 
 // Ensure test environment
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
-process.env.MONGO_URL =
-  process.env.MONGO_URL ||
-  'mongodb://mongo_user:mongo_pass@localhost:27017/warehouse_db?authSource=admin';
 
 /**
  * DB strategy for integration tests:
- * - Use Testcontainers Postgres to avoid depending on local credentials.
- * - Run prisma migrations against the container before tests start.
+ * - Use Testcontainers for both PostgreSQL and MongoDB to avoid depending on local credentials.
+ * - Run prisma migrations against the PostgreSQL container before tests start.
+ * - Both containers are isolated and cleaned up after tests.
  *
  * IMPORTANT: We do NOT change any test logic/assertions. Only environment wiring.
  */
 let pgContainer: StartedPostgreSqlContainer | undefined;
+let mongoContainer: StartedMongoDBContainer | undefined;
 let originalDatabaseUrl: string | undefined;
+let originalMongoUrl: string | undefined;
 
 beforeAll(async () => {
-  // Provision an isolated Postgres for this test file to avoid local DB dependencies.
+  // Only spawn containers for integration/e2e tests, not unit/smoke/sanity tests
+  const testPath = expect.getState().testPath || '';
+  const isIntegrationTest = testPath.includes('integration-test') || testPath.includes('e2e.spec');
+
+  if (!isIntegrationTest) {
+    // Skip Testcontainers for unit/smoke/sanity tests
+    return;
+  }
+
+  // Provision isolated PostgreSQL for tests
   originalDatabaseUrl = process.env.DATABASE_URL;
   pgContainer = await new PostgreSqlContainer('postgres:15-alpine')
     .withDatabase('warehouse_test_db')
@@ -44,6 +54,12 @@ beforeAll(async () => {
     .start();
 
   process.env.DATABASE_URL = pgContainer.getConnectionUri();
+
+  // Provision isolated MongoDB for tests
+  originalMongoUrl = process.env.MONGO_URL;
+  mongoContainer = await new MongoDBContainer('mongo:7').withExposedPorts(27017).start();
+
+  process.env.MONGO_URL = mongoContainer.getConnectionString();
 
   // Ensure schema exists for suites that don't run migrations themselves.
   await execAsync('npx prisma migrate deploy', {
@@ -56,9 +72,18 @@ afterAll(async () => {
     await pgContainer.stop();
     pgContainer = undefined;
   }
+  if (mongoContainer) {
+    await mongoContainer.stop();
+    mongoContainer = undefined;
+  }
   if (originalDatabaseUrl) {
     process.env.DATABASE_URL = originalDatabaseUrl;
   } else {
     delete process.env.DATABASE_URL;
+  }
+  if (originalMongoUrl) {
+    process.env.MONGO_URL = originalMongoUrl;
+  } else {
+    delete process.env.MONGO_URL;
   }
 }, 60000);
