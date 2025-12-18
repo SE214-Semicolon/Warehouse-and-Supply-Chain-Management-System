@@ -114,9 +114,37 @@ generate_matrix_json() {
 }
 
 # Run tests for a specific module and type
+# Usage: run_tests <type> [module] [-- extra jest args...]
 run_tests() {
   local type=$1
-  local module=$2
+  shift
+  local module=""
+  local jest_args=()
+  
+  # Parse remaining arguments: module name (optional) and extra jest args after --
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --)
+        shift
+        jest_args=("$@")
+        break
+        ;;
+      --*)
+        # Jest argument, add to jest_args
+        jest_args+=("$1")
+        ;;
+      *)
+        # Module name (first non-option argument)
+        if [ -z "$module" ]; then
+          module="$1"
+        else
+          jest_args+=("$1")
+        fi
+        ;;
+    esac
+    shift
+  done
+  
   local type_dir=$(get_type_dir "$type")
   local jest_config=$(get_jest_config "$type")
   
@@ -142,7 +170,8 @@ run_tests() {
     fi
     
     echo "Running $type tests for module: $module"
-    npx jest "$full_path" --config "$jest_config"
+    echo "Jest args: ${jest_args[*]}"
+    npx jest "$full_path" --config "$jest_config" "${jest_args[@]}"
   else
     # Run tests for all modules
     echo "Running $type tests for all modules..."
@@ -167,7 +196,8 @@ run_tests() {
     fi
     
     echo "Found test directories: ${test_paths[*]}"
-    npx jest "${test_paths[@]}" --config "$jest_config"
+    echo "Jest args: ${jest_args[*]}"
+    npx jest "${test_paths[@]}" --config "$jest_config" "${jest_args[@]}"
   fi
 }
 

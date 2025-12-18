@@ -92,6 +92,13 @@ jobs:
         ./scripts/run-tests-by-type.sh unit
       env:
         NODE_ENV: test
+        # Provide dummy values for config validation (unit tests mock DB connections)
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
+        MONGO_URL: mongodb://localhost:27017/test
+        JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
+        JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
+        JWT_ACCESS_TTL: 15m
+        JWT_REFRESH_TTL: 7d
 
     # ============================================
     # INTEGRATION TESTS (uses Testcontainers for PostgreSQL + MongoDB)
@@ -101,7 +108,7 @@ jobs:
       working-directory: ./backend
       run: |
         chmod +x scripts/run-tests-by-type.sh
-        ./scripts/run-tests-by-type.sh integration --testTimeout=120000
+        ./scripts/run-tests-by-type.sh integration -- --testTimeout=120000
       env:
         NODE_ENV: test
         JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
