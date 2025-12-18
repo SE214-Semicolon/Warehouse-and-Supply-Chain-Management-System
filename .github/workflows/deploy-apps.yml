@@ -44,8 +44,22 @@ jobs:
     outputs:
       backend-changed: ${{ steps.changes.outputs.backend }}
       frontend-changed: ${{ steps.changes.outputs.frontend }}
-    
-    steps:
+    # NOTE: For integration tests
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:         
     - name: Checkout code
       uses: actions/checkout@v4
       with:
@@ -94,46 +108,31 @@ jobs:
         NODE_ENV: test
 
     # ============================================
-    # INTEGRATION TESTS (TODO: Enable when ready)
+    # INTEGRATION TESTS
     # ============================================
-    # - name: Run Backend Integration Tests
-    #   if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
-    #   working-directory: ./backend
-    #   run: |
-    #     chmod +x scripts/run-tests-by-type.sh
-    #     ./scripts/run-tests-by-type.sh integration
-    #   env:
-    #     NODE_ENV: test
-    #     DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
-    #
-    # NOTE: For integration tests, add this service at job level:
-    # services:
-    #   postgres:
-    #     image: postgres:15
-    #     env:
-    #       POSTGRES_USER: test_user
-    #       POSTGRES_PASSWORD: test_password
-    #       POSTGRES_DB: test_db
-    #     ports:
-    #       - 5432:5432
-    #     options: >-
-    #       --health-cmd pg_isready
-    #       --health-interval 10s
-    #       --health-timeout 5s
-    #       --health-retries 5
+    - name: Run Backend Integration Tests
+      if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+      working-directory: ./backend
+      run: |
+        chmod +x scripts/run-tests-by-type.sh
+        ./scripts/run-tests-by-type.sh integration
+      env:
+        NODE_ENV: test
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        
 
     # ============================================
-    # SMOKE TESTS (TODO: Enable when ready)
+    # SMOKE TESTS
     # ============================================
-    # - name: Run Backend Smoke Tests
-    #   if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
-    #   working-directory: ./backend
-    #   run: |
-    #     chmod +x scripts/run-tests-by-type.sh
-    #     ./scripts/run-tests-by-type.sh smoke
-    #   env:
-    #     NODE_ENV: test
-    #     DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+    - name: Run Backend Smoke Tests
+      if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+      working-directory: ./backend
+      run: |
+        chmod +x scripts/run-tests-by-type.sh
+        ./scripts/run-tests-by-type.sh smoke
+      env:
+        NODE_ENV: test
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
 
     # ============================================
     # FRONTEND TESTS (TODO: Enable when ready)
