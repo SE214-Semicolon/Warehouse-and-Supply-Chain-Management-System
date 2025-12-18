@@ -133,7 +133,7 @@ describe('AuthService', () => {
           findUnique: prisma.userInvite.findUnique,
           update: prisma.userInvite.update,
         },
-      };
+      } as any;
       return callback(tx);
     });
   };
@@ -158,8 +158,8 @@ describe('AuthService', () => {
 
       usersService.findByEmail.mockResolvedValue(null);
       mockTransaction(async () => newUser);
-      prisma.user.create.mockResolvedValue(newUser);
-      prisma.refreshToken.create.mockResolvedValue(mockRefreshToken);
+      (prisma.user.create as jest.Mock).mockResolvedValue(newUser);
+      (prisma.refreshToken.create as jest.Mock).mockResolvedValue(mockRefreshToken);
       jwtService.signAsync
         .mockResolvedValueOnce('access-token')
         .mockResolvedValueOnce('refresh-token');
@@ -195,14 +195,14 @@ describe('AuthService', () => {
       usersService.findByEmail.mockResolvedValue(null);
       inviteService.getInviteByToken.mockResolvedValue(mockInvite);
       mockTransaction(async () => newUser);
-      prisma.user.create.mockResolvedValue(newUser);
-      prisma.userInvite.findUnique.mockResolvedValue(mockInvite);
-      prisma.userInvite.update.mockResolvedValue({
+      (prisma.user.create as jest.Mock).mockResolvedValue(newUser);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(mockInvite);
+      (prisma.userInvite.update as jest.Mock).mockResolvedValue({
         ...mockInvite,
         usedAt: new Date(),
         usedById: newUser.id,
       });
-      prisma.refreshToken.create.mockResolvedValue(mockRefreshToken);
+      (prisma.refreshToken.create as jest.Mock).mockResolvedValue(mockRefreshToken);
       jwtService.signAsync
         .mockResolvedValueOnce('access-token')
         .mockResolvedValueOnce('refresh-token');
@@ -290,14 +290,14 @@ describe('AuthService', () => {
       usersService.findByEmail.mockResolvedValue(null);
       inviteService.getInviteByToken.mockResolvedValue(mockInvite);
       mockTransaction(async () => newUser);
-      prisma.user.create.mockResolvedValue(newUser);
-      prisma.userInvite.findUnique.mockResolvedValue(mockInvite);
-      prisma.userInvite.update.mockResolvedValue({
+      (prisma.user.create as jest.Mock).mockResolvedValue(newUser);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(mockInvite);
+      (prisma.userInvite.update as jest.Mock).mockResolvedValue({
         ...mockInvite,
         usedAt: new Date(),
         usedById: newUser.id,
       });
-      prisma.refreshToken.create.mockResolvedValue(mockRefreshToken);
+      (prisma.refreshToken.create as jest.Mock).mockResolvedValue(mockRefreshToken);
       jwtService.signAsync
         .mockResolvedValueOnce('access-token')
         .mockResolvedValueOnce('refresh-token');
@@ -321,7 +321,7 @@ describe('AuthService', () => {
     it('should login successfully with valid credentials', async () => {
       usersService.findByEmail.mockResolvedValue(mockUser);
       (bcryptjs.compare as jest.Mock).mockResolvedValue(true);
-      prisma.refreshToken.create.mockResolvedValue(mockRefreshToken);
+      (prisma.refreshToken.create as jest.Mock).mockResolvedValue(mockRefreshToken);
       jwtService.signAsync
         .mockResolvedValueOnce('access-token')
         .mockResolvedValueOnce('refresh-token');
@@ -385,9 +385,9 @@ describe('AuthService', () => {
       const tokenId = 'refresh-token-uuid-1';
       const userId = 'user-uuid-1';
 
-      prisma.refreshToken.findUnique.mockResolvedValue(mockRefreshToken);
+      (prisma.refreshToken.findUnique as jest.Mock).mockResolvedValue(mockRefreshToken);
       usersService.findById.mockResolvedValue(mockUser);
-      prisma.refreshToken.create.mockResolvedValue(mockRefreshToken);
+      (prisma.refreshToken.create as jest.Mock).mockResolvedValue(mockRefreshToken);
       jwtService.signAsync
         .mockResolvedValueOnce('new-access-token')
         .mockResolvedValueOnce('new-refresh-token');
@@ -403,7 +403,7 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException if refresh token not found', async () => {
-      prisma.refreshToken.findUnique.mockResolvedValue(null);
+      (prisma.refreshToken.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(service.refresh('user-uuid-1', 'invalid-token-id')).rejects.toThrow(
         new UnauthorizedException('Invalid refresh token'),
@@ -412,7 +412,7 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException if userId does not match', async () => {
       const tokenWithDifferentUser = { ...mockRefreshToken, userId: 'different-user-id' };
-      prisma.refreshToken.findUnique.mockResolvedValue(tokenWithDifferentUser);
+      (prisma.refreshToken.findUnique as jest.Mock).mockResolvedValue(tokenWithDifferentUser);
 
       await expect(service.refresh('user-uuid-1', 'refresh-token-uuid-1')).rejects.toThrow(
         new UnauthorizedException('Invalid refresh token'),
@@ -421,7 +421,7 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException if refresh token is revoked', async () => {
       const revokedToken = { ...mockRefreshToken, revokedAt: new Date() };
-      prisma.refreshToken.findUnique.mockResolvedValue(revokedToken);
+      (prisma.refreshToken.findUnique as jest.Mock).mockResolvedValue(revokedToken);
 
       await expect(service.refresh('user-uuid-1', 'refresh-token-uuid-1')).rejects.toThrow(
         new UnauthorizedException('Invalid refresh token'),
@@ -430,7 +430,7 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException if refresh token has expired', async () => {
       const expiredToken = { ...mockRefreshToken, expiresAt: new Date(Date.now() - 1000) };
-      prisma.refreshToken.findUnique.mockResolvedValue(expiredToken);
+      (prisma.refreshToken.findUnique as jest.Mock).mockResolvedValue(expiredToken);
 
       await expect(service.refresh('user-uuid-1', 'refresh-token-uuid-1')).rejects.toThrow(
         new UnauthorizedException('Refresh token has expired'),
@@ -438,7 +438,7 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException if user is not found', async () => {
-      prisma.refreshToken.findUnique.mockResolvedValue(mockRefreshToken);
+      (prisma.refreshToken.findUnique as jest.Mock).mockResolvedValue(mockRefreshToken);
       usersService.findById.mockResolvedValue(null);
 
       await expect(service.refresh('user-uuid-1', 'refresh-token-uuid-1')).rejects.toThrow(
@@ -448,7 +448,7 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException if user account is inactive', async () => {
       const inactiveUser = { ...mockUser, active: false };
-      prisma.refreshToken.findUnique.mockResolvedValue(mockRefreshToken);
+      (prisma.refreshToken.findUnique as jest.Mock).mockResolvedValue(mockRefreshToken);
       usersService.findById.mockResolvedValue(inactiveUser);
 
       await expect(service.refresh('user-uuid-1', 'refresh-token-uuid-1')).rejects.toThrow(
@@ -463,9 +463,9 @@ describe('AuthService', () => {
       const payload = { sub: 'user-uuid-1', jti: 'refresh-token-uuid-1' };
 
       jwtService.verifyAsync.mockResolvedValue(payload);
-      prisma.refreshToken.findUnique.mockResolvedValue(mockRefreshToken);
+      (prisma.refreshToken.findUnique as jest.Mock).mockResolvedValue(mockRefreshToken);
       usersService.findById.mockResolvedValue(mockUser);
-      prisma.refreshToken.create.mockResolvedValue(mockRefreshToken);
+      (prisma.refreshToken.create as jest.Mock).mockResolvedValue(mockRefreshToken);
       jwtService.signAsync
         .mockResolvedValueOnce('new-access-token')
         .mockResolvedValueOnce('new-refresh-token');
@@ -495,8 +495,11 @@ describe('AuthService', () => {
       const payload = { sub: 'user-uuid-1', jti: 'refresh-token-uuid-1' };
 
       jwtService.verifyAsync.mockResolvedValue(payload);
-      prisma.refreshToken.findUnique.mockResolvedValue(mockRefreshToken);
-      prisma.refreshToken.update.mockResolvedValue({ ...mockRefreshToken, revokedAt: new Date() });
+      (prisma.refreshToken.findUnique as jest.Mock).mockResolvedValue(mockRefreshToken);
+      (prisma.refreshToken.update as jest.Mock).mockResolvedValue({
+        ...mockRefreshToken,
+        revokedAt: new Date(),
+      });
 
       const result = await service.logout(refreshToken);
 
@@ -515,7 +518,7 @@ describe('AuthService', () => {
       const payload = { sub: 'user-uuid-1', jti: 'refresh-token-uuid-1' };
 
       jwtService.verifyAsync.mockResolvedValue(payload);
-      prisma.refreshToken.findUnique.mockResolvedValue(null);
+      (prisma.refreshToken.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(service.logout(refreshToken)).rejects.toThrow(
         new UnauthorizedException('Invalid refresh token'),
@@ -541,8 +544,11 @@ describe('AuthService', () => {
       usersService.findById.mockResolvedValue(mockUser);
       (bcryptjs.compare as jest.Mock).mockResolvedValue(true);
       (bcryptjs.hash as jest.Mock).mockResolvedValue('new-hashed-password');
-      prisma.user.update.mockResolvedValue({ ...mockUser, passwordHash: 'new-hashed-password' });
-      prisma.refreshToken.updateMany.mockResolvedValue({ count: 3 });
+      (prisma.user.update as jest.Mock).mockResolvedValue({
+        ...mockUser,
+        passwordHash: 'new-hashed-password',
+      });
+      (prisma.refreshToken.updateMany as jest.Mock).mockResolvedValue({ count: 3 });
 
       const result = await service.changePassword(userId, currentPassword, newPassword);
 
@@ -602,7 +608,7 @@ describe('AuthService', () => {
     it('should create refresh token with correct TTL from environment', async () => {
       usersService.findByEmail.mockResolvedValue(mockUser);
       (bcryptjs.compare as jest.Mock).mockResolvedValue(true);
-      prisma.refreshToken.create.mockResolvedValue(mockRefreshToken);
+      (prisma.refreshToken.create as jest.Mock).mockResolvedValue(mockRefreshToken);
       jwtService.signAsync
         .mockResolvedValueOnce('access-token')
         .mockResolvedValueOnce('refresh-token');
@@ -636,7 +642,7 @@ describe('AuthService', () => {
       (bcryptjs.compare as jest.Mock).mockResolvedValue(true);
 
       let capturedExpiresAt: Date | null = null;
-      prisma.refreshToken.create.mockImplementation((args: any) => {
+      (prisma.refreshToken.create as jest.Mock).mockImplementation((args: any) => {
         capturedExpiresAt = args.data.expiresAt;
         return Promise.resolve(mockRefreshToken);
       });
@@ -674,8 +680,8 @@ describe('AuthService', () => {
 
       usersService.findByEmail.mockResolvedValue(null);
       mockTransaction(async () => newUser);
-      prisma.user.create.mockResolvedValue(newUser);
-      prisma.refreshToken.create.mockResolvedValue(mockRefreshToken);
+      (prisma.user.create as jest.Mock).mockResolvedValue(newUser);
+      (prisma.refreshToken.create as jest.Mock).mockResolvedValue(mockRefreshToken);
       jwtService.signAsync
         .mockResolvedValueOnce('access-token')
         .mockResolvedValueOnce('refresh-token');
@@ -690,7 +696,7 @@ describe('AuthService', () => {
       const payload = { sub: 'user-uuid-1', jti: 'non-existent-token-id' };
 
       jwtService.verifyAsync.mockResolvedValue(payload);
-      prisma.refreshToken.findUnique.mockResolvedValue(null);
+      (prisma.refreshToken.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(service.logout(refreshToken)).rejects.toThrow(
         new UnauthorizedException('Invalid refresh token'),
@@ -707,14 +713,17 @@ describe('AuthService', () => {
         usersService.findByEmail.mockResolvedValue(null);
         inviteService.getInviteByToken.mockResolvedValue(invite);
         mockTransaction(async () => newUser);
-        prisma.user.create.mockResolvedValue(newUser);
-        prisma.userInvite.findUnique.mockResolvedValue(invite);
-        prisma.userInvite.update.mockResolvedValue({
+        (prisma.user.create as jest.Mock).mockResolvedValue(newUser);
+        (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(invite);
+        (prisma.userInvite.update as jest.Mock).mockResolvedValue({
           ...invite,
           usedAt: new Date(),
           usedById: newUser.id,
         });
-        prisma.refreshToken.create.mockResolvedValue({ ...mockRefreshToken, userRole: role });
+        (prisma.refreshToken.create as jest.Mock).mockResolvedValue({
+          ...mockRefreshToken,
+          userRole: role,
+        });
         jwtService.signAsync
           .mockResolvedValueOnce('access-token')
           .mockResolvedValueOnce('refresh-token');

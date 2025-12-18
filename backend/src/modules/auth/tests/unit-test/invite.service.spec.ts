@@ -2,8 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { InviteService } from '../../services/invite.service';
 import { PrismaService } from '../../../../database/prisma/prisma.service';
-import { CreateInviteDto } from '../dto/create-invite.dto';
-import { QueryInviteDto } from '../dto/query-invite.dto';
+import { CreateInviteDto } from '../../dto/create-invite.dto';
+import { QueryInviteDto } from '../../dto/query-invite.dto';
 import { UserRole } from '@prisma/client';
 
 describe('InviteService', () => {
@@ -77,11 +77,11 @@ describe('InviteService', () => {
     const createdById = 'admin-uuid';
 
     it('should create a new invite successfully', async () => {
-      prisma.userInvite.findFirst.mockResolvedValue(null);
-      prisma.user.findUnique
+      (prisma.userInvite.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.user.findUnique as jest.Mock)
         .mockResolvedValueOnce(null) // Email check
         .mockResolvedValueOnce(mockCreatedBy); // CreatedBy lookup
-      prisma.userInvite.create.mockResolvedValue(mockInvite);
+      (prisma.userInvite.create as jest.Mock).mockResolvedValue(mockInvite);
 
       const result = await service.createInvite(createDto, createdById);
 
@@ -111,7 +111,7 @@ describe('InviteService', () => {
 
     it('should throw BadRequestException if email has pending invite', async () => {
       const pendingInvite = { ...mockInvite, token: 'existing-token' };
-      prisma.userInvite.findFirst.mockResolvedValue(pendingInvite);
+      (prisma.userInvite.findFirst as jest.Mock).mockResolvedValue(pendingInvite);
 
       await expect(service.createInvite(createDto, createdById)).rejects.toThrow(
         BadRequestException,
@@ -123,8 +123,8 @@ describe('InviteService', () => {
     });
 
     it('should throw BadRequestException if email is already registered', async () => {
-      prisma.userInvite.findFirst.mockResolvedValue(null);
-      prisma.user.findUnique.mockResolvedValue(mockUser);
+      (prisma.userInvite.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
       await expect(service.createInvite(createDto, createdById)).rejects.toThrow(
         BadRequestException,
@@ -136,9 +136,9 @@ describe('InviteService', () => {
     });
 
     it('should generate unique token in correct format', async () => {
-      prisma.userInvite.findFirst.mockResolvedValue(null);
-      prisma.user.findUnique.mockResolvedValue(null);
-      prisma.userInvite.create.mockImplementation((args: any) =>
+      (prisma.userInvite.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.userInvite.create as jest.Mock).mockImplementation((args: any) =>
         Promise.resolve({ ...mockInvite, token: args.data.token }),
       );
 
@@ -149,13 +149,15 @@ describe('InviteService', () => {
 
     it('should use default expiry days if not provided', async () => {
       const dtoWithoutExpiry = { email: 'test@example.com', role: UserRole.manager };
-      prisma.userInvite.findFirst.mockResolvedValue(null);
-      prisma.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(mockCreatedBy);
-      prisma.userInvite.create.mockResolvedValue(mockInvite);
+      (prisma.userInvite.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.user.findUnique as jest.Mock)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(mockCreatedBy);
+      (prisma.userInvite.create as jest.Mock).mockResolvedValue(mockInvite);
 
       await service.createInvite(dtoWithoutExpiry, createdById);
 
-      const createCall = prisma.userInvite.create.mock.calls[0][0];
+      const createCall = (prisma.userInvite.create as jest.Mock).mock.calls[0][0];
       const expiryDate = createCall.data.expiresAt;
       const daysDiff = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
@@ -165,13 +167,15 @@ describe('InviteService', () => {
 
     it('should calculate correct expiry date with custom expiryDays', async () => {
       const customDto = { ...createDto, expiryDays: 14 };
-      prisma.userInvite.findFirst.mockResolvedValue(null);
-      prisma.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(mockCreatedBy);
-      prisma.userInvite.create.mockResolvedValue(mockInvite);
+      (prisma.userInvite.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.user.findUnique as jest.Mock)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(mockCreatedBy);
+      (prisma.userInvite.create as jest.Mock).mockResolvedValue(mockInvite);
 
       await service.createInvite(customDto, createdById);
 
-      const createCall = prisma.userInvite.create.mock.calls[0][0];
+      const createCall = (prisma.userInvite.create as jest.Mock).mock.calls[0][0];
       const expiryDate = createCall.data.expiresAt;
       const daysDiff = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
@@ -180,9 +184,9 @@ describe('InviteService', () => {
     });
 
     it('should handle createdBy lookup returning null gracefully', async () => {
-      prisma.userInvite.findFirst.mockResolvedValue(null);
-      prisma.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(null); // CreatedBy not found
-      prisma.userInvite.create.mockResolvedValue(mockInvite);
+      (prisma.userInvite.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce(null).mockResolvedValueOnce(null); // CreatedBy not found
+      (prisma.userInvite.create as jest.Mock).mockResolvedValue(mockInvite);
 
       const result = await service.createInvite(createDto, createdById);
 
@@ -202,8 +206,8 @@ describe('InviteService', () => {
 
     it('should list invites with default pagination', async () => {
       const query: QueryInviteDto = {};
-      prisma.userInvite.findMany.mockResolvedValue(mockInvites);
-      prisma.userInvite.count.mockResolvedValue(2);
+      (prisma.userInvite.findMany as jest.Mock).mockResolvedValue(mockInvites);
+      (prisma.userInvite.count as jest.Mock).mockResolvedValue(2);
 
       const result = await service.listInvites(query);
 
@@ -227,8 +231,8 @@ describe('InviteService', () => {
 
     it('should list invites with custom pagination', async () => {
       const query: QueryInviteDto = { page: 2, pageSize: 10 };
-      prisma.userInvite.findMany.mockResolvedValue(mockInvites);
-      prisma.userInvite.count.mockResolvedValue(25);
+      (prisma.userInvite.findMany as jest.Mock).mockResolvedValue(mockInvites);
+      (prisma.userInvite.count as jest.Mock).mockResolvedValue(25);
 
       const result = await service.listInvites(query);
 
@@ -249,8 +253,8 @@ describe('InviteService', () => {
 
     it('should filter by email', async () => {
       const query: QueryInviteDto = { email: 'test@example.com' };
-      prisma.userInvite.findMany.mockResolvedValue([mockInvites[0]]);
-      prisma.userInvite.count.mockResolvedValue(1);
+      (prisma.userInvite.findMany as jest.Mock).mockResolvedValue([mockInvites[0]]);
+      (prisma.userInvite.count as jest.Mock).mockResolvedValue(1);
 
       await service.listInvites(query);
 
@@ -265,8 +269,8 @@ describe('InviteService', () => {
 
     it('should filter by role', async () => {
       const query: QueryInviteDto = { role: UserRole.manager };
-      prisma.userInvite.findMany.mockResolvedValue(mockInvites);
-      prisma.userInvite.count.mockResolvedValue(2);
+      (prisma.userInvite.findMany as jest.Mock).mockResolvedValue(mockInvites);
+      (prisma.userInvite.count as jest.Mock).mockResolvedValue(2);
 
       await service.listInvites(query);
 
@@ -279,8 +283,8 @@ describe('InviteService', () => {
 
     it('should filter by used status (true)', async () => {
       const query: QueryInviteDto = { used: true };
-      prisma.userInvite.findMany.mockResolvedValue([]);
-      prisma.userInvite.count.mockResolvedValue(0);
+      (prisma.userInvite.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.userInvite.count as jest.Mock).mockResolvedValue(0);
 
       await service.listInvites(query);
 
@@ -293,8 +297,8 @@ describe('InviteService', () => {
 
     it('should filter by used status (false)', async () => {
       const query: QueryInviteDto = { used: false };
-      prisma.userInvite.findMany.mockResolvedValue(mockInvites);
-      prisma.userInvite.count.mockResolvedValue(2);
+      (prisma.userInvite.findMany as jest.Mock).mockResolvedValue(mockInvites);
+      (prisma.userInvite.count as jest.Mock).mockResolvedValue(2);
 
       await service.listInvites(query);
 
@@ -307,24 +311,24 @@ describe('InviteService', () => {
 
     it('should filter by expired status (true)', async () => {
       const query: QueryInviteDto = { expired: true };
-      prisma.userInvite.findMany.mockResolvedValue([]);
-      prisma.userInvite.count.mockResolvedValue(0);
+      (prisma.userInvite.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.userInvite.count as jest.Mock).mockResolvedValue(0);
 
       await service.listInvites(query);
 
-      const whereClause = prisma.userInvite.findMany.mock.calls[0][0].where;
+      const whereClause = (prisma.userInvite.findMany as jest.Mock).mock.calls[0][0].where;
       expect(whereClause).toHaveProperty('expiresAt');
       expect(whereClause.expiresAt).toHaveProperty('lt');
     });
 
     it('should filter by expired status (false)', async () => {
       const query: QueryInviteDto = { expired: false };
-      prisma.userInvite.findMany.mockResolvedValue(mockInvites);
-      prisma.userInvite.count.mockResolvedValue(2);
+      (prisma.userInvite.findMany as jest.Mock).mockResolvedValue(mockInvites);
+      (prisma.userInvite.count as jest.Mock).mockResolvedValue(2);
 
       await service.listInvites(query);
 
-      const whereClause = prisma.userInvite.findMany.mock.calls[0][0].where;
+      const whereClause = (prisma.userInvite.findMany as jest.Mock).mock.calls[0][0].where;
       expect(whereClause).toHaveProperty('expiresAt');
       expect(whereClause.expiresAt).toHaveProperty('gte');
     });
@@ -336,12 +340,12 @@ describe('InviteService', () => {
         used: false,
         expired: false,
       };
-      prisma.userInvite.findMany.mockResolvedValue([]);
-      prisma.userInvite.count.mockResolvedValue(0);
+      (prisma.userInvite.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.userInvite.count as jest.Mock).mockResolvedValue(0);
 
       await service.listInvites(query);
 
-      const whereClause = prisma.userInvite.findMany.mock.calls[0][0].where;
+      const whereClause = (prisma.userInvite.findMany as jest.Mock).mock.calls[0][0].where;
       expect(whereClause).toMatchObject({
         email: { contains: 'test', mode: 'insensitive' },
         role: UserRole.admin,
@@ -353,7 +357,7 @@ describe('InviteService', () => {
 
   describe('getInviteById', () => {
     it('should return invite by id', async () => {
-      prisma.userInvite.findUnique.mockResolvedValue(mockInvite);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(mockInvite);
 
       const result = await service.getInviteById('invite-uuid-1');
 
@@ -368,7 +372,7 @@ describe('InviteService', () => {
     });
 
     it('should throw NotFoundException if invite not found', async () => {
-      prisma.userInvite.findUnique.mockResolvedValue(null);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(service.getInviteById('non-existent-id')).rejects.toThrow(NotFoundException);
       await expect(service.getInviteById('non-existent-id')).rejects.toThrow('Invite not found');
@@ -377,7 +381,7 @@ describe('InviteService', () => {
 
   describe('getInviteByToken', () => {
     it('should return invite by token', async () => {
-      prisma.userInvite.findUnique.mockResolvedValue(mockInvite);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(mockInvite);
 
       const result = await service.getInviteByToken('inv-abc123');
 
@@ -388,7 +392,7 @@ describe('InviteService', () => {
     });
 
     it('should return null if token not found', async () => {
-      prisma.userInvite.findUnique.mockResolvedValue(null);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(null);
 
       const result = await service.getInviteByToken('invalid-token');
 
@@ -401,8 +405,8 @@ describe('InviteService', () => {
     const userId = 'user-uuid-1';
 
     it('should validate and consume a valid invite', async () => {
-      prisma.userInvite.findUnique.mockResolvedValue(mockInvite);
-      prisma.userInvite.update.mockResolvedValue({
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(mockInvite);
+      (prisma.userInvite.update as jest.Mock).mockResolvedValue({
         ...mockInvite,
         usedAt: new Date(),
         usedById: userId,
@@ -421,7 +425,7 @@ describe('InviteService', () => {
     });
 
     it('should throw BadRequestException if token is invalid', async () => {
-      prisma.userInvite.findUnique.mockResolvedValue(null);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(service.validateAndConsumeInvite('invalid-token', userId)).rejects.toThrow(
         BadRequestException,
@@ -434,7 +438,7 @@ describe('InviteService', () => {
 
     it('should throw BadRequestException if token already used', async () => {
       const usedInvite = { ...mockInvite, usedAt: new Date() };
-      prisma.userInvite.findUnique.mockResolvedValue(usedInvite);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(usedInvite);
 
       await expect(service.validateAndConsumeInvite(validToken, userId)).rejects.toThrow(
         BadRequestException,
@@ -450,7 +454,7 @@ describe('InviteService', () => {
         ...mockInvite,
         expiresAt: new Date(Date.now() - 1000),
       };
-      prisma.userInvite.findUnique.mockResolvedValue(expiredInvite);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(expiredInvite);
 
       await expect(service.validateAndConsumeInvite(validToken, userId)).rejects.toThrow(
         BadRequestException,
@@ -464,8 +468,8 @@ describe('InviteService', () => {
 
   describe('revokeInvite', () => {
     it('should revoke an unused invite', async () => {
-      prisma.userInvite.findUnique.mockResolvedValue(mockInvite);
-      prisma.userInvite.delete.mockResolvedValue(mockInvite);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(mockInvite);
+      (prisma.userInvite.delete as jest.Mock).mockResolvedValue(mockInvite);
 
       await service.revokeInvite('invite-uuid-1');
 
@@ -475,7 +479,7 @@ describe('InviteService', () => {
     });
 
     it('should throw NotFoundException if invite not found', async () => {
-      prisma.userInvite.findUnique.mockResolvedValue(null);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(service.revokeInvite('non-existent-id')).rejects.toThrow(NotFoundException);
       await expect(service.revokeInvite('non-existent-id')).rejects.toThrow('Invite not found');
@@ -484,7 +488,7 @@ describe('InviteService', () => {
 
     it('should throw BadRequestException if trying to revoke used invite', async () => {
       const usedInvite = { ...mockInvite, usedAt: new Date() };
-      prisma.userInvite.findUnique.mockResolvedValue(usedInvite);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(usedInvite);
 
       await expect(service.revokeInvite('invite-uuid-1')).rejects.toThrow(BadRequestException);
       await expect(service.revokeInvite('invite-uuid-1')).rejects.toThrow(
@@ -510,11 +514,13 @@ describe('InviteService', () => {
         createdBy: mockCreatedBy,
       };
 
-      prisma.userInvite.findUnique.mockResolvedValue(oldInvite);
-      prisma.userInvite.delete.mockResolvedValue(oldInvite);
-      prisma.userInvite.findFirst.mockResolvedValue(null);
-      prisma.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(mockCreatedBy);
-      prisma.userInvite.create.mockResolvedValue(newInvite);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(oldInvite);
+      (prisma.userInvite.delete as jest.Mock).mockResolvedValue(oldInvite);
+      (prisma.userInvite.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.user.findUnique as jest.Mock)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(mockCreatedBy);
+      (prisma.userInvite.create as jest.Mock).mockResolvedValue(newInvite);
 
       const result = await service.resendInvite('old-invite-id', createdById);
 
@@ -535,7 +541,7 @@ describe('InviteService', () => {
     });
 
     it('should throw NotFoundException if invite not found', async () => {
-      prisma.userInvite.findUnique.mockResolvedValue(null);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(service.resendInvite('non-existent-id', createdById)).rejects.toThrow(
         NotFoundException,
@@ -544,7 +550,7 @@ describe('InviteService', () => {
 
     it('should throw BadRequestException if trying to resend used invite', async () => {
       const usedInvite = { ...mockInvite, usedAt: new Date() };
-      prisma.userInvite.findUnique.mockResolvedValue(usedInvite);
+      (prisma.userInvite.findUnique as jest.Mock).mockResolvedValue(usedInvite);
 
       await expect(service.resendInvite('invite-uuid-1', createdById)).rejects.toThrow(
         BadRequestException,
@@ -558,7 +564,7 @@ describe('InviteService', () => {
 
   describe('cleanupExpiredInvites', () => {
     it('should delete expired and unused invites', async () => {
-      prisma.userInvite.deleteMany.mockResolvedValue({ count: 5 });
+      (prisma.userInvite.deleteMany as jest.Mock).mockResolvedValue({ count: 5 });
 
       const result = await service.cleanupExpiredInvites();
 
@@ -572,7 +578,7 @@ describe('InviteService', () => {
     });
 
     it('should return 0 if no expired invites found', async () => {
-      prisma.userInvite.deleteMany.mockResolvedValue({ count: 0 });
+      (prisma.userInvite.deleteMany as jest.Mock).mockResolvedValue({ count: 0 });
 
       const result = await service.cleanupExpiredInvites();
 
@@ -580,11 +586,11 @@ describe('InviteService', () => {
     });
 
     it('should not delete used invites even if expired', async () => {
-      prisma.userInvite.deleteMany.mockResolvedValue({ count: 3 });
+      (prisma.userInvite.deleteMany as jest.Mock).mockResolvedValue({ count: 3 });
 
       await service.cleanupExpiredInvites();
 
-      const whereClause = prisma.userInvite.deleteMany.mock.calls[0][0].where;
+      const whereClause = (prisma.userInvite.deleteMany as jest.Mock).mock.calls[0][0].where;
       expect(whereClause.usedAt).toBe(null);
     });
   });

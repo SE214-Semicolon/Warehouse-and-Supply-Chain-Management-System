@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { JwtService } from '@nestjs/jwt';
+import { UserRole } from '@prisma/client';
 import { AppModule } from '../../../../app.module';
 import { PrismaService } from '../../../../database/prisma/prisma.service';
 
@@ -9,7 +11,7 @@ const TEST_SUITE_ID = `alert-e2e-${Date.now()}-${Math.random().toString(36).subs
 describe('Alert Module - Integration Tests (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let jwtService: JwtService;
+  let jwtService;
   let adminToken: string;
   let _managerToken: string;
   let createdAlertId: string;
@@ -72,7 +74,7 @@ describe('Alert Module - Integration Tests (e2e)', () => {
       role: admin.role,
     })}`;
 
-    managerToken = `Bearer ${jwtService.sign({
+    _managerToken = `Bearer ${jwtService.sign({
       sub: manager.id,
       email: manager.email,
       role: manager.role,
