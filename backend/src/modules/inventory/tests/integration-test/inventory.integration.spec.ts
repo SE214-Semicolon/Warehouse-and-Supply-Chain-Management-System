@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { PrismaService } from '../../../database/prisma/prisma.service';
+import { PrismaService } from 'src/database/prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
-import { InventoryModule } from '../inventory.module';
+import { InventoryModule } from 'src/modules/inventory/inventory.module';
 import { UserRole } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
-import { AuthModule } from '../../auth/auth.module';
-import { DatabaseModule } from '../../../database/database.module';
-import { ProductModule } from '../../product/product.module';
+import { AuthModule } from 'src/modules/auth/auth.module';
+import { DatabaseModule } from 'src/database/database.module';
+import { ProductModule } from 'src/modules/product/product.module';
 
 // Unique test suite identifier for parallel execution
 const TEST_SUITE_ID = `inv-int-${Date.now()}-${Math.random().toString(36).substring(7)}`;

@@ -370,7 +370,7 @@ describe('AuditLogService - Unit Tests', () => {
 
     it('should query audit logs for PurchaseOrder entity', async () => {
       const poLogs = {
-        logs: [
+        results: [
           {
             ...mockAuditEntry,
             entityType: 'PurchaseOrder',

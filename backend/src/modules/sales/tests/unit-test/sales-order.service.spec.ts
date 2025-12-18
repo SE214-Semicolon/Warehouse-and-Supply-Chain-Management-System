@@ -495,7 +495,7 @@ describe('SalesOrderService', () => {
 
       soRepo.findById.mockResolvedValueOnce(approvedSo);
       soRepo.findItemsByIds.mockResolvedValueOnce([mockSalesOrder.items[0]]);
-      prisma.productBatch.findUnique.mockResolvedValueOnce({
+      (prisma.productBatch.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'batch-uuid-1',
         batchNo: 'BATCH-001',
         expiryDate: new Date('2025-12-31'), // Valid batch with future expiry
@@ -534,7 +534,7 @@ describe('SalesOrderService', () => {
 
       soRepo.findById.mockResolvedValueOnce(approvedSo);
       soRepo.findItemsByIds.mockResolvedValueOnce([mockSalesOrder.items[0]]);
-      prisma.productBatch.findUnique.mockResolvedValueOnce({
+      (prisma.productBatch.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'batch-uuid-1',
         batchNo: 'BATCH-001',
         expiryDate: new Date('2025-12-31'), // Valid batch with future expiry

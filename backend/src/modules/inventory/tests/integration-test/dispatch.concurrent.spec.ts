@@ -1,8 +1,8 @@
-import { InventoryService } from '../services/inventory.service';
-import { InventoryRepository } from '../repositories/inventory.repository';
+import { InventoryService } from 'src/modules/inventory/services/inventory.service';
+import { InventoryRepository } from 'src/modules/inventory/repositories/inventory.repository';
 import { BadRequestException } from '@nestjs/common';
-import { DispatchInventoryDto } from '../dto/dispatch-inventory.dto';
-import { CacheService } from '../../../cache/cache.service';
+import { DispatchInventoryDto } from 'src/modules/inventory/dto/dispatch-inventory.dto';
+import { CacheService } from 'src/cache/cache.service';
 
 // A simple in-memory mock repository to simulate atomic updateMany behavior
 class InMemoryRepoMock {

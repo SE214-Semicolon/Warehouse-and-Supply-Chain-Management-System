@@ -150,7 +150,7 @@ export class ProcurementReportingService {
 
     const leadTimes = receivedPOs
       .filter((po) => po.updatedAt && po.placedAt)
-      .map((po) => (po.updatedAt!.getTime() - po.placedAt!.getTime()) / (1000 * 60 * 60 * 24));
+      .map((po) => (po.updatedAt.getTime() - po.placedAt!.getTime()) / (1000 * 60 * 60 * 24));
 
     const avgLeadTime =
       leadTimes.length > 0
@@ -221,7 +221,7 @@ export class ProcurementReportingService {
         (po) => po.status === 'received' && po.updatedAt && po.placedAt,
       );
       const leadTimes = receivedPOs.map(
-        (po) => (po.updatedAt!.getTime() - po.placedAt!.getTime()) / (1000 * 60 * 60 * 24),
+        (po) => (po.updatedAt.getTime() - po.placedAt!.getTime()) / (1000 * 60 * 60 * 24),
       );
       const avgLeadTime =
         leadTimes.length > 0

@@ -1208,10 +1208,7 @@ export class InventoryRepository implements IInventoryRepository {
         },
       });
     } catch (error) {
-      this.logger.error(
-        `Error finding inventory for product ${productId} in locations:`,
-        error,
-      );
+      this.logger.error(`Error finding inventory for product ${productId} in locations:`, error);
       throw error;
     }
   }

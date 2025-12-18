@@ -164,7 +164,7 @@ export class SalesReportingService {
 
     const fulfillmentTimes = fulfilledSOs
       .filter((so) => so.placedAt && so.updatedAt)
-      .map((so) => (so.updatedAt!.getTime() - so.placedAt!.getTime()) / (1000 * 60 * 60 * 24));
+      .map((so) => (so.updatedAt.getTime() - so.placedAt!.getTime()) / (1000 * 60 * 60 * 24));
 
     const avgFulfillmentTime =
       fulfillmentTimes.length > 0

@@ -38,7 +38,9 @@ export class UsersService {
 
   // New methods for User Management
 
-  async list(query: QueryUserDto): Promise<{ data: UserResponseDto[]; total: number; page: number; pageSize: number }> {
+  async list(
+    query: QueryUserDto,
+  ): Promise<{ data: UserResponseDto[]; total: number; page: number; pageSize: number }> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
     const skip = (page - 1) * pageSize;
