@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PurchaseOrderController } from './purchase-order.controller';
 import { PurchaseOrderService } from '../services/purchase-order.service';
 import { CreatePurchaseOrderDto } from '../dto/purchase-order/create-po.dto';
-import { UpdatePurchaseOrderDto } from '../dto/purchase-order/update-po.dto';
 import { QueryPurchaseOrderDto } from '../dto/purchase-order/query-po.dto';
 
 describe('PurchaseOrderController', () => {

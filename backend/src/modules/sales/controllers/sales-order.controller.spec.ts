@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SalesOrderController } from './sales-order.controller';
 import { SalesOrderService } from '../services/sales-order.service';
 import { CreateSalesOrderDto } from '../dto/sales-order/create-so.dto';
-import { UpdateSalesOrderDto } from '../dto/sales-order/update-so.dto';
 import { QuerySalesOrderDto } from '../dto/sales-order/query-so.dto';
 
 describe('SalesOrderController', () => {

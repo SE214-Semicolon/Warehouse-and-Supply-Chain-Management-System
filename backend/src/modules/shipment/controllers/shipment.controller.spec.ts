@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ShipmentController } from './shipment.controller';
 import { ShipmentService } from '../services/shipment.service';
 import { CreateShipmentDto } from '../dto/create-shipment.dto';
-import { UpdateShipmentDto } from '../dto/update-shipment.dto';
 import { UpdateShipmentStatusDto } from '../dto/update-shipment-status.dto';
 import { AddTrackingEventDto } from '../dto/add-tracking-event.dto';
 import { QueryShipmentDto } from '../dto/query-shipment.dto';

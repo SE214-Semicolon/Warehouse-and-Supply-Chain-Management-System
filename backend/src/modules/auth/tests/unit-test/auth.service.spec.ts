@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -123,7 +121,7 @@ describe('AuthService', () => {
   });
 
   // Helper to mock $transaction - executes the callback with mocked tx
-  const mockTransaction = (transactionCallback: (tx: any) => Promise<any>) => {
+  const mockTransaction = (_transactionCallback: (tx: any) => Promise<any>) => {
     prisma.$transaction.mockImplementation(async (callback) => {
       // Create a mock transaction object with same methods as prisma
       const tx = {

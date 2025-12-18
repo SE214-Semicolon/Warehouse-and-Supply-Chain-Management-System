@@ -7,7 +7,7 @@ import {
   CustomerResponseDto,
   CustomerListResponseDto,
 } from '../dto/customer/customer-response.dto';
-import { Prisma, Customer } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class CustomerService {

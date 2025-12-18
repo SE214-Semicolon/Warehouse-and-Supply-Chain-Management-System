@@ -3,8 +3,6 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../../../../app.module';
 import { PrismaService } from '../../../../database/prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
-import { UserRole } from '@prisma/client';
 
 const TEST_SUITE_ID = `auth-smoke-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 

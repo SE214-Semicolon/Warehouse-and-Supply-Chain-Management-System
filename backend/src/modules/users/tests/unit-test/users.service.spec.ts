@@ -147,7 +147,7 @@ describe('UsersService', () => {
         role: UserRole.admin,
       });
 
-      const result = await service.createUser(createData);
+      const _result = await service.createUser(createData);
 
       expect(prisma.user.create).toHaveBeenCalledWith({
         data: {

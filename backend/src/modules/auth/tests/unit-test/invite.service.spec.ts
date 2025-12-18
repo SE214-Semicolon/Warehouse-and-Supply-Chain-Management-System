@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { InviteService } from '../../services/invite.service';

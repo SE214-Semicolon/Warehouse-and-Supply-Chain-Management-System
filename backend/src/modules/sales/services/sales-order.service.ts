@@ -11,7 +11,7 @@ import {
 } from '../dto/sales-order/sales-order-response.dto';
 import { InventoryService } from '../../inventory/services/inventory.service';
 import { DispatchInventoryDto } from '../../inventory/dto/dispatch-inventory.dto';
-import { OrderStatus, SalesOrder, Prisma } from '@prisma/client';
+import { OrderStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../database/prisma/prisma.service';
 

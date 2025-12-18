@@ -3,8 +3,6 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../../../../app.module';
 import { PrismaService } from '../../../../database/prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
-import { UserRole } from '@prisma/client';
 
 const TEST_SUITE_ID = `alert-e2e-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
@@ -13,7 +11,7 @@ describe('Alert Module - Integration Tests (e2e)', () => {
   let prisma: PrismaService;
   let jwtService: JwtService;
   let adminToken: string;
-  let managerToken: string;
+  let _managerToken: string;
   let createdAlertId: string;
 
   beforeAll(async () => {

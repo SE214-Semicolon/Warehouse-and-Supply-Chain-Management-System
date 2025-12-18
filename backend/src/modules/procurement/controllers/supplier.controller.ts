@@ -21,7 +21,6 @@ import { QuerySupplierDto } from '../dto/supplier/query-supplier.dto';
 import {
   SupplierResponseDto,
   SupplierListResponseDto,
-  SupplierDeleteResponseDto,
 } from '../dto/supplier/supplier-response.dto';
 
 @ApiTags('suppliers')

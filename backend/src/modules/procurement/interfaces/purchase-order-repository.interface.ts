@@ -1,4 +1,4 @@
-import { Prisma, PurchaseOrder, PoStatus } from '@prisma/client';
+import { Prisma, PurchaseOrder } from '@prisma/client';
 
 export interface IPurchaseOrderRepository {
   findById(id: string): Promise<PurchaseOrder | null>;
