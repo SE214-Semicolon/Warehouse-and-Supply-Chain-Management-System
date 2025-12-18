@@ -44,21 +44,7 @@ jobs:
     outputs:
       backend-changed: ${{ steps.changes.outputs.backend }}
       frontend-changed: ${{ steps.changes.outputs.frontend }}
-    # NOTE: For integration tests
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: test_db
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # NOTE: Integration tests use Testcontainers to provision PostgreSQL and MongoDB dynamically
     steps:         
     - name: Checkout code
       uses: actions/checkout@v4
@@ -108,17 +94,20 @@ jobs:
         NODE_ENV: test
 
     # ============================================
-    # INTEGRATION TESTS
+    # INTEGRATION TESTS (uses Testcontainers for PostgreSQL + MongoDB)
     # ============================================
     - name: Run Backend Integration Tests
       if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
       working-directory: ./backend
       run: |
         chmod +x scripts/run-tests-by-type.sh
-        ./scripts/run-tests-by-type.sh integration
+        ./scripts/run-tests-by-type.sh integration --testTimeout=120000
       env:
         NODE_ENV: test
-        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
+        JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
+        JWT_ACCESS_TTL: 15m
+        JWT_REFRESH_TTL: 7d
         
 
     # ============================================
@@ -132,7 +121,10 @@ jobs:
         ./scripts/run-tests-by-type.sh smoke
       env:
         NODE_ENV: test
-        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
+        JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
+        JWT_ACCESS_TTL: 15m
+        JWT_REFRESH_TTL: 7d
 
     # ============================================
     # FRONTEND TESTS (TODO: Enable when ready)
