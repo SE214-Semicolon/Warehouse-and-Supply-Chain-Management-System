@@ -172,9 +172,56 @@ const Warehouse = () => {
     return dynamicData[menuId] || [];
   };
 
+  const getSearchableColumns = () => {
+    if (!currentMenuConfig) return [];
+    return currentMenuConfig.columns.filter(
+      (col) => col.search !== false && col.id !== "stt"
+    );
+  };
+
+  const getSearchPlaceholder = () => {
+    const menu = menuItems.find((m) => m.id === selectedMenu);
+    if (!menu) return "Search...";
+
+    const searchableColumns = menu.columns.filter(
+      (col) => col.search !== false && col.id !== "stt"
+    );
+    if (searchableColumns.length === 0) {
+      return "Search...";
+    }
+
+    const labels = searchableColumns.map((c) => c.label);
+    return `Search for ${labels.join(", ").toLocaleLowerCase()}`;
+  };
+
+  const applySearch = (data) => {
+    if (!searchTerm) return data;
+
+    const keyword = searchTerm.toLowerCase();
+    const searchableColumns = getSearchableColumns();
+
+    return data.filter((row) =>
+      searchableColumns.some((col) => {
+        let value;
+
+        if (typeof col.searchValue === "function") {
+          value = col.searchValue(row);
+        } else {
+          value = row[col.id];
+        }
+        if (value === undefined || value === null) return false;
+
+        return String(value).toLowerCase().includes(keyword);
+      })
+    );
+  };
+
   const dataTables = Object.fromEntries(
     menuItems.map((menu) => {
-      const data = getCurrentData(menu.id);
+      const rawData = getCurrentData(menu.id);
+      const tableData = Array.isArray(rawData) ? rawData : rawData?.data || [];
+
+      const finalData = menu.id === selectedMenu ? applySearch(tableData) : tableData;
 
       return [
         menu.id,
@@ -182,7 +229,7 @@ const Warehouse = () => {
           key={menu.id}
           title={menu.label}
           columns={menu.columns}
-          data={Array.isArray(data) ? data : data?.data || []}
+          data={finalData}
           loading={menuConfig[menu.id] ? loading : undefined}
           {...commonProps}
         />,
@@ -207,7 +254,11 @@ const Warehouse = () => {
           mt: 2,
         }}
       >
-        <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+        <SearchBar
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          placeholder={getSearchPlaceholder()}
+        />
         <ActionButtons
           onAdd={handleAdd}
           onImport={handleImport}

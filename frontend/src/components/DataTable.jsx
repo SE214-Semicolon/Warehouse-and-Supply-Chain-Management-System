@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Paper,
@@ -21,13 +21,7 @@ import {
 } from "@mui/material";
 import { Visibility, Edit, Delete, FilterList } from "@mui/icons-material";
 
-export default function DataTable({
-  columns, // Format { id, label, sortable: true/false, filterable: true/false, render: (value, row) => ... }
-  data = [],
-  onEdit,
-  onView,
-  onDelete,
-}) {
+export default function DataTable({ columns, data = [], onEdit, onView, onDelete }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [orderBy, setOrderBy] = useState("");
@@ -36,9 +30,41 @@ export default function DataTable({
   const [filterAnchor, setFilterAnchor] = useState(null);
   const [activeFilterColumn, setActiveFilterColumn] = useState(null);
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
+  const processedData = data.map((row, index) => {
+    const formattedRow = { ...row };
+    columns.forEach((col) => {
+      if (col.id === "stt") {
+        formattedRow["stt"] = index + 1;
+      } else if (col.render) {
+        formattedRow[col.id] = col.render(row[col.id], row);
+      }
+    });
+    return formattedRow;
+  });
+
+  const filteredData = processedData.filter((row) => {
+    return Object.entries(columnFilters).every(([columnId, selectedValues]) => {
+      if (!selectedValues || selectedValues.length === 0) return true;
+      return selectedValues.includes(row[columnId]);
+    });
+  });
+
+  const sortedData = [...filteredData].sort((a, b) => {
+    if (!orderBy) return 0;
+    const aVal = a[orderBy];
+    const bVal = b[orderBy];
+
+    if (aVal < bVal) return order === "asc" ? -1 : 1;
+    if (aVal > bVal) return order === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const paginatedData = sortedData.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  const handleChangePage = (event, newPage) => setPage(newPage);
 
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
@@ -66,7 +92,7 @@ export default function DataTable({
   };
 
   const getUniqueValues = (columnId) => {
-    const values = data
+    const values = processedData
       .map((row) => row[columnId])
       .filter((val) => val !== null && val !== undefined && val !== "");
     return [...new Set(values)];
@@ -78,76 +104,23 @@ export default function DataTable({
       const newValues = current.includes(value)
         ? current.filter((v) => v !== value)
         : [...current, value];
-
-      return {
-        ...prev,
-        [columnId]: newValues,
-      };
+      return { ...prev, [columnId]: newValues };
     });
   };
 
   const handleSelectAll = (columnId) => {
     const allValues = getUniqueValues(columnId);
-    setColumnFilters((prev) => ({
-      ...prev,
-      [columnId]: allValues,
-    }));
+    setColumnFilters((prev) => ({ ...prev, [columnId]: allValues }));
   };
 
   const handleClearFilter = (columnId) => {
-    setColumnFilters((prev) => ({
-      ...prev,
-      [columnId]: [],
-    }));
-  };
-
-  const filteredData = data.filter((row) => {
-    const matchFilters = Object.entries(columnFilters).every(
-      ([columnId, selectedValues]) => {
-        if (!selectedValues || selectedValues.length === 0) return true;
-        return selectedValues.includes(row[columnId]);
-      }
-    );
-
-    return matchFilters;
-  });
-
-  const sortedData = [...filteredData].sort((a, b) => {
-    if (!orderBy) return 0;
-    const aVal = a[orderBy];
-    const bVal = b[orderBy];
-    if (aVal < bVal) return order === "asc" ? -1 : 1;
-    if (aVal > bVal) return order === "asc" ? 1 : -1;
-    return 0;
-  });
-
-  const paginatedData = sortedData.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
-
-  const renderCellContent = (col, row, index) => {
-    if (col.id === "stt") {
-      return page * rowsPerPage + index + 1;
-    }
-
-    if (col.render) {
-      return col.render(row[col.id], row);
-    }
-
-    return row[col.id];
+    setColumnFilters((prev) => ({ ...prev, [columnId]: [] }));
   };
 
   return (
     <Box>
       <TableContainer component={Paper}>
-        <Table
-          sx={{
-            "& th, & td": {
-              border: "1px solid #929292c3",
-            },
-          }}
-        >
+        <Table sx={{ "& th, & td": { border: "1px solid #929292c3" } }}>
           <TableHead>
             <TableRow>
               {columns.map((col) => (
@@ -169,7 +142,6 @@ export default function DataTable({
                     }}
                   >
                     <span>{col.label}</span>
-
                     {col.filterable !== false && col.id !== "stt" && (
                       <IconButton
                         size="small"
@@ -188,56 +160,34 @@ export default function DataTable({
               ))}
               <TableCell
                 align="center"
-                sx={{
-                  backgroundColor: "#3E468A",
-                  color: "white",
-                  fontWeight: "bold",
-                }}
+                sx={{ backgroundColor: "#3E468A", color: "white", fontWeight: "bold" }}
               >
-                Action
+                Actions
               </TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
             {paginatedData.map((row, index) => (
-              <TableRow key={row.id} hover>
+              <TableRow key={row.id || index} hover>
                 {columns.map((col) => (
                   <TableCell key={col.id} align={col.align || "center"}>
-                    {renderCellContent(col, row, index)}
+                    {col.id === "stt" ? page * rowsPerPage + index + 1 : row[col.id]}
                   </TableCell>
                 ))}
-                <TableCell
-                  align="center"
-                  sx={{
-                    width: 0.15,
-                    maxWidth: 0,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      gap: 0.5,
-                    }}
-                  >
+                <TableCell align="center" sx={{ width: 180 }}>
+                  <Box sx={{ display: "flex", justifyContent: "center", gap: 0.5 }}>
                     {onView && (
                       <IconButton
                         size="small"
                         color="primary"
                         onClick={() =>
-                          onView({
-                            ...row,
-                            stt: page * rowsPerPage + index + 1,
-                          })
+                          onView({ ...row, stt: page * rowsPerPage + index + 1 })
                         }
                       >
                         <Visibility />
                       </IconButton>
                     )}
-
                     {onEdit && (
                       <IconButton
                         size="small"
@@ -247,7 +197,6 @@ export default function DataTable({
                         <Edit />
                       </IconButton>
                     )}
-
                     {onDelete && (
                       <IconButton
                         size="small"
@@ -261,6 +210,13 @@ export default function DataTable({
                 </TableCell>
               </TableRow>
             ))}
+            {paginatedData.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={columns.length + 1} align="center" sx={{ py: 3 }}>
+                  No matching data found
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
         <TablePagination
@@ -271,9 +227,7 @@ export default function DataTable({
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={handleChangeRowsPerPage}
           labelRowsPerPage="Số dòng mỗi trang:"
-          labelDisplayedRows={({ from, to, count }) =>
-            `${from}-${to} trong ${count}`
-          }
+          labelDisplayedRows={({ from, to, count }) => `${from}-${to} trong ${count}`}
         />
       </TableContainer>
 
@@ -281,15 +235,11 @@ export default function DataTable({
         open={Boolean(filterAnchor)}
         anchorEl={filterAnchor}
         onClose={handleFilterClose}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "left",
-        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
       >
         {activeFilterColumn && (
           <Box sx={{ width: 250, p: 2 }}>
-            {columns.find((c) => c.id === activeFilterColumn)?.sortable !==
-              false && (
+            {columns.find((c) => c.id === activeFilterColumn)?.sortable !== false && (
               <>
                 <ListItemButton
                   dense
@@ -298,7 +248,7 @@ export default function DataTable({
                     handleFilterClose();
                   }}
                 >
-                  <ListItemText primary="Sort A to Z" />
+                  <ListItemText primary="Sắp xếp A đến Z" />
                 </ListItemButton>
                 <ListItemButton
                   dense
@@ -307,7 +257,7 @@ export default function DataTable({
                     handleFilterClose();
                   }}
                 >
-                  <ListItemText primary="Sort Z to A" />
+                  <ListItemText primary="Sắp xếp Z đến A" />
                 </ListItemButton>
                 <Divider sx={{ my: 1 }} />
               </>
@@ -319,32 +269,29 @@ export default function DataTable({
                 sx={{ color: "#7F408E" }}
                 onClick={() => handleSelectAll(activeFilterColumn)}
               >
-                Select all
+                Tất cả
               </Button>
               <Button
                 size="small"
                 sx={{ color: "#7F408E" }}
                 onClick={() => handleClearFilter(activeFilterColumn)}
               >
-                Clear
+                Xóa lọc
               </Button>
             </Box>
             <Divider sx={{ mb: 1 }} />
 
-            <List sx={{ maxHeight: 300, overflow: "auto" }}>
+            <List sx={{ maxHeight: 250, overflow: "auto" }}>
               {getUniqueValues(activeFilterColumn).map((value) => (
                 <ListItem key={value} disablePadding>
                   <ListItemButton
                     dense
-                    onClick={() =>
-                      handleFilterToggle(activeFilterColumn, value)
-                    }
+                    onClick={() => handleFilterToggle(activeFilterColumn, value)}
                   >
                     <Checkbox
                       edge="start"
                       checked={
-                        columnFilters[activeFilterColumn]?.includes(value) ||
-                        false
+                        columnFilters[activeFilterColumn]?.includes(value) || false
                       }
                       disableRipple
                     />
@@ -355,13 +302,6 @@ export default function DataTable({
             </List>
             <Divider sx={{ my: 1 }} />
             <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
-              <Button
-                size="small"
-                sx={{ color: "#7F408E" }}
-                onClick={handleFilterClose}
-              >
-                Cancel
-              </Button>
               <Button
                 size="small"
                 variant="contained"
