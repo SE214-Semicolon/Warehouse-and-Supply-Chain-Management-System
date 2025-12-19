@@ -2620,4 +2620,363 @@ describe('InventoryService', () => {
       expect(result.totalPages).toBe(2);
     });
   });
+
+  describe('getExpiryAlerts', () => {
+    it('should get expiry alerts with default parameters', async () => {
+      const dto = {};
+      const mockResult = {
+        inventory: [
+          {
+            id: 'inv-1',
+            productBatchId: 'batch-1',
+            locationId: 'loc-1',
+            quantity: 100,
+            productBatch: {
+              batchNo: 'BATCH-001',
+              expiryDate: new Date('2024-02-01'),
+            },
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      };
+
+      inventoryRepo.findExpiringInventory.mockResolvedValue(mockResult);
+
+      const result = await service.getExpiryAlerts(dto);
+
+      expect(result.success).toBe(true);
+      expect(result.inventory).toHaveLength(1);
+      expect(inventoryRepo.findExpiringInventory).toHaveBeenCalledWith(
+        30, // default threshold
+        undefined,
+        undefined,
+        1,
+        20,
+        'productBatch',
+        'asc',
+      );
+    });
+
+    it('should validate page parameter', async () => {
+      const dto = { page: 0 };
+
+      await expect(service.getExpiryAlerts(dto)).rejects.toThrow('Page must be greater than 0');
+    });
+
+    it('should validate limit parameter - too small', async () => {
+      const dto = { limit: 0 };
+
+      await expect(service.getExpiryAlerts(dto)).rejects.toThrow('Limit must be between 1 and 100');
+    });
+
+    it('should validate limit parameter - too large', async () => {
+      const dto = { limit: 101 };
+
+      await expect(service.getExpiryAlerts(dto)).rejects.toThrow('Limit must be between 1 and 100');
+    });
+
+    it('should filter by location and product', async () => {
+      const dto = {
+        threshold: 15,
+        locationId: 'loc-1',
+        productId: 'prod-1',
+        page: 1,
+        limit: 10,
+      };
+
+      inventoryRepo.findExpiringInventory.mockResolvedValue({
+        inventory: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+      });
+
+      await service.getExpiryAlerts(dto);
+
+      expect(inventoryRepo.findExpiringInventory).toHaveBeenCalledWith(
+        15,
+        'loc-1',
+        'prod-1',
+        1,
+        10,
+        'productBatch',
+        'asc',
+      );
+    });
+  });
+
+  describe('getStockLevelReport', () => {
+    it('should generate stock level report with default groupBy', async () => {
+      const dto = {};
+      const mockResult = {
+        data: [
+          {
+            locationId: 'loc-1',
+            locationName: 'Warehouse A',
+            totalQuantity: 1000,
+            totalValue: 50000,
+            productCount: 10,
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      };
+
+      inventoryRepo.generateStockLevelReport.mockResolvedValue(mockResult);
+
+      const result = await service.getStockLevelReport(dto);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveLength(1);
+      expect(inventoryRepo.generateStockLevelReport).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+        'location', // default groupBy
+        1,
+        20,
+      );
+    });
+
+    it('should validate page parameter for stock level report', async () => {
+      const dto = { page: -1 };
+
+      await expect(service.getStockLevelReport(dto)).rejects.toThrow('Page must be greater than 0');
+    });
+
+    it('should validate limit parameter for stock level report', async () => {
+      const dto = { limit: 150 };
+
+      await expect(service.getStockLevelReport(dto)).rejects.toThrow(
+        'Limit must be between 1 and 100',
+      );
+    });
+
+    it('should filter by location and product with custom groupBy', async () => {
+      const dto = {
+        locationId: 'loc-1',
+        productId: 'prod-1',
+        groupBy: 'product' as const,
+        page: 2,
+        limit: 15,
+      };
+
+      inventoryRepo.generateStockLevelReport.mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 2,
+        limit: 15,
+        totalPages: 0,
+      });
+
+      await service.getStockLevelReport(dto);
+
+      expect(inventoryRepo.generateStockLevelReport).toHaveBeenCalledWith(
+        'loc-1',
+        'prod-1',
+        'product',
+        2,
+        15,
+      );
+    });
+  });
+
+  describe('getMovementReport', () => {
+    it('should generate movement report with default parameters', async () => {
+      const dto = {};
+      const mockResult = {
+        movements: [
+          {
+            id: 'mov-1',
+            type: 'RECEIVE',
+            quantity: 100,
+            createdAt: new Date('2024-01-15'),
+            productBatch: { batchNo: 'BATCH-001' },
+            location: { name: 'Warehouse A' },
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      };
+
+      inventoryRepo.generateMovementReport.mockResolvedValue(mockResult);
+
+      const result = await service.getMovementReport(dto);
+
+      expect(result.success).toBe(true);
+      expect(result.movements).toHaveLength(1);
+      expect(inventoryRepo.generateMovementReport).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        1,
+        20,
+        'createdAt',
+        'desc',
+      );
+    });
+
+    it('should validate page parameter for movement report', async () => {
+      const dto = { page: 0 };
+
+      await expect(service.getMovementReport(dto)).rejects.toThrow('Page must be greater than 0');
+    });
+
+    it('should validate limit parameter for movement report', async () => {
+      const dto = { limit: 101 };
+
+      await expect(service.getMovementReport(dto)).rejects.toThrow(
+        'Limit must be between 1 and 100',
+      );
+    });
+
+    it('should filter by date range, location, product and movement type', async () => {
+      const startDate = new Date('2024-01-01');
+      const endDate = new Date('2024-01-31');
+      const dto = {
+        startDate,
+        endDate,
+        locationId: 'loc-1',
+        productId: 'prod-1',
+        movementType: 'DISPATCH' as const,
+        page: 1,
+        limit: 50,
+        sortBy: 'quantity' as const,
+        sortOrder: 'asc' as const,
+      };
+
+      inventoryRepo.generateMovementReport.mockResolvedValue({
+        movements: [],
+        total: 0,
+        page: 1,
+        limit: 50,
+        totalPages: 0,
+      });
+
+      await service.getMovementReport(dto);
+
+      expect(inventoryRepo.generateMovementReport).toHaveBeenCalledWith(
+        startDate,
+        endDate,
+        'loc-1',
+        'prod-1',
+        'DISPATCH',
+        1,
+        50,
+        'quantity',
+        'asc',
+      );
+    });
+  });
+
+  describe('getValuationReport', () => {
+    it('should generate valuation report with default method', async () => {
+      const dto = {};
+      const mockResult = {
+        data: [
+          {
+            productId: 'prod-1',
+            productSku: 'PROD-001',
+            productName: 'Product 1',
+            totalQuantity: 500,
+            totalValue: 25000,
+            avgUnitPrice: 50,
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      };
+
+      inventoryRepo.generateValuationReport.mockResolvedValue(mockResult);
+
+      const result = await service.getValuationReport(dto);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveLength(1);
+      expect(inventoryRepo.generateValuationReport).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+        'AVERAGE', // default method
+        1,
+        20,
+      );
+    });
+
+    it('should validate page parameter for valuation report', async () => {
+      const dto = { page: -5 };
+
+      await expect(service.getValuationReport(dto)).rejects.toThrow('Page must be greater than 0');
+    });
+
+    it('should validate limit parameter for valuation report', async () => {
+      const dto = { limit: 0 };
+
+      await expect(service.getValuationReport(dto)).rejects.toThrow(
+        'Limit must be between 1 and 100',
+      );
+    });
+
+    it('should support different valuation methods', async () => {
+      const dto = {
+        method: 'FIFO' as const,
+        locationId: 'loc-1',
+        productId: 'prod-1',
+        page: 1,
+        limit: 10,
+      };
+
+      inventoryRepo.generateValuationReport.mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+      });
+
+      await service.getValuationReport(dto);
+
+      expect(inventoryRepo.generateValuationReport).toHaveBeenCalledWith(
+        'loc-1',
+        'prod-1',
+        'FIFO',
+        1,
+        10,
+      );
+    });
+
+    it('should handle LIFO valuation method', async () => {
+      const dto = {
+        method: 'LIFO' as const,
+      };
+
+      inventoryRepo.generateValuationReport.mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+      });
+
+      await service.getValuationReport(dto);
+
+      expect(inventoryRepo.generateValuationReport).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+        'LIFO',
+        1,
+        20,
+      );
+    });
+  });
 });
