@@ -6,6 +6,15 @@ const BASE = "/products";
 const ProductService = {
   getAll: () => api.get(BASE),
 
+  getById: async (id) => {
+    try {
+      const response = await api.get(`${BASE}/${id}`);
+      return response.data;
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
   create: async (data) => {
     try {
       const response = await api.post(BASE, data);

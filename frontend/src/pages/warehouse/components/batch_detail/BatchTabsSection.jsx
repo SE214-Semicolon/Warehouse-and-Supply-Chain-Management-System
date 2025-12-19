@@ -1,19 +1,5 @@
 import { useState } from "react";
-import {
-  Paper,
-  Tabs,
-  Tab,
-  Box,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  Typography,
-} from "@mui/material";
-import { formatDate } from "@/utils/formatDate";
+import { Paper, Tabs, Tab, Box, Chip, Typography } from "@mui/material";
 import {
   LocalShipping,
   Inventory2,
@@ -21,6 +7,8 @@ import {
   BookmarkBorder,
   LockOpen,
 } from "@mui/icons-material";
+import DataTable from "@/components/DataTable";
+import { formatDate } from "@/utils/formatDate";
 
 const MOVEMENT_CONFIG = {
   purchase_receipt: {
@@ -32,134 +20,122 @@ const MOVEMENT_CONFIG = {
   transfer: { label: "Transfer", color: "info", icon: <SwapHoriz /> },
   reserve: { label: "Reserve", color: "warning", icon: <BookmarkBorder /> },
   release: { label: "Release", color: "default", icon: <LockOpen /> },
-};
-
-const headerCellSx = {
-  fontWeight: 700,
-};
-
-const bodyCellSx = {
-  fontWeight: 400,
+  receive: { label: "Receive", color: "success", icon: <LocalShipping /> },
+  dispatch: { label: "Dispatch", color: "error", icon: <Inventory2 /> },
 };
 
 const BatchTabsSection = ({ inventory, movements }) => {
   const [tab, setTab] = useState(0);
 
-  const renderMovementChip = (type) => {
-    const config = MOVEMENT_CONFIG[type] || { label: type, color: "default" };
-    return (
-      <Chip
-        icon={config.icon}
-        label={config.label}
-        color={config.color}
-        size="small"
-        variant="outlined"
-      />
-    );
-  };
+  const inventoryColumns = [
+    {
+      id: "location",
+      label: "Location",
+      minWidth: 200,
+      render: (_value, row) => (
+        <Typography variant="body2" fontWeight={600}>
+          {row?.location?.name || "Unknown"}
+        </Typography>
+      ),
+    },
+    {
+      id: "reserved",
+      label: "Reserved",
+      align: "center",
+      render: (_value, row) =>
+        row?.reservedQty > 0 ? (
+          <Typography fontWeight={700} color="warning.main">
+            {row.reservedQty}
+          </Typography>
+        ) : (
+          "-"
+        ),
+    },
+    {
+      id: "available",
+      label: "Available",
+      align: "center",
+      render: (_value, row) => (
+        <Typography fontWeight={700} color="success.main">
+          {row?.availableQty}
+        </Typography>
+      ),
+    },
+    {
+      id: "updatedAt",
+      label: "Last Updated",
+      align: "center",
+      render: (_value, row) => formatDate(row?.updatedAt),
+    },
+  ];
+
+  const movementColumns = [
+    {
+      id: "type",
+      label: "Type",
+      minWidth: 160,
+      render: (_value, row) => {
+        const config = MOVEMENT_CONFIG[row?.movementType] || {
+          label: row?.movementType,
+          color: "default",
+        };
+        return (
+          <Chip
+            icon={config.icon}
+            label={config.label}
+            color={config.color}
+            size="medium"
+            variant="outlined"
+          />
+        );
+      },
+    },
+    {
+      id: "quantity",
+      label: "Quantity",
+      align: "center",
+      render: (_value, row) => <Typography fontWeight={600}>{row?.quantity}</Typography>,
+    },
+    {
+      id: "from",
+      label: "From Location",
+      render: (_value, row) => row?.fromLocation?.name || "-",
+    },
+    {
+      id: "to",
+      label: "To Location",
+      render: (_value, row) => row?.toLocation?.name || "-",
+    },
+    {
+      id: "date",
+      label: "Create Date",
+      align: "center",
+      minWidth: 150,
+      render: (_value, row) => formatDate(row?.createdAt),
+    },
+  ];
 
   return (
-    <Paper sx={{ mb: 3 }}>
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Tabs value={tab} onChange={(e, v) => setTab(v)}>
+    <Paper sx={{ mb: 3, overflow: "hidden" }}>
+      <Box sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "#f5f5f5" }}>
+        <Tabs
+          value={tab}
+          onChange={(e, v) => setTab(v)}
+          textColor="primary"
+          indicatorColor="primary"
+          sx={{
+            "& .MuiTab-root": { textTransform: "none", fontWeight: 600 },
+          }}
+        >
           <Tab label={`Inventory (${inventory.length})`} />
           <Tab label={`History (${movements.length})`} />
         </Tabs>
       </Box>
 
-      <TableContainer>
-        <Table>
-          {/* header */}
-          {tab === 0 ? (
-            <TableHead>
-              <TableRow>
-                <TableCell sx={headerCellSx}>Location</TableCell>
-                <TableCell align="center" sx={headerCellSx}>
-                  Reserved
-                </TableCell>
-                <TableCell align="center" sx={headerCellSx}>
-                  Available
-                </TableCell>
-                <TableCell align="center" sx={headerCellSx}>
-                  Updated Date
-                </TableCell>
-              </TableRow>
-            </TableHead>
-          ) : (
-            <TableHead>
-              <TableRow>
-                <TableCell align="center" sx={headerCellSx}>
-                  Type
-                </TableCell>
-                <TableCell align="center" sx={headerCellSx}>
-                  Qty
-                </TableCell>
-                <TableCell sx={headerCellSx}>From</TableCell>
-                <TableCell sx={headerCellSx}>To</TableCell>
-                <TableCell align="center" sx={headerCellSx}>
-                  User
-                </TableCell>
-                <TableCell align="center" sx={headerCellSx}>
-                  Create Date
-                </TableCell>
-              </TableRow>
-            </TableHead>
-          )}
-
-          {/* body */}
-          <TableBody>
-            {tab === 0 ? (
-              inventory.length > 0 ? (
-                inventory.map((inv) => (
-                  <TableRow key={inv.id} hover>
-                    <TableCell sx={bodyCellSx}>{inv.location?.name}</TableCell>
-                    <TableCell align="center" sx={bodyCellSx}>
-                      {inv.reservedQty}
-                    </TableCell>
-                    <TableCell align="center" sx={bodyCellSx}>
-                      {inv.availableQty}
-                    </TableCell>
-                    <TableCell align="center" sx={bodyCellSx}>
-                      {formatDate(inv.updatedAt)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} align="center" sx={bodyCellSx}>
-                    No inventory found
-                  </TableCell>
-                </TableRow>
-              )
-            ) : movements.length > 0 ? (
-              movements.map((mov) => (
-                <TableRow key={mov.id} hover>
-                  <TableCell align="center" sx={bodyCellSx}>
-                    {renderMovementChip(mov.movementType)}
-                  </TableCell>
-                  <TableCell align="center" sx={bodyCellSx}>
-                    {mov.quantity}
-                  </TableCell>
-                  <TableCell sx={bodyCellSx}>{mov.fromLocation?.name || "-"}</TableCell>
-                  <TableCell sx={bodyCellSx}>{mov.toLocation?.name || "-"}</TableCell>
-                  <TableCell align="center" sx={bodyCellSx}>
-                    {mov.createdBy?.name || "-"}
-                  </TableCell>
-                  <TableCell align="center" sx={bodyCellSx}>
-                    {formatDate(mov.createdAt)}
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={bodyCellSx}>
-                  No movement history
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <Box>
+        {tab === 0 && <DataTable title="" columns={inventoryColumns} data={inventory} />}
+        {tab === 1 && <DataTable title="" columns={movementColumns} data={movements} />}
+      </Box>
     </Paper>
   );
 };

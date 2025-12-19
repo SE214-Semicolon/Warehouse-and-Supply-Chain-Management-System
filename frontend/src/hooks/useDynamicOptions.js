@@ -12,7 +12,7 @@ const CONFIG = {
   },
   locations: {
     service: WarehouseService,
-    getData: (res) => res?.data?.warehouses ?? [],
+    getData: (res) => res?.data?.data ?? [],
     fieldId: "warehouseId",
     nestedKey: "warehouse",
   },

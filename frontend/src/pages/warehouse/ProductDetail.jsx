@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Box, CircularProgress, Paper } from "@mui/material";
+import { Box, CircularProgress } from "@mui/material";
+
 import ProductService from "@/services/product.service";
 import ProductBatchService from "@/services/batch.service";
+
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { formatDate } from "@/utils/formatDate";
 
@@ -22,17 +24,19 @@ const ProductDetail = () => {
   // Dialog states
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openBatchDialog, setOpenBatchDialog] = useState(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [openDeleteBatchDialog, setOpenDeleteBatchDialog] = useState(false);
+  const [openDeleteProductDialog, setOpenDeleteProductDialog] = useState(false);
+
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [batchMode, setBatchMode] = useState("add");
 
   const fetchProductDetail = useCallback(async () => {
+    if (!id) return;
+
     setLoading(true);
     try {
-      const res = await ProductService.getAll();
-      const allProducts = res.data?.data || [];
-      const foundProduct = allProducts.find((p) => p.id === id);
-      setProduct(foundProduct || null);
+      const res = await ProductService.getById(id);
+      setProduct(res?.data ?? null);
     } catch {
       setProduct(null);
     } finally {
@@ -49,7 +53,9 @@ const ProductDetail = () => {
     navigate("/warehouse");
   };
 
-  const handleEditProduct = () => setOpenEditDialog(true);
+  const handleEditProduct = () => {
+    setOpenEditDialog(true);
+  };
 
   const handleSaveProduct = async (formData) => {
     await ProductService.update(id, formData);
@@ -57,7 +63,18 @@ const ProductDetail = () => {
     setOpenEditDialog(false);
   };
 
-  // Batch handlers
+  const handleDeleteProduct = () => {
+    setOpenDeleteProductDialog(true);
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!id) return;
+
+    await ProductService.delete(id);
+    localStorage.setItem("selectedMenu", "products");
+    navigate("/warehouse");
+  };
+
   const handleAddBatch = () => {
     setBatchMode("add");
     setSelectedBatch(null);
@@ -65,14 +82,14 @@ const ProductDetail = () => {
   };
 
   const handleEditBatch = (batch) => {
-    setBatchMode("total");
+    setBatchMode("edit");
     setSelectedBatch(batch);
     setOpenBatchDialog(true);
   };
 
   const handleDeleteBatch = (batch) => {
     setSelectedBatch(batch);
-    setOpenDeleteDialog(true);
+    setOpenDeleteBatchDialog(true);
   };
 
   const confirmDeleteBatch = async () => {
@@ -80,7 +97,7 @@ const ProductDetail = () => {
 
     await ProductBatchService.delete(selectedBatch.id);
     await fetchProductDetail();
-    setOpenDeleteDialog(false);
+    setOpenDeleteBatchDialog(false);
   };
 
   const handleSaveBatch = async (formData) => {
@@ -98,12 +115,7 @@ const ProductDetail = () => {
 
   if (loading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="70vh"
-      >
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="70vh">
         <CircularProgress size={48} />
       </Box>
     );
@@ -129,6 +141,8 @@ const ProductDetail = () => {
         title={product.name}
         onBack={handleBack}
         onEdit={handleEditProduct}
+        onDelete={handleDeleteProduct}
+        disableDelete={product.batches && product.batches.length > 0}
         subtitleItems={[
           { label: "SKU", value: product.sku },
           { label: "Category", value: product.category?.name || "-" },
@@ -184,11 +198,20 @@ const ProductDetail = () => {
         />
       )}
 
+      {/* delete batch */}
       <ConfirmDeleteDialog
-        open={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
+        open={openDeleteBatchDialog}
+        onClose={() => setOpenDeleteBatchDialog(false)}
         onConfirm={confirmDeleteBatch}
         selectedRow={selectedBatch}
+      />
+
+      {/* delete product */}
+      <ConfirmDeleteDialog
+        open={openDeleteProductDialog}
+        onClose={() => setOpenDeleteProductDialog(false)}
+        onConfirm={confirmDeleteProduct}
+        selectedRow={product}
       />
     </Box>
   );
