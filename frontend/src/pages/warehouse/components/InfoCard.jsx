@@ -30,7 +30,7 @@ const InfoCard = ({
         {label}
       </Typography>
 
-      <Typography variant="body1" fontWeight={600} sx={{ textAlign: "right" }}>
+      <Typography variant="body1" fontWeight={400} sx={{ textAlign: "right" }}>
         {value ?? "-"}
       </Typography>
     </Box>
