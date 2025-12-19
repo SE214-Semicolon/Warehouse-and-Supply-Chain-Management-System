@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `loc-sanity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SANITY TEST - Location Module
 
@@ -39,14 +42,14 @@ describe('Location Module - Sanity Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.location.deleteMany({});
-    await prisma.warehouse.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.location.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-loc-sanity',
-        email: 'admin-loc-sanity@test.com',
+        username: `admin-loc-sanity-${TEST_SUITE_ID}`,
+        email: `admin-loc-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Location Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -56,8 +59,8 @@ describe('Location Module - Sanity Tests', () => {
 
     const managerUser = await prisma.user.create({
       data: {
-        username: 'manager-loc-sanity',
-        email: 'manager-loc-sanity@test.com',
+        username: `manager-loc-sanity-${TEST_SUITE_ID}`,
+        email: `manager-loc-sanity-${TEST_SUITE_ID}@test.com`,
         fullName: 'Manager Location Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.manager,
@@ -79,8 +82,8 @@ describe('Location Module - Sanity Tests', () => {
 
     const warehouse = await prisma.warehouse.create({
       data: {
-        code: 'SANITY-WH-001',
-        name: 'Sanity Test Warehouse',
+        code: `SANITY-WH-${TEST_SUITE_ID}`,
+        name: `Sanity Test Warehouse ${TEST_SUITE_ID}`,
       },
     });
 
@@ -88,6 +91,10 @@ describe('Location Module - Sanity Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.location.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 

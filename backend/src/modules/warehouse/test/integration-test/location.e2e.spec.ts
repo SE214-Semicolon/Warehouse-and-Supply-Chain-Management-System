@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `location-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 describe('Location Module (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -38,14 +41,11 @@ describe('Location Module (e2e)', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    // Clean database
-    await cleanDatabase();
-
-    // Create test users and get tokens
+    // Create test users and get tokens with unique identifiers
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-location-test',
-        email: 'admin-location@test.com',
+        username: `admin-loc-${TEST_SUITE_ID}`,
+        email: `admin-loc-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Location Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -55,8 +55,8 @@ describe('Location Module (e2e)', () => {
 
     const staffUser = await prisma.user.create({
       data: {
-        username: 'staff-location-test',
-        email: 'staff-location@test.com',
+        username: `staff-loc-${TEST_SUITE_ID}`,
+        email: `staff-loc-${TEST_SUITE_ID}@test.com`,
         fullName: 'Staff Location Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.warehouse_staff,
@@ -74,7 +74,7 @@ describe('Location Module (e2e)', () => {
     // Create test warehouses
     const warehouse1 = await prisma.warehouse.create({
       data: {
-        code: 'TEST-WH-LOC-001',
+        code: `TEST-WH-LOC-001-${TEST_SUITE_ID}`,
         name: 'Test Warehouse for Locations',
         address: '123 Test Street',
       },
@@ -83,7 +83,7 @@ describe('Location Module (e2e)', () => {
 
     const warehouse2 = await prisma.warehouse.create({
       data: {
-        code: 'TEST-WH-LOC-002',
+        code: `TEST-WH-LOC-002-${TEST_SUITE_ID}`,
         name: 'Second Test Warehouse',
         address: '456 Test Avenue',
       },
@@ -93,7 +93,7 @@ describe('Location Module (e2e)', () => {
     // Create initial test location
     const location = await prisma.location.create({
       data: {
-        code: 'TEST-LOC-001',
+        code: `TEST-LOC-001-${TEST_SUITE_ID}`,
         name: 'Test Location 1',
         capacity: 100,
         type: 'SHELF',
@@ -105,7 +105,7 @@ describe('Location Module (e2e)', () => {
     // Create another location for duplicate testing
     await prisma.location.create({
       data: {
-        code: 'TEST-LOC-002',
+        code: `TEST-LOC-002-${TEST_SUITE_ID}`,
         name: 'Test Location 2',
         capacity: 200,
         type: 'PALLET',
@@ -115,21 +115,30 @@ describe('Location Module (e2e)', () => {
   }, 30000); // 30 second timeout for setup
 
   afterAll(async () => {
-    await cleanDatabase();
-    await app.close();
-  }, 30000); // 30 second timeout for teardown
-
-  async function cleanDatabase() {
-    await prisma.location.deleteMany({});
-    await prisma.warehouse.deleteMany({});
-    await prisma.user.deleteMany({
+    // Clean up only this test suite's data
+    await prisma.location.deleteMany({
       where: {
-        email: {
-          contains: '@test.com',
+        code: {
+          contains: TEST_SUITE_ID,
         },
       },
     });
-  }
+    await prisma.warehouse.deleteMany({
+      where: {
+        code: {
+          contains: TEST_SUITE_ID,
+        },
+      },
+    });
+    await prisma.user.deleteMany({
+      where: {
+        email: {
+          contains: TEST_SUITE_ID,
+        },
+      },
+    });
+    await app.close();
+  }, 30000);
 
   describe('POST /locations - Create Location', () => {
     // LOC-TC01: Create with valid data
@@ -177,7 +186,7 @@ describe('Location Module (e2e)', () => {
     // LOC-TC03: Duplicate code in same warehouse
     it('LOC-INT-03: Should return 409 for duplicate code in same warehouse', async () => {
       const createDto = {
-        code: 'TEST-LOC-001', // Already exists in testWarehouseId
+        code: `TEST-LOC-001-${TEST_SUITE_ID}`, // Already exists in testWarehouseId
         name: 'Duplicate Location',
         capacity: 100,
         type: 'SHELF',
@@ -365,7 +374,7 @@ describe('Location Module (e2e)', () => {
     // LOC-TC15: Duplicate code (case insensitive) same warehouse
     it('LOC-INT-14: Should return 409 for case-insensitive duplicate in same warehouse', async () => {
       const createDto1 = {
-        code: 'LOC-CASE-TEST',
+        code: `LOC-CASE-${TEST_SUITE_ID}`,
         name: 'Case Test 1',
         capacity: 100,
         type: 'SHELF',
@@ -373,7 +382,7 @@ describe('Location Module (e2e)', () => {
       };
 
       const createDto2 = {
-        code: 'loc-case-test',
+        code: `loc-case-${TEST_SUITE_ID}`,
         name: 'Case Test 2',
         capacity: 100,
         type: 'SHELF',
@@ -398,7 +407,7 @@ describe('Location Module (e2e)', () => {
     // LOC-TC16: Same code different warehouse
     it('LOC-INT-15: Should allow same code in different warehouses', async () => {
       const createDto1 = {
-        code: 'LOC-CROSS-WH',
+        code: `LOC-CROSS-${TEST_SUITE_ID}`,
         name: 'Cross Warehouse 1',
         capacity: 100,
         type: 'SHELF',
@@ -406,7 +415,7 @@ describe('Location Module (e2e)', () => {
       };
 
       const createDto2 = {
-        code: 'LOC-CROSS-WH',
+        code: `LOC-CROSS-${TEST_SUITE_ID}`,
         name: 'Cross Warehouse 2',
         capacity: 100,
         type: 'SHELF',
@@ -749,12 +758,12 @@ describe('Location Module (e2e)', () => {
     // LOC-TC51: Find by valid code
     it('LOC-INT-38: Should get location by valid code', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/locations/code/${testWarehouseId}/TEST-LOC-001/`)
+        .get(`/locations/code/${testWarehouseId}/TEST-LOC-001-${TEST_SUITE_ID}/`)
         .set('Authorization', adminToken)
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.location.code).toBe('TEST-LOC-001');
+      expect(response.body.location.code).toBe(`TEST-LOC-001-${TEST_SUITE_ID}`);
     });
 
     // LOC-TC52: Not found
@@ -767,8 +776,9 @@ describe('Location Module (e2e)', () => {
 
     // LOC-TC55: Case insensitive
     it('LOC-INT-40: Should perform case-insensitive code search', async () => {
+      const locationCode = `TEST-LOC-001-${TEST_SUITE_ID}`.toLowerCase();
       const response = await request(app.getHttpServer())
-        .get(`/locations/code/${testWarehouseId}/test-loc-001`)
+        .get(`/locations/code/${testWarehouseId}/${locationCode}`)
         .set('Authorization', adminToken)
         .expect(200);
 
@@ -845,7 +855,7 @@ describe('Location Module (e2e)', () => {
     // LOC-TC74: Duplicate code
     it('LOC-INT-45: Should return 409 for duplicate code in same warehouse', async () => {
       const updateDto = {
-        code: 'TEST-LOC-002', // Already exists
+        code: `TEST-LOC-002-${TEST_SUITE_ID}`, // Already exists
       };
 
       const response = await request(app.getHttpServer())

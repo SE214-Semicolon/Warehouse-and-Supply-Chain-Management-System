@@ -27,7 +27,7 @@ export const fetchProductsData = async () => {
 export const fetchWarehousesData = async () => {
   try {
     const res = await WarehouseService.getAll();
-    return res.data?.warehouses ?? res.data?.data?.warehouses ?? [];
+    return res.data?.data ?? res.data?.data?.warehouses ?? [];
   } catch (error) {
     console.error("Lỗi khi fetch warehouses:", error);
     return [];
@@ -37,7 +37,7 @@ export const fetchWarehousesData = async () => {
 export const fetchLocationsData = async () => {
   try {
     const res = await LocationService.getAll();
-    return res.data?.locations ?? res.data?.data?.locations ?? [];
+    return res.data?.data ?? res.data?.data?.locations ?? [];
   } catch (error) {
     console.error("Lỗi khi fetch locations:", error);
     return [];

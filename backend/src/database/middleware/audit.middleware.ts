@@ -26,7 +26,11 @@ export class AuditMiddleware implements OnModuleInit {
   private readonly PII_FIELDS = ['email', 'phone', 'phoneNumber'];
 
   // Entities to audit
-  // Note: StockMovement is now audited to track who creates/modifies movement records
+  // Core modules: Product, Warehouse, Inventory
+  // Procurement module: PurchaseOrder, PurchaseOrderItem
+  // Sales module: SalesOrder, SalesOrderItem
+  // Logistics module: Shipment
+  // Note: StockMovement tracks all inventory movements
   private readonly AUDITED_MODELS = [
     'Product',
     'ProductBatch',
@@ -35,6 +39,11 @@ export class AuditMiddleware implements OnModuleInit {
     'Warehouse',
     'Location',
     'StockMovement',
+    'PurchaseOrder',
+    'PurchaseOrderItem',
+    'SalesOrder',
+    'SalesOrderItem',
+    'Shipment',
   ];
 
   constructor(

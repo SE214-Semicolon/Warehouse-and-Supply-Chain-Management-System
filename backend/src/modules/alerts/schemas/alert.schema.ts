@@ -4,6 +4,8 @@ import { Document, Schema as MongooseSchema } from 'mongoose';
 export enum AlertType {
   LOW_STOCK = 'LOW_STOCK',
   EXPIRING_SOON = 'EXPIRING_SOON',
+  PO_LATE_DELIVERY = 'PO_LATE_DELIVERY',
+  SO_PENDING_TOO_LONG = 'SO_PENDING_TOO_LONG',
 }
 
 export enum AlertSeverity {
@@ -14,6 +16,8 @@ export enum AlertSeverity {
 export enum RelatedEntityType {
   PRODUCT = 'Product',
   INVENTORY = 'Inventory',
+  PURCHASE_ORDER = 'PurchaseOrder',
+  SALES_ORDER = 'SalesOrder',
 }
 
 @Schema({ _id: false, versionKey: false })

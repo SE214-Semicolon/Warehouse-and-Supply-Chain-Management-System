@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `prod-smoke-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SMOKE TEST - Product Module
  * Critical path testing for basic CRUD operations
@@ -34,13 +37,13 @@ describe('Product Module - Smoke Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.product.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-product-smoke',
-        email: 'admin-product-smoke@test.com',
+        username: `admin-product-smoke-${TEST_SUITE_ID}`,
+        email: `admin-product-smoke-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Product Smoke',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -56,6 +59,9 @@ describe('Product Module - Smoke Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 
@@ -67,8 +73,8 @@ describe('Product Module - Smoke Tests', () => {
         .post('/products')
         .set('Authorization', adminToken)
         .send({
-          sku: 'SMOKE-PROD-001',
-          name: 'Smoke Test Product',
+          sku: `SMOKE-PROD-${TEST_SUITE_ID}`,
+          name: `Smoke Test Product ${TEST_SUITE_ID}`,
           unit: 'pcs',
         })
         .expect(201);
@@ -91,11 +97,11 @@ describe('Product Module - Smoke Tests', () => {
         .patch(`/products/${productId}`)
         .set('Authorization', adminToken)
         .send({
-          name: 'Updated Smoke Product',
+          name: `Updated Smoke Product ${TEST_SUITE_ID}`,
         })
         .expect(200);
 
-      expect(response.body.data.name).toBe('Updated Smoke Product');
+      expect(response.body.data.name).toContain('Updated Smoke Product');
     });
 
     it('should DELETE product', async () => {

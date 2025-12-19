@@ -32,7 +32,7 @@ export default function ActionButtons({ onAdd, onImport, onExport, onPrint }) {
             py: 1,
           }}
         >
-          Thêm
+          Add
         </Button>
       )}
 

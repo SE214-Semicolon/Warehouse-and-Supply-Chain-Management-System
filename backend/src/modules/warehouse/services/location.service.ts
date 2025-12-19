@@ -85,7 +85,7 @@ export class LocationService {
 
     return {
       success: true,
-      location,
+      data: location,
       message: 'Location created successfully',
     };
   }
@@ -152,7 +152,7 @@ export class LocationService {
 
     return {
       success: true,
-      locations,
+      data: locations,
       total,
       page,
       limit,
@@ -191,7 +191,7 @@ export class LocationService {
 
         return {
           success: true,
-          location,
+          data: location,
           stats,
         };
       },
@@ -233,7 +233,7 @@ export class LocationService {
 
         return {
           success: true,
-          location,
+          data: location,
           stats,
         };
       },
@@ -276,7 +276,7 @@ export class LocationService {
             code: warehouse.code,
             name: warehouse.name,
           },
-          locations,
+          data: locations,
           total: locations.length,
         };
       },
@@ -326,7 +326,7 @@ export class LocationService {
       success: true,
       warehouseId,
       minCapacity,
-      locations: availableLocations,
+      data: availableLocations,
       total: locations.length,
     };
   }
@@ -395,7 +395,7 @@ export class LocationService {
 
     return {
       success: true,
-      location: updatedLocation,
+      data: updatedLocation,
       message: 'Location updated successfully',
     };
   }

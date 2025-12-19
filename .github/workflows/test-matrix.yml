@@ -1,0 +1,136 @@
+name: Run Tests by Module
+
+on:
+  workflow_call:
+    inputs:
+      test-type:
+        description: 'Type of tests to run (unit, smoke, sanity, integration, or all)'
+        required: false
+        type: string
+        default: 'all'
+      module:
+        description: 'Specific module to test (leave empty for all modules)'
+        required: false
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      test-type:
+        description: 'Type of tests to run'
+        required: true
+        type: choice
+        options:
+          - all
+          - unit
+          - smoke
+          - sanity
+          - integration
+        default: 'unit'
+      module:
+        description: 'Specific module to test (leave empty for all)'
+        required: false
+        type: string
+        default: ''
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # Generate the test matrix dynamically from the script
+  generate-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Generate test matrix
+        id: set-matrix
+        run: |
+          cd backend
+          chmod +x scripts/run-tests-by-type.sh
+          
+          # Get the full matrix from the script
+          FULL_MATRIX=$(./scripts/run-tests-by-type.sh --matrix)
+          
+          # Filter by test type if specified
+          if [ "${{ inputs.test-type }}" != "all" ] && [ -n "${{ inputs.test-type }}" ]; then
+            FULL_MATRIX=$(echo "$FULL_MATRIX" | jq --arg type "${{ inputs.test-type }}" '{include: [.include[] | select(.type == $type)]}')
+          fi
+          
+          # Filter by module if specified
+          if [ -n "${{ inputs.module }}" ]; then
+            FULL_MATRIX=$(echo "$FULL_MATRIX" | jq --arg module "${{ inputs.module }}" '{include: [.include[] | select(.module == $module)]}')
+          fi
+          
+          echo "matrix=$FULL_MATRIX" >> $GITHUB_OUTPUT
+          echo "Generated matrix: $FULL_MATRIX"
+
+  # Run tests using the matrix
+  test:
+    needs: generate-matrix
+    if: ${{ fromJson(needs.generate-matrix.outputs.matrix).include[0] != null }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    
+    name: ${{ matrix.type }} - ${{ matrix.module }}
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+        working-directory: backend
+
+      - name: Run ${{ matrix.type }} tests for ${{ matrix.module }}
+        run: |
+          chmod +x scripts/run-tests-by-type.sh
+          ./scripts/run-tests-by-type.sh ${{ matrix.type }} ${{ matrix.module }}
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          # Testcontainers will provision databases dynamically for integration tests
+          # These are fallback/dummy values for config validation
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          POSTGRES_URL: postgresql://test:test@localhost:5432/test
+          MONGODB_URL: mongodb://localhost:27017/test
+          MONGO_URL: mongodb://localhost:27017/test
+          # JWT secrets for authentication
+          JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
+          JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
+          JWT_ACCESS_TTL: 15m
+          JWT_REFRESH_TTL: 7d
+          # Testcontainers configuration for GitHub Actions
+          TESTCONTAINERS_HOST_OVERRIDE: localhost
+          TESTCONTAINERS_RYUK_DISABLED: true
+
+
+  # Summary job that depends on all tests
+  test-summary:
+    needs: [generate-matrix, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check test results
+        run: |
+          if [ "${{ needs.test.result }}" == "failure" ]; then
+            echo "❌ Some tests failed"
+            exit 1
+          elif [ "${{ needs.test.result }}" == "skipped" ]; then
+            echo "⚠️ Tests were skipped (no matching test configurations found)"
+            exit 0
+          else
+            echo "✅ All tests passed"
+          fi

@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `inv-smoke-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SMOKE TEST - Inventory Module
  * Critical path testing for basic operations
@@ -36,17 +39,23 @@ describe('Inventory Module - Smoke Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.inventory.deleteMany({});
-    await prisma.productBatch.deleteMany({});
-    await prisma.product.deleteMany({});
-    await prisma.location.deleteMany({});
-    await prisma.warehouse.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.inventory.deleteMany({
+      where: { location: { warehouse: { code: { contains: TEST_SUITE_ID } } } },
+    });
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.location.deleteMany({
+      where: { warehouse: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-inventory-smoke',
-        email: 'admin-inventory-smoke@test.com',
+        username: `admin-inventory-smoke-${TEST_SUITE_ID}`,
+        email: `admin-inventory-smoke-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Inventory Smoke',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -62,16 +71,16 @@ describe('Inventory Module - Smoke Tests', () => {
 
     const warehouse = await prisma.warehouse.create({
       data: {
-        code: 'SMOKE-WH-001',
-        name: 'Smoke Test Warehouse',
+        code: `SMOKE-WH-${TEST_SUITE_ID}`,
+        name: `Smoke Test Warehouse ${TEST_SUITE_ID}`,
       },
     });
 
     const location = await prisma.location.create({
       data: {
         warehouseId: warehouse.id,
-        code: 'SMOKE-LOC-001',
-        name: 'Smoke Test Location',
+        code: `SMOKE-LOC-${TEST_SUITE_ID}`,
+        name: `Smoke Test Location ${TEST_SUITE_ID}`,
       },
     });
 
@@ -79,8 +88,8 @@ describe('Inventory Module - Smoke Tests', () => {
 
     const product = await prisma.product.create({
       data: {
-        sku: 'SMOKE-INV-PROD-001',
-        name: 'Smoke Inventory Product',
+        sku: `SMOKE-INV-PROD-${TEST_SUITE_ID}`,
+        name: `Smoke Inventory Product ${TEST_SUITE_ID}`,
         unit: 'pcs',
       },
     });
@@ -88,7 +97,7 @@ describe('Inventory Module - Smoke Tests', () => {
     const productBatch = await prisma.productBatch.create({
       data: {
         productId: product.id,
-        batchNo: 'SMOKE-INV-BATCH-001',
+        batchNo: `SMOKE-INV-BATCH-${TEST_SUITE_ID}`,
         quantity: 1000,
       },
     });
@@ -97,6 +106,19 @@ describe('Inventory Module - Smoke Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.inventory.deleteMany({
+      where: { location: { warehouse: { code: { contains: TEST_SUITE_ID } } } },
+    });
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.location.deleteMany({
+      where: { warehouse: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 

@@ -157,7 +157,7 @@ async function main() {
         unit: 'piece',
         barcode: '1234567890123',
         parameters: {
-          unitCost: 1200.00,
+          unitCost: 1200.0,
           brand: 'TechCorp',
           warranty: '2 years',
         },
@@ -173,7 +173,7 @@ async function main() {
         unit: 'piece',
         barcode: '1234567890124',
         parameters: {
-          unitCost: 800.00,
+          unitCost: 800.0,
           brand: 'MobileTech',
           warranty: '1 year',
         },
@@ -189,7 +189,7 @@ async function main() {
         unit: 'piece',
         barcode: '1234567890125',
         parameters: {
-          unitCost: 15.00,
+          unitCost: 15.0,
           size: 'M',
           color: 'Blue',
         },
@@ -205,7 +205,7 @@ async function main() {
         unit: 'liter',
         barcode: '1234567890126',
         parameters: {
-          unitCost: 2.50,
+          unitCost: 2.5,
           fatContent: '3.5%',
           organic: true,
         },
@@ -221,7 +221,7 @@ async function main() {
         unit: 'loaf',
         barcode: '1234567890127',
         parameters: {
-          unitCost: 3.00,
+          unitCost: 3.0,
           weight: '500g',
           organic: false,
         },
@@ -649,6 +649,153 @@ async function main() {
     }),
   ]);
 
+  // Create Shipments với tracking
+  console.log('Creating shipments...');
+  const shipments = await Promise.all([
+    prisma.shipment.create({
+      data: {
+        shipmentNo: 'SHIP-2024-001',
+        warehouseId: mainWarehouse.id,
+        salesOrderId: salesOrders[0].id,
+        status: 'delivered',
+        shippedAt: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000),
+        deliveredAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+        estimatedDelivery: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+        carrier: 'Express Logistics',
+        trackingCode: 'EXP123456789',
+        notes: 'Delivered successfully',
+        items: {
+          create: [
+            {
+              salesOrderId: salesOrders[0].id,
+              productId: products[0].id,
+              productBatchId: batches[0].id,
+              qty: 2,
+            },
+          ],
+        },
+        trackingEvents: {
+          create: [
+            {
+              eventTime: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000),
+              location: 'Warehouse',
+              statusText: 'Picked up from warehouse',
+            },
+            {
+              eventTime: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000),
+              location: 'Transit Hub',
+              statusText: 'In transit',
+            },
+            {
+              eventTime: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+              location: 'Customer Location',
+              statusText: 'Delivered',
+            },
+          ],
+        },
+      },
+    }),
+    prisma.shipment.create({
+      data: {
+        shipmentNo: 'SHIP-2024-002',
+        warehouseId: mainWarehouse.id,
+        salesOrderId: salesOrders[1].id,
+        status: 'in_transit',
+        shippedAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+        estimatedDelivery: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+        carrier: 'Fast Delivery Co.',
+        trackingCode: 'FDC987654321',
+        items: {
+          create: [
+            {
+              salesOrderId: salesOrders[1].id,
+              productId: products[2].id,
+              productBatchId: batches[2].id,
+              qty: 3,
+            },
+          ],
+        },
+        trackingEvents: {
+          create: [
+            {
+              eventTime: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+              location: 'Warehouse',
+              statusText: 'Picked up',
+            },
+            {
+              eventTime: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000),
+              location: 'Sorting Facility',
+              statusText: 'Sorting in progress',
+            },
+          ],
+        },
+      },
+    }),
+    prisma.shipment.create({
+      data: {
+        shipmentNo: 'SHIP-2024-003',
+        warehouseId: secondaryWarehouse.id,
+        salesOrderId: salesOrders[1].id,
+        status: 'preparing',
+        estimatedDelivery: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
+        items: {
+          create: [
+            {
+              salesOrderId: salesOrders[1].id,
+              productId: products[1].id,
+              qty: 1,
+            },
+          ],
+        },
+      },
+    }),
+  ]);
+
+  // Create Demand Forecasts
+  console.log('Creating demand forecasts...');
+  const forecasts = await Promise.all([
+    prisma.demandForecast.create({
+      data: {
+        productId: products[0].id,
+        forecastDate: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+        forecastedQuantity: 50,
+        algorithmUsed: 'MOVING_AVERAGE',
+      },
+    }),
+    prisma.demandForecast.create({
+      data: {
+        productId: products[0].id,
+        forecastDate: new Date(now.getFullYear(), now.getMonth() + 2, 1),
+        forecastedQuantity: 55,
+        algorithmUsed: 'EXPONENTIAL_SMOOTHING',
+      },
+    }),
+    prisma.demandForecast.create({
+      data: {
+        productId: products[1].id,
+        forecastDate: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+        forecastedQuantity: 80,
+        algorithmUsed: 'SIMPLE_MOVING_AVERAGE',
+      },
+    }),
+    prisma.demandForecast.create({
+      data: {
+        productId: products[2].id,
+        forecastDate: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+        forecastedQuantity: 200,
+        algorithmUsed: 'MOVING_AVERAGE',
+      },
+    }),
+    prisma.demandForecast.create({
+      data: {
+        productId: products[3].id,
+        forecastDate: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+        forecastedQuantity: 300,
+        algorithmUsed: 'EXPONENTIAL_SMOOTHING',
+      },
+    }),
+  ]);
+
   console.log('✅ Seed completed successfully!');
   console.log('\n📊 Test Data Summary:');
   console.log(`   Users: ${[adminUser, managerUser, staffUser].length}`);
@@ -677,6 +824,8 @@ async function main() {
   console.log('   • Reservation and release operations');
   console.log('   • Purchase Order flows (draft, ordered, partial, received)');
   console.log('   • Sales Order fulfillment with qtyFulfilled tracking');
+  console.log('   • Shipment tracking (3 shipments: delivered, in_transit, preparing)');
+  console.log(`   • Demand forecasting (${forecasts.length} forecasts with multiple algorithms)`);
 }
 
 main()

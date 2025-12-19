@@ -1054,6 +1054,83 @@ export class InventoryRepository implements IInventoryRepository {
   }
 
   /**
+   * Get stock movements by product batch
+   * Used for tracking movement history of a specific batch
+   */
+  async getMovementsByProductBatch(
+    productBatchId: string,
+    movementType?: string,
+    locationId?: string,
+    startDate?: string,
+    endDate?: string,
+    page: number = 1,
+    limit: number = 20,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc',
+  ) {
+    this.logger.log(`Fetching movements for batch ${productBatchId}, page ${page}, limit ${limit}`);
+
+    const skip = (page - 1) * limit;
+
+    // Build where clause
+    const where: Prisma.StockMovementWhereInput = {
+      productBatchId,
+    };
+
+    if (movementType) {
+      where.movementType = movementType as any;
+    }
+
+    if (locationId) {
+      where.OR = [{ fromLocationId: locationId }, { toLocationId: locationId }];
+    }
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+
+    // Get movements with pagination
+    const [movements, total] = await Promise.all([
+      this.prisma.stockMovement.findMany({
+        where,
+        include: {
+          productBatch: {
+            include: {
+              product: true,
+            },
+          },
+          fromLocation: true,
+          toLocation: true,
+          createdBy: {
+            select: {
+              id: true,
+              username: true,
+              email: true,
+              fullName: true,
+            },
+          },
+        },
+        orderBy: { [sortBy]: sortOrder },
+        skip,
+        take: limit,
+      }),
+      this.prisma.stockMovement.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      movements,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
+  /**
    * Helper method to group inventory data
    */
   private groupInventoryData(
@@ -1095,5 +1172,44 @@ export class InventoryRepository implements IInventoryRepository {
     }
 
     return Object.values(grouped);
+  }
+
+  /**
+   * Find inventory records by productId across multiple locations
+   * Used for inventory availability checks in shipment creation
+   */
+  async findInventoryByProductAndLocations(
+    productId: string,
+    locationIds: string[],
+  ): Promise<InventoryWithRelations[]> {
+    try {
+      this.logger.debug(
+        `Finding inventory for product ${productId} in locations: ${locationIds.join(', ')}`,
+      );
+      return this.prisma.inventory.findMany({
+        where: {
+          locationId: { in: locationIds },
+          productBatch: {
+            productId: productId,
+          },
+          deletedAt: null,
+        },
+        include: {
+          productBatch: {
+            include: {
+              product: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
+          location: true,
+        },
+      });
+    } catch (error) {
+      this.logger.error(`Error finding inventory for product ${productId} in locations:`, error);
+      throw error;
+    }
   }
 }

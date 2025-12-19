@@ -20,16 +20,11 @@ import { ReserveInventoryDto } from '../dto/reserve-inventory.dto';
 import { ReleaseReservationDto } from '../dto/release-reservation.dto';
 import { QueryByLocationDto } from '../dto/query-by-location.dto';
 import { QueryByProductBatchDto } from '../dto/query-by-product-batch.dto';
+import { MovementQueryDto } from '../dto/movement-query.dto';
 import { UpdateQuantityDto } from '../dto/update-quantity.dto';
-import { AlertQueryDto } from '../dto/alert-query.dto';
-import {
-  StockLevelReportDto,
-  MovementReportDto,
-  ValuationReportDto,
-} from '../dto/report-query.dto';
-import { JwtAuthGuard } from '../../../auth/jwt.guard';
-import { RolesGuard } from '../../../auth/roles.guard';
-import { Roles } from '../../../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt.guard';
+import { RolesGuard } from 'src/modules/auth/guards/roles.guard';
+import { Roles } from 'src/modules/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
 import {
@@ -38,6 +33,7 @@ import {
   InventoryTransferResponseDto,
   InventoryReservationResponseDto,
   InventoryQueryResponseDto,
+  MovementQueryResponseDto,
   ErrorResponseDto,
 } from '../dto/response.dto';
 
@@ -450,115 +446,27 @@ export class InventoryController {
     return this.inventoryService.softDeleteInventory(productBatchId, locationId);
   }
 
-  @Get('alerts/low-stock')
+  @Get('movements/product-batch')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get low stock alerts' })
+  @ApiOperation({ summary: 'Get stock movement history by product batch' })
   @ApiResponse({
     status: 200,
-    description: 'Low stock inventory list',
-    schema: {
-      example: {
-        success: true,
-        inventories: [],
-        total: 0,
-        page: 1,
-        limit: 20,
-        totalPages: 0,
-      },
-    },
+    description: 'Stock movement history retrieved successfully',
+    type: MovementQueryResponseDto,
   })
-  async getLowStockAlerts(@Query() dto: AlertQueryDto) {
-    return this.inventoryService.getLowStockAlerts(dto);
-  }
-
-  @Get('alerts/expiry')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get expiry alerts' })
   @ApiResponse({
-    status: 200,
-    description: 'Expiring inventory list',
-    schema: {
-      example: {
-        success: true,
-        inventories: [],
-        total: 0,
-        page: 1,
-        limit: 20,
-        totalPages: 0,
-      },
-    },
+    status: 400,
+    description: 'Bad Request (validation)',
+    type: ErrorResponseDto,
   })
-  async getExpiryAlerts(@Query() dto: AlertQueryDto) {
-    return this.inventoryService.getExpiryAlerts(dto);
-  }
-
-  @Get('reports/stock-levels')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Generate stock level report' })
   @ApiResponse({
-    status: 200,
-    description: 'Stock level report data',
-    schema: {
-      example: {
-        success: true,
-        groupedData: [],
-        total: 0,
-        page: 1,
-        limit: 20,
-        totalPages: 0,
-      },
-    },
+    status: 404,
+    description: 'ProductBatch not found',
+    type: ErrorResponseDto,
   })
-  async getStockLevelReport(@Query() dto: StockLevelReportDto) {
-    return this.inventoryService.getStockLevelReport(dto);
-  }
-
-  @Get('reports/movements')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Generate movement report' })
-  @ApiResponse({
-    status: 200,
-    description: 'Movement report data',
-    schema: {
-      example: {
-        success: true,
-        movements: [],
-        total: 0,
-        page: 1,
-        limit: 20,
-        totalPages: 0,
-      },
-    },
-  })
-  async getMovementReport(@Query() dto: MovementReportDto) {
-    return this.inventoryService.getMovementReport(dto);
-  }
-
-  @Get('reports/valuation')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Generate inventory valuation report' })
-  @ApiResponse({
-    status: 200,
-    description: 'Valuation report data',
-    schema: {
-      example: {
-        success: true,
-        valuationData: [],
-        grandTotal: 0,
-        method: 'AVERAGE',
-        total: 0,
-        page: 1,
-        limit: 20,
-        totalPages: 0,
-      },
-    },
-  })
-  async getValuationReport(@Query() dto: ValuationReportDto) {
-    return this.inventoryService.getValuationReport(dto);
+  async getMovementsByProductBatch(@Query() dto: MovementQueryDto) {
+    this.logger.log(`GET /inventory/movements/product-batch - Batch: ${dto.productBatchId}`);
+    return this.inventoryService.getMovementsByProductBatch(dto);
   }
 }

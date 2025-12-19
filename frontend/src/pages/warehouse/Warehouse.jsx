@@ -49,7 +49,9 @@ const menuConfig = {
 
 const Warehouse = () => {
   const navigate = useNavigate();
-  const [selectedMenu, setSelectedMenu] = useState("warehouses");
+  const [selectedMenu, setSelectedMenu] = useState(() => {
+    return localStorage.getItem("selectedMenu") || "warehouses";
+  });
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState(null);
   const [selectedRow, setSelectedRow] = useState(null);
@@ -73,6 +75,11 @@ const Warehouse = () => {
     }
   }, [selectedMenu]);
 
+  const handleSelectMenu = (menuId) => {
+    setSelectedMenu(menuId);
+    localStorage.setItem("selectedMenu", menuId);
+  };
+
   const handleAdd = () => {
     setDialogMode("add");
     setSelectedRow(null);
@@ -88,6 +95,11 @@ const Warehouse = () => {
   const handleView = (row) => {
     if (selectedMenu === "batches") {
       navigate(`/warehouse/batches/${row.id}`);
+      return;
+    }
+
+    if (selectedMenu === "products") {
+      navigate(`/warehouse/products/${row.id}`);
       return;
     }
 
@@ -183,7 +195,7 @@ const Warehouse = () => {
       <WarehouseToolbar
         menuItems={menuItems}
         selectedMenu={selectedMenu}
-        onSelect={setSelectedMenu}
+        onSelect={handleSelectMenu}
       />
 
       <Box

@@ -11,17 +11,20 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
 // Core module imports
 import { DatabaseModule } from './database/database.module';
-import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
 
 // Business module imports
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { ProductModule } from './modules/product/product.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
-import { OrderModule } from './modules/order/order.module';
-import { SupplierModule } from './modules/supplier/supplier.module';
+import { ProcurementModule } from './modules/procurement/procurement.module';
+import { SalesModule } from './modules/sales/sales.module';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
+import { DemandPlanningModule } from './modules/demand-planning/demand-planning.module';
+import { ReportingModule } from './modules/reporting/reporting.module';
+import { ShipmentModule } from './modules/shipment/shipment.module';
 
 // Controller and Service imports
 import { AppController } from './app.controller';
@@ -59,10 +62,13 @@ import { MetricsModule, MetricsInterceptor } from './common/metrics';
     ProductModule,
     WarehouseModule,
     InventoryModule,
-    OrderModule,
-    SupplierModule,
+    ProcurementModule,
+    SalesModule,
     AuditLogModule,
     AlertsModule,
+    DemandPlanningModule,
+    ReportingModule,
+    ShipmentModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

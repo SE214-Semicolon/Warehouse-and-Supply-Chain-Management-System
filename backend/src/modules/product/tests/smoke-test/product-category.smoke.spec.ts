@@ -6,6 +6,9 @@ import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `cat-smoke-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
  * SMOKE TEST - Product Category Module
  * Critical path testing for basic CRUD operations
@@ -34,13 +37,13 @@ describe('Product Category Module - Smoke Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.productCategory.deleteMany({});
-    await prisma.user.deleteMany({});
+    await prisma.productCategory.deleteMany({ where: { name: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: 'admin-category-smoke',
-        email: 'admin-category-smoke@test.com',
+        username: `admin-category-smoke-${TEST_SUITE_ID}`,
+        email: `admin-category-smoke-${TEST_SUITE_ID}@test.com`,
         fullName: 'Admin Category Smoke',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
@@ -56,6 +59,9 @@ describe('Product Category Module - Smoke Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    await prisma.productCategory.deleteMany({ where: { name: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
     await app.close();
   }, 30000);
 
@@ -67,7 +73,7 @@ describe('Product Category Module - Smoke Tests', () => {
         .post('/product-categories')
         .set('Authorization', adminToken)
         .send({
-          name: 'Smoke Test Category',
+          name: `Smoke Test Category ${TEST_SUITE_ID}`,
         })
         .expect(201);
 
@@ -89,11 +95,11 @@ describe('Product Category Module - Smoke Tests', () => {
         .patch(`/product-categories/${categoryId}`)
         .set('Authorization', adminToken)
         .send({
-          name: 'Updated Smoke Category',
+          name: `Updated Smoke Category ${TEST_SUITE_ID}`,
         })
         .expect(200);
 
-      expect(response.body.data.name).toBe('Updated Smoke Category');
+      expect(response.body.data.name).toContain('Updated Smoke Category');
     });
 
     it('should DELETE category', async () => {
