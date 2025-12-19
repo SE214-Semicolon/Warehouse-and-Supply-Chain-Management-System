@@ -15,12 +15,9 @@ const Sidebar = ({ width = 264, headerHeight = 60 }) => {
 
   const menuItems = [
     { text: 'Dashboard', path: '/' },
-    { text: 'Inventory', path: '/inventory' },
-    { text: 'Purchase Order', path: '/purchase-order' },
     { text: 'Warehouse', path: '/warehouse' },
     { text: 'Procurement', path: '/procurement' },
     { text: 'Shipment', path: '/shipment' },
-    { text: 'Logistics', path: '/logistics', disabled: true }, // Tạm thời disable
   ];
 
   return (
