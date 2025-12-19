@@ -42,9 +42,7 @@ const BatchDetail = () => {
           LocationService.getAll(),
         ]);
         setCurrentUser(user);
-        setLocations(
-          locRes.data?.locations ?? locRes.data?.data?.locations ?? []
-        );
+        setLocations(locRes.data?.locations ?? locRes.data?.data?.locations ?? []);
       } catch (error) {
         console.error("Error initializing data:", error);
       }
@@ -60,15 +58,23 @@ const BatchDetail = () => {
 
       if (!batchData) {
         setBatch(null);
-      } else {
-        setBatch(batchData);
-        const invRes = await InventoryService.getByBatch(id);
-        setInventory(invRes?.inventories || []);
-        setMovements(invRes.data?.movements || []);
+        setInventory([]);
+        setMovements([]);
+        return;
       }
+
+      setBatch(batchData);
+
+      const invRes = await InventoryService.getByBatch(id);
+      setInventory(invRes?.inventories || invRes?.data?.inventories || []);
+
+      const movementRes = await InventoryService.getMovementByBatch(id);
+      setMovements(movementRes?.movements || []);
     } catch (error) {
       console.error("Error fetching batch:", error);
       setBatch(null);
+      setInventory([]);
+      setMovements([]);
     } finally {
       setLoading(false);
     }
@@ -152,12 +158,7 @@ const BatchDetail = () => {
 
   if (loading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="70vh"
-      >
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="70vh">
         <CircularProgress />
       </Box>
     );

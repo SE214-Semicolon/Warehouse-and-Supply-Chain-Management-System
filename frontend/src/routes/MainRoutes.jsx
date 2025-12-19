@@ -5,7 +5,6 @@ import Dashboard from '@pages/dashboard';
 import Login from '@pages/auth/login';
 import Signup from '@pages/auth/signup';
 import NotFound from '@pages/notfound';
-import Inventory from '@/pages/inventory';
 import Warehouse from '@/pages/warehouse';
 import ProductDetail from '@/pages/warehouse/ProductDetail';
 import BatchDetail from '@/pages/warehouse/BatchDetail';
@@ -22,7 +21,6 @@ export default function MainRoutes() {
         {/* Route cha có Layout */}
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/inventory" element={<Inventory />} />
           <Route path="/warehouse" element={<Warehouse />} />
           <Route path="/warehouse/products/:id" element={<ProductDetail />} />
           <Route path="/warehouse/batches/:id" element={<BatchDetail />} />

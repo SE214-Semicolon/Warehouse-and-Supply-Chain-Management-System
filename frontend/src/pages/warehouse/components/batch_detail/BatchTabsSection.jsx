@@ -34,6 +34,14 @@ const MOVEMENT_CONFIG = {
   release: { label: "Release", color: "default", icon: <LockOpen /> },
 };
 
+const headerCellSx = {
+  fontWeight: 700,
+};
+
+const bodyCellSx = {
+  fontWeight: 400,
+};
+
 const BatchTabsSection = ({ inventory, movements }) => {
   const [tab, setTab] = useState(0);
 
@@ -61,48 +69,64 @@ const BatchTabsSection = ({ inventory, movements }) => {
 
       <TableContainer>
         <Table>
+          {/* header */}
           {tab === 0 ? (
             <TableHead>
               <TableRow>
-                <TableCell>Location</TableCell>
-                <TableCell align="center">Reserved</TableCell>
-                <TableCell align="center">Available</TableCell>
-                <TableCell align="center">Updated Date</TableCell>
+                <TableCell sx={headerCellSx}>Location</TableCell>
+                <TableCell align="center" sx={headerCellSx}>
+                  Reserved
+                </TableCell>
+                <TableCell align="center" sx={headerCellSx}>
+                  Available
+                </TableCell>
+                <TableCell align="center" sx={headerCellSx}>
+                  Updated Date
+                </TableCell>
               </TableRow>
             </TableHead>
           ) : (
             <TableHead>
               <TableRow>
-                <TableCell>Type</TableCell>
-                <TableCell align="right">Qty</TableCell>
-                <TableCell>From</TableCell>
-                <TableCell>To</TableCell>
-                <TableCell>User</TableCell>
-                <TableCell>Time</TableCell>
+                <TableCell align="center" sx={headerCellSx}>
+                  Type
+                </TableCell>
+                <TableCell align="center" sx={headerCellSx}>
+                  Qty
+                </TableCell>
+                <TableCell sx={headerCellSx}>From</TableCell>
+                <TableCell sx={headerCellSx}>To</TableCell>
+                <TableCell align="center" sx={headerCellSx}>
+                  User
+                </TableCell>
+                <TableCell align="center" sx={headerCellSx}>
+                  Create Date
+                </TableCell>
               </TableRow>
             </TableHead>
           )}
 
+          {/* body */}
           <TableBody>
             {tab === 0 ? (
               inventory.length > 0 ? (
                 inventory.map((inv) => (
                   <TableRow key={inv.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="bold">
-                        {inv.location?.name}
-                      </Typography>
+                    <TableCell sx={bodyCellSx}>{inv.location?.name}</TableCell>
+                    <TableCell align="center" sx={bodyCellSx}>
+                      {inv.reservedQty}
                     </TableCell>
-                    <TableCell align="center">{inv.reservedQty}</TableCell>
-                    <TableCell align="center">{inv.availableQty}</TableCell>
-                    <TableCell align="center">
+                    <TableCell align="center" sx={bodyCellSx}>
+                      {inv.availableQty}
+                    </TableCell>
+                    <TableCell align="center" sx={bodyCellSx}>
                       {formatDate(inv.updatedAt)}
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} align="center">
+                  <TableCell colSpan={4} align="center" sx={bodyCellSx}>
                     No inventory found
                   </TableCell>
                 </TableRow>
@@ -110,19 +134,25 @@ const BatchTabsSection = ({ inventory, movements }) => {
             ) : movements.length > 0 ? (
               movements.map((mov) => (
                 <TableRow key={mov.id} hover>
-                  <TableCell>{renderMovementChip(mov.movementType)}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                  <TableCell align="center" sx={bodyCellSx}>
+                    {renderMovementChip(mov.movementType)}
+                  </TableCell>
+                  <TableCell align="center" sx={bodyCellSx}>
                     {mov.quantity}
                   </TableCell>
-                  <TableCell>{mov.fromLocation?.code || "-"}</TableCell>
-                  <TableCell>{mov.toLocation?.code || "-"}</TableCell>
-                  <TableCell>{mov.createdBy?.name || "System"}</TableCell>
-                  <TableCell>{formatDate(mov.createdAt)}</TableCell>
+                  <TableCell sx={bodyCellSx}>{mov.fromLocation?.name || "-"}</TableCell>
+                  <TableCell sx={bodyCellSx}>{mov.toLocation?.name || "-"}</TableCell>
+                  <TableCell align="center" sx={bodyCellSx}>
+                    {mov.createdBy?.name || "-"}
+                  </TableCell>
+                  <TableCell align="center" sx={bodyCellSx}>
+                    {formatDate(mov.createdAt)}
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={6} align="center" sx={bodyCellSx}>
                   No movement history
                 </TableCell>
               </TableRow>
