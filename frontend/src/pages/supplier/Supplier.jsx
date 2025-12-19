@@ -3,9 +3,8 @@ import { Box, Typography } from '@mui/material';
 import DataTable from '@/components/DataTable';
 import SearchBar from '@/components/SearchBar';
 import ActionButtons from '@/components/ActionButton';
-import Toolbar from '../../components/Toolbar';
 import FormDialog from './components/FormDialog';
-import { menuItems } from './components/MenuConfig';
+import { columns } from './components/columns';
 import SupplierService from '../../services/supplier.service';
 import mockData from './mockData';
 import { useNavigate } from 'react-router-dom';
@@ -55,7 +54,7 @@ export default function Supplier() {
 
   useEffect(() => {
     setLoading(true);
-    SupplierService.getSuppliers()
+    SupplierService.getAll()
       .then((res) => {
         setSuppliers(res.data || mockData);
       })
@@ -85,7 +84,7 @@ export default function Supplier() {
     supplier: (
       <DataTable
         title="Supplier"
-        columns={menuItems[0].columns}
+        columns={columns}
         data={suppliers}
         {...commonProps}
       />
@@ -94,8 +93,6 @@ export default function Supplier() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Toolbar menuItems={menuItems} selectedMenu={selectedMenu} />
-
       <Box
         sx={{
           display: 'flex',

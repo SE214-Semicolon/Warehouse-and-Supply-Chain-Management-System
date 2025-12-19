@@ -7,11 +7,10 @@ import Signup from '@pages/auth/signup';
 import NotFound from '@pages/notfound';
 import Inventory from '@/pages/inventory';
 import Warehouse from '../pages/warehouse';
-import Supplier from '@/pages/supplier';
 import Shipment from '@/pages/shipment';
 import SupplierDetail from '@/pages/supplier/SupplierDetail';
-import PurchaseOrder from '@/pages/purchase-order';
 import PODetail from '@/pages/purchase-order/PODetail';
+import Procurement from '@/pages/procurement';
 
 export default function MainRoutes() {
   return (
@@ -22,11 +21,10 @@ export default function MainRoutes() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/warehouse" element={<Warehouse />} />
-          <Route path="/supplier" element={<Supplier />} />
           <Route path="/shipment" element={<Shipment />} />
           <Route path="/supplier/detail" element={<SupplierDetail />} />
-          <Route path="purchase-order" element={<PurchaseOrder />} />
           <Route path="purchase-order/detail" element={<PODetail />} />
+          <Route path="/procurement" element={<Procurement />} />
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />

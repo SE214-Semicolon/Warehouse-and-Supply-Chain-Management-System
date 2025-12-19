@@ -1,14 +1,25 @@
 import api from '../utils/axiosInstance';
 
-const API_URI = '/suppliers';
+const API_URI = '/purchase-orders';
 
-const SupplierService = {
-  create: async (data) => {
+const POService = {
+  createDraft: async (data) => {
     try {
       const response = await api.post(API_URI, data);
+      console.log(response);
       return response.data;
     } catch (error) {
-      console.error('Error creating supplier:', error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  submitOrder: async (id) => {
+    try {
+      const response = await api.post(`${API_URI}/${id}/submit`);
+      console.log(response);
+      return response.data;
+    } catch (error) {
+      console.log(error);
       throw error.response?.data || error.message;
     }
   },
@@ -25,7 +36,7 @@ const SupplierService = {
       console.log(response.data);
       return response.data;
     } catch (error) {
-      console.error('Error fetching suppliers:', error);
+      console.error('Error fetching pos:', error);
       throw error.response?.data || error.message;
     }
   },
@@ -35,7 +46,7 @@ const SupplierService = {
       const response = await api.get(`${API_URI}/${id}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching supplier by ID:', error);
+      console.error('Error fetching po by ID:', error);
       throw error.response?.data || error.message;
     }
   },
@@ -43,23 +54,32 @@ const SupplierService = {
   update: async (id, data) => {
     try {
       const response = await api.patch(`${API_URI}/${id}`, data);
-      console.log(response.data);
-      return response;
+      return response.data;
     } catch (error) {
-      console.error('Error updating supplier:', error);
+      console.error('Error updating po:', error);
       throw error.response?.data || error.message;
     }
   },
 
-  delete: async (id) => {
+  receive: async (id, data) => {
     try {
-      const response = await api.delete(`${API_URI}/${id}`);
+      const response = await api.patch(`${API_URI}/${id}/receive`, data);
       return response.data;
     } catch (error) {
-      console.error('Error deleting supplier:', error);
+      console.error('Error updating po:', error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  cancel: async (id, data) => {
+    try {
+      const response = await api.patch(`${API_URI}/${id}/cancel`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating po:', error);
       throw error.response?.data || error.message;
     }
   },
 };
 
-export default SupplierService;
+export default POService;
