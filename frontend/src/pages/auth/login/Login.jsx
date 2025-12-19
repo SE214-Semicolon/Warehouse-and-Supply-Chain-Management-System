@@ -39,7 +39,7 @@ export default function Login() {
     }
     await AuthService.login(formData)
       .then(() => {
-        navigate('/inventory');
+        navigate('/');
       })
       .catch((error) => {
         setErrors({ general: error.message || 'Login failed' });
