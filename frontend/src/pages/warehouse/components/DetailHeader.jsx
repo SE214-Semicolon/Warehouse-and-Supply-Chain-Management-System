@@ -5,8 +5,9 @@ import {
   Button,
   IconButton,
   Box,
+  Tooltip,
 } from "@mui/material";
-import { ArrowBack, Edit } from "@mui/icons-material";
+import { ArrowBack, Edit, Delete } from "@mui/icons-material";
 
 const DetailHeader = ({
   title,
@@ -14,17 +15,13 @@ const DetailHeader = ({
   statItems = [],
   onBack,
   onEdit,
+  onDelete,
+  disableDelete = false,
 }) => {
   return (
     <Paper
       elevation={0}
-      sx={{
-        p: 3,
-        mb: 3,
-        borderRadius: 3,
-        background: "#764ba2",
-        color: "white",
-      }}
+      sx={{ p: 3, mb: 3, borderRadius: 3, background: "#764ba2", color: "white" }}
     >
       <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
         {onBack && (
@@ -45,7 +42,6 @@ const DetailHeader = ({
           <Typography variant="h4" fontWeight={700}>
             {title}
           </Typography>
-
           {subtitleItems.length > 0 && (
             <Stack direction="row" spacing={2} sx={{ opacity: 0.9, mt: 0.5 }}>
               {subtitleItems.map((item) => (
@@ -82,28 +78,56 @@ const DetailHeader = ({
           </Stack>
         )}
 
-        <Button
-          startIcon={<Edit />}
-          variant="contained"
-          onClick={onEdit}
-          sx={{
-            bgcolor: "rgba(255,255,255,0.95)",
-            color: "primary.main",
-            borderRadius: 2,
-            textTransform: "none",
-            fontSize: "16px",
-            fontWeight: 600,
-            px: 3,
-            "&:hover": {
-              bgcolor: "white",
-              transform: "translateY(-2px)",
-              boxShadow: 4,
-            },
-            transition: "all 0.2s",
-          }}
-        >
-          Edit
-        </Button>
+        <Stack direction="row" spacing={2}>
+          {onDelete && (
+            <Button
+              startIcon={<Delete />}
+              variant="contained"
+              color="error"
+              onClick={onDelete}
+              disabled={disableDelete}
+              sx={{
+                textTransform: "none",
+                fontSize: "16px",
+                fontWeight: 600,
+                borderRadius: 2,
+                px: 3,
+                transition: "all 0.2s",
+                "&:not(:disabled):hover": {
+                  transform: "translateY(-2px)",
+                  boxShadow: 4,
+                },
+              }}
+            >
+              Delete
+            </Button>
+          )}
+
+          {onEdit && (
+            <Button
+              startIcon={<Edit />}
+              variant="contained"
+              onClick={onEdit}
+              sx={{
+                bgcolor: "rgba(255,255,255,0.95)",
+                color: "primary.main",
+                borderRadius: 2,
+                textTransform: "none",
+                fontSize: "16px",
+                fontWeight: 600,
+                px: 3,
+                "&:hover": {
+                  bgcolor: "white",
+                  transform: "translateY(-2px)",
+                  boxShadow: 4,
+                },
+                transition: "all 0.2s",
+              }}
+            >
+              Edit
+            </Button>
+          )}
+        </Stack>
       </Box>
     </Paper>
   );

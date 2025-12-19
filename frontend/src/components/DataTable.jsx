@@ -30,6 +30,8 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
   const [filterAnchor, setFilterAnchor] = useState(null);
   const [activeFilterColumn, setActiveFilterColumn] = useState(null);
 
+  const hasActions = Boolean(onEdit || onView || onDelete);
+
   const processedData = data.map((row, index) => {
     const formattedRow = { ...row };
     columns.forEach((col) => {
@@ -158,12 +160,15 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
                   </Box>
                 </TableCell>
               ))}
-              <TableCell
-                align="center"
-                sx={{ backgroundColor: "#3E468A", color: "white", fontWeight: "bold" }}
-              >
-                Actions
-              </TableCell>
+
+              {hasActions && (
+                <TableCell
+                  align="center"
+                  sx={{ backgroundColor: "#3E468A", color: "white", fontWeight: "bold" }}
+                >
+                  Actions
+                </TableCell>
+              )}
             </TableRow>
           </TableHead>
 
@@ -175,44 +180,52 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
                     {col.id === "stt" ? page * rowsPerPage + index + 1 : row[col.id]}
                   </TableCell>
                 ))}
-                <TableCell align="center" sx={{ width: 180 }}>
-                  <Box sx={{ display: "flex", justifyContent: "center", gap: 0.5 }}>
-                    {onView && (
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() =>
-                          onView({ ...row, stt: page * rowsPerPage + index + 1 })
-                        }
-                      >
-                        <Visibility />
-                      </IconButton>
-                    )}
-                    {onEdit && (
-                      <IconButton
-                        size="small"
-                        onClick={() => onEdit(row)}
-                        sx={{ color: "#1a7d45ff" }}
-                      >
-                        <Edit />
-                      </IconButton>
-                    )}
-                    {onDelete && (
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => onDelete(row)}
-                      >
-                        <Delete />
-                      </IconButton>
-                    )}
-                  </Box>
-                </TableCell>
+
+                {hasActions && (
+                  <TableCell align="center" sx={{ width: 180 }}>
+                    <Box sx={{ display: "flex", justifyContent: "center", gap: 0.5 }}>
+                      {onView && (
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() =>
+                            onView({ ...row, stt: page * rowsPerPage + index + 1 })
+                          }
+                        >
+                          <Visibility />
+                        </IconButton>
+                      )}
+                      {onEdit && (
+                        <IconButton
+                          size="small"
+                          onClick={() => onEdit(row)}
+                          sx={{ color: "#1a7d45ff" }}
+                        >
+                          <Edit />
+                        </IconButton>
+                      )}
+                      {onDelete && (
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => onDelete(row)}
+                        >
+                          <Delete />
+                        </IconButton>
+                      )}
+                    </Box>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
+
             {paginatedData.length === 0 && (
               <TableRow>
-                <TableCell colSpan={columns.length + 1} align="center" sx={{ py: 3 }}>
+                <TableCell
+                  colSpan={columns.length + (hasActions ? 1 : 0)}
+                  align="center"
+                  sx={{ py: 3 }}
+                >
                   No matching data found
                 </TableCell>
               </TableRow>
@@ -226,8 +239,8 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
           onPageChange={handleChangePage}
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={handleChangeRowsPerPage}
-          labelRowsPerPage="Số dòng mỗi trang:"
-          labelDisplayedRows={({ from, to, count }) => `${from}-${to} trong ${count}`}
+          labelRowsPerPage="Number of lines per page:"
+          labelDisplayedRows={({ from, to, count }) => `${from}-${to} in ${count}`}
         />
       </TableContainer>
 
@@ -248,7 +261,7 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
                     handleFilterClose();
                   }}
                 >
-                  <ListItemText primary="Sắp xếp A đến Z" />
+                  <ListItemText primary="Sort A - Z" />
                 </ListItemButton>
                 <ListItemButton
                   dense
@@ -257,7 +270,7 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
                     handleFilterClose();
                   }}
                 >
-                  <ListItemText primary="Sắp xếp Z đến A" />
+                  <ListItemText primary="Sort Z - A" />
                 </ListItemButton>
                 <Divider sx={{ my: 1 }} />
               </>
@@ -269,14 +282,14 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
                 sx={{ color: "#7F408E" }}
                 onClick={() => handleSelectAll(activeFilterColumn)}
               >
-                Tất cả
+                All
               </Button>
               <Button
                 size="small"
                 sx={{ color: "#7F408E" }}
                 onClick={() => handleClearFilter(activeFilterColumn)}
               >
-                Xóa lọc
+                Delete filter
               </Button>
             </Box>
             <Divider sx={{ mb: 1 }} />

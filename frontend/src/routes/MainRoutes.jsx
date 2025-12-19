@@ -8,6 +8,8 @@ import NotFound from '@pages/notfound';
 import Warehouse from '@/pages/warehouse';
 import ProductDetail from '@/pages/warehouse/ProductDetail';
 import BatchDetail from '@/pages/warehouse/BatchDetail';
+import LocationDetail from '@/pages/warehouse/LocationDetail';
+import WarehouseDetail from '@/pages/warehouse/WarehouseDetail';
 import Supplier from '@/pages/supplier';
 import Shipment from '@/pages/shipment';
 import SupplierDetail from '@/pages/supplier/SupplierDetail';
@@ -24,6 +26,8 @@ export default function MainRoutes() {
           <Route path="/warehouse" element={<Warehouse />} />
           <Route path="/warehouse/products/:id" element={<ProductDetail />} />
           <Route path="/warehouse/batches/:id" element={<BatchDetail />} />
+          <Route path="/warehouse/locations/:id" element={<LocationDetail />} />
+          <Route path="/warehouse/warehouses/:id" element={<WarehouseDetail />} />
           <Route path="/supplier" element={<Supplier />} />
           <Route path="/shipment" element={<Shipment />} />
           <Route path="/supplier/detail" element={<SupplierDetail />} />
