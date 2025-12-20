@@ -1,3 +1,11 @@
 export function convertDate(value) {
-  return value ? new Date(value).toISOString() : null;
+  if (!value) return null;
+  
+  try {
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return null;
+    return date.toISOString();
+  } catch {
+    return null;
+  }
 }
