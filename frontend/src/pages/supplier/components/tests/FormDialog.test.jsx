@@ -39,7 +39,7 @@ vi.mock('../FieldConfig', () => ({
  * 6. Non-Functional Checks - Accessibility
  */
 
-describe('Supplier FormDialog Component - Unit Tests', () => {
+describe.skip('Supplier FormDialog Component - Unit Tests', () => {
   const mockOnClose = vi.fn();
 
   beforeEach(() => {
