@@ -881,5 +881,159 @@ describe('Product Category Module (e2e)', () => {
         .set('Authorization', adminToken)
         .expect(404);
     }, 30000);
-  });
+
+    describe('INTEGRATION-CAT-01: Core CRUD Operations', () => {
+      let rootCategoryId: string;
+      let childCategoryId: string;
+  
+      it('should create root category', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/product-categories')
+          .set('Authorization', adminToken)
+          .send({
+            name: `Sanity Root Category ${TEST_SUITE_ID}`,
+          })
+          .expect(201);
+  
+        expect(response.body.success).toBe(true);
+        expect(response.body.data).toHaveProperty('id');
+        rootCategoryId = response.body.data.id;
+      });
+  
+      it('should create child category', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/product-categories')
+          .set('Authorization', adminToken)
+          .send({
+            name: `Sanity Child Category ${TEST_SUITE_ID}`,
+            parentId: rootCategoryId,
+          })
+          .expect(201);
+  
+        expect(response.body.success).toBe(true);
+        expect(response.body.data).toHaveProperty('id');
+        expect(response.body.data.parentId).not.toBeNull();
+        childCategoryId = response.body.data.id;
+      });
+  
+      it('should retrieve category by ID', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/product-categories/${rootCategoryId}`)
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(response.body.data.name).toContain('Sanity Root Category');
+      });
+  
+      it('should list all categories', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/product-categories')
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(Array.isArray(response.body.data)).toBe(true);
+      });
+  
+      it('should update category name', async () => {
+        const response = await request(app.getHttpServer())
+          .patch(`/product-categories/${childCategoryId}`)
+          .set('Authorization', adminToken)
+          .send({
+            name: `Updated Child Category ${TEST_SUITE_ID}`,
+          })
+          .expect(200);
+  
+        expect(response.body.data.name).toContain('Updated Child Category');
+      });
+  
+      it('should delete child category', async () => {
+        await request(app.getHttpServer())
+          .delete(`/product-categories/${childCategoryId}`)
+          .set('Authorization', adminToken)
+          .expect(200);
+      });
+    });
+
+    describe('INTEGRATION-CAT-02: Validation Rules', () => {
+      it('should reject missing name', async () => {
+        await request(app.getHttpServer())
+          .post('/product-categories')
+          .set('Authorization', adminToken)
+          .send({})
+          .expect(400);
+      });
+  
+      it('should reject empty name', async () => {
+        await request(app.getHttpServer())
+          .post('/product-categories')
+          .set('Authorization', adminToken)
+          .send({
+            name: '',
+          })
+          .expect(400);
+      });
+  
+      it('should reject non-existent parent', async () => {
+        await request(app.getHttpServer())
+          .post('/product-categories')
+          .set('Authorization', adminToken)
+          .send({
+            name: 'Invalid Parent Category',
+            parentId: '00000000-0000-0000-0000-000000000000',
+          })
+          .expect(404);
+      });
+  
+      it('should reject self-reference parent', async () => {
+        const category = await prisma.productCategory.create({
+          data: { name: `Self Reference Test ${TEST_SUITE_ID}` },
+        });
+  
+        await request(app.getHttpServer())
+          .patch(`/product-categories/${category.id}`)
+          .set('Authorization', adminToken)
+          .send({
+            parentId: category.id,
+          })
+          .expect(400);
+      });
+    });
+
+    describe('INTEGRATION-CAT-03: Authorization', () => {
+      it('should allow manager to view categories', async () => {
+        await request(app.getHttpServer())
+          .get('/product-categories')
+          .set('Authorization', managerToken)
+          .expect(200);
+      });
+  
+      it('should allow admin to create category', async () => {
+        await request(app.getHttpServer())
+          .post('/product-categories')
+          .set('Authorization', adminToken)
+          .send({
+            name: `Auth Test Category ${TEST_SUITE_ID}`,
+          })
+          .expect(201);
+      });
+    });
+
+    describe('INTEGRATION-CAT-04: Error Handling', () => {
+      it('should return 404 for non-existent category', async () => {
+        await request(app.getHttpServer())
+          .get('/product-categories/00000000-0000-0000-0000-000000000000')
+          .set('Authorization', adminToken)
+          .expect(404);
+      });
+  
+      it('should handle update of non-existent category', async () => {
+        await request(app.getHttpServer())
+          .patch('/product-categories/00000000-0000-0000-0000-000000000000')
+          .set('Authorization', adminToken)
+          .send({
+            name: 'Non-existent Category',
+          })
+          .expect(404);
+      });
+    });
 });

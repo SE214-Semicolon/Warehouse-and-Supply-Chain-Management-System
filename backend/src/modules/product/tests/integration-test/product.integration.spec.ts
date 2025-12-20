@@ -1145,5 +1145,178 @@ describe('Product Module (e2e)', () => {
         .set('Authorization', adminToken)
         .expect(200);
     }, 30000);
-  });
+
+    describe('INTEGRATION-PROD-01: Core CRUD Operations', () => {
+      let productId: string;
+      let productSku: string;
+  
+      it('should create product with all fields', async () => {
+        productSku = `INTEGRATION-PROD-${Date.now()}`;
+        const response = await request(app.getHttpServer())
+          .post('/products')
+          .set('Authorization', adminToken)
+          .send({
+            sku: productSku,
+            name: 'Sanity Test Product',
+            unit: 'box',
+            barcode: `12345${Date.now()}`,
+            parameters: { color: 'blue', size: 'M' },
+          })
+          .expect(201);
+  
+        expect(response.body.success).toBe(true);
+        expect(response.body.data).toHaveProperty('id');
+        expect(response.body.data.sku).toBe(productSku);
+        productId = response.body.data.id;
+      });
+  
+      it('should retrieve product by ID', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/products/${productId}`)
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(response.body.data.sku).toBe(productSku);
+      });
+  
+      it('should retrieve product by SKU', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/products/sku/${productSku}`)
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(response.body.data.id).toBe(productId);
+      });
+  
+      it('should list all products with pagination', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/products')
+          .query({ page: 1, limit: 10 })
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(response.body).toHaveProperty('total');
+      });
+  
+      it('should update product successfully', async () => {
+        const response = await request(app.getHttpServer())
+          .patch(`/products/${productId}`)
+          .set('Authorization', adminToken)
+          .send({
+            name: 'Updated Sanity Product',
+            unit: 'pcs',
+          })
+          .expect(200);
+  
+        expect(response.body.data.name).toBe('Updated Sanity Product');
+        expect(response.body.data.unit).toBe('pcs');
+      });
+    });
+
+    describe('INTEGRATION-PROD-02: Validation Rules', () => {
+      it('should reject duplicate SKU', async () => {
+        const dupSku = `INTEGRATION-DUP-${Date.now()}`;
+  
+        await request(app.getHttpServer())
+          .post('/products')
+          .set('Authorization', adminToken)
+          .send({
+            sku: dupSku,
+            name: 'First Product',
+            unit: 'pcs',
+          })
+          .expect(201);
+  
+        await request(app.getHttpServer())
+          .post('/products')
+          .set('Authorization', adminToken)
+          .send({
+            sku: dupSku,
+            name: 'Second Product',
+            unit: 'pcs',
+          })
+          .expect(409);
+      });
+  
+      it('should reject missing required fields', async () => {
+        await request(app.getHttpServer())
+          .post('/products')
+          .set('Authorization', adminToken)
+          .send({
+            name: 'Missing SKU Product',
+          })
+          .expect(400);
+      });
+  
+      it('should handle empty SKU', async () => {
+        await request(app.getHttpServer())
+          .post('/products')
+          .set('Authorization', adminToken)
+          .send({
+            sku: '',
+            name: 'Empty SKU Product',
+            unit: 'pcs',
+          })
+          .expect(400);
+      });
+    });
+
+    describe('INTEGRATION-PROD-03: Authorization', () => {
+      it('should allow manager to view products', async () => {
+        await request(app.getHttpServer())
+          .get('/products')
+          .set('Authorization', managerToken)
+          .expect(200);
+      });
+  
+      it('should allow manager to create product', async () => {
+        await request(app.getHttpServer())
+          .post('/products')
+          .set('Authorization', managerToken)
+          .send({
+            sku: `INTEGRATION-MANAGER-${TEST_SUITE_ID}`,
+            name: `Manager Created Product ${TEST_SUITE_ID}`,
+            unit: 'pcs',
+          })
+          .expect(201);
+      });
+    });
+
+    describe('INTEGRATION-PROD-04: Error Handling', () => {
+      it('should return 404 for non-existent product', async () => {
+        await request(app.getHttpServer())
+          .get('/products/00000000-0000-0000-0000-000000000000')
+          .set('Authorization', adminToken)
+          .expect(404);
+      });
+  
+      it('should return 404 for non-existent SKU', async () => {
+        await request(app.getHttpServer())
+          .get('/products/sku/NONEXISTENT-SKU')
+          .set('Authorization', adminToken)
+          .expect(404);
+      });
+    });
+
+    describe('INTEGRATION-PROD-05: Search and Filter', () => {
+      it('should search products by name', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/products')
+          .query({ search: 'Sanity' })
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(response.body.data.length).toBeGreaterThan(0);
+      });
+  
+      it('should filter by barcode', async () => {
+        await request(app.getHttpServer())
+          .get('/products')
+          .query({ barcode: '1234567890' })
+          .set('Authorization', adminToken)
+          .expect(200);
+      });
+    });
 });

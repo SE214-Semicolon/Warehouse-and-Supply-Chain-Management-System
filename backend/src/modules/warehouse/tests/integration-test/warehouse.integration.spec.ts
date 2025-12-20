@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 // Unique test suite identifier for parallel execution
 const TEST_SUITE_ID = `warehouse-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-describe('Warehouse Integration Tests (e2e)', () => {
+describe('Warehouse Integration Tests', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;
@@ -924,7 +924,146 @@ describe('Warehouse Integration Tests (e2e)', () => {
       expect(response.body.warehouses.length).toBeGreaterThan(0);
       response.body.warehouses.forEach((wh) => {
         expect(wh.code.toUpperCase()).toContain('EDGE-00');
+
+    describe('INTEGRATION-WH-01: Core CRUD Operations', () => {
+      let warehouseId: string;
+  
+      it('should create warehouse with all valid fields', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/warehouses')
+          .set('Authorization', adminToken)
+          .send({
+            code: `INTEGRATION-WH-${Date.now()}`,
+            name: 'Sanity Test Warehouse',
+            address: '456 Sanity Street',
+            metadata: { phone: '1234567890', email: 'sanity@test.com' },
+          })
+          .expect(201);
+  
+        expect(response.body.success).toBe(true);
+        expect(response.body.warehouse).toHaveProperty('id');
+        warehouseId = response.body.warehouse.id;
+      });
+  
+      it('should retrieve warehouse by ID', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/warehouses/${warehouseId}`)
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(response.body.success).toBe(true);
+        expect(response.body.warehouse).toHaveProperty('id', warehouseId);
+      });
+  
+      it('should list all warehouses with pagination', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/warehouses?page=1&limit=10')
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(response.body.success).toBe(true);
+        expect(Array.isArray(response.body.warehouses)).toBe(true);
+        expect(response.body.total).toBeGreaterThanOrEqual(1);
+      });
+  
+      it('should update warehouse successfully', async () => {
+        const response = await request(app.getHttpServer())
+          .patch(`/warehouses/${warehouseId}`)
+          .set('Authorization', adminToken)
+          .send({
+            name: 'Updated Sanity Warehouse',
+            address: '789 Updated Street',
+          })
+          .expect(200);
+  
+        expect(response.body.success).toBe(true);
+        expect(response.body.warehouse.name).toBe('Updated Sanity Warehouse');
+        expect(response.body.warehouse.address).toBe('789 Updated Street');
       });
     });
-  });
+
+    describe('INTEGRATION-WH-02: Validation Rules', () => {
+      it('should reject duplicate warehouse code', async () => {
+        const duplicateCode = `INTEGRATION-DUP-${Date.now()}`;
+        await request(app.getHttpServer())
+          .post('/warehouses')
+          .set('Authorization', adminToken)
+          .send({
+            code: duplicateCode,
+            name: 'First Warehouse',
+          })
+          .expect(201);
+  
+        await request(app.getHttpServer())
+          .post('/warehouses')
+          .set('Authorization', adminToken)
+          .send({
+            code: duplicateCode,
+            name: 'Second Warehouse',
+          })
+          .expect(409);
+      });
+  
+      it('should reject missing required fields', async () => {
+        await request(app.getHttpServer())
+          .post('/warehouses')
+          .set('Authorization', adminToken)
+          .send({
+            name: 'Missing Code Warehouse',
+          })
+          .expect(400);
+      });
+  
+      it('should handle empty name gracefully', async () => {
+        await request(app.getHttpServer())
+          .post('/warehouses')
+          .set('Authorization', adminToken)
+          .send({
+            code: `INTEGRATION-EMPTY-${Date.now()}`,
+            name: '',
+          })
+          .expect(400);
+      });
+    });
+
+    describe('INTEGRATION-WH-03: Authorization', () => {
+      it('should allow manager to view warehouses', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/warehouses')
+          .set('Authorization', managerToken)
+          .expect(200);
+  
+        expect(response.body.success).toBe(true);
+      });
+  
+      it('should allow admin to create warehouse', async () => {
+        await request(app.getHttpServer())
+          .post('/warehouses')
+          .set('Authorization', adminToken)
+          .send({
+            code: `INTEGRATION-ADMIN-${Date.now()}`,
+            name: 'Auth Test Warehouse',
+          })
+          .expect(201);
+      });
+    });
+
+    describe('INTEGRATION-WH-04: Error Handling', () => {
+      it('should return 404 for non-existent warehouse', async () => {
+        await request(app.getHttpServer())
+          .get('/warehouses/00000000-0000-0000-0000-000000000000')
+          .set('Authorization', adminToken)
+          .expect(404);
+      });
+  
+      it('should handle update of non-existent warehouse', async () => {
+        await request(app.getHttpServer())
+          .patch('/warehouses/00000000-0000-0000-0000-000000000000')
+          .set('Authorization', adminToken)
+          .send({
+            name: 'Non-existent Warehouse',
+          })
+          .expect(404);
+      });
+    });
 });

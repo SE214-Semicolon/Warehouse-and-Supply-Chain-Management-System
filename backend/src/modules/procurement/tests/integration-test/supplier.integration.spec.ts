@@ -837,7 +837,173 @@ describe('Supplier Module (e2e)', () => {
       // Clean up the purchase order first
       await prisma.purchaseOrder.deleteMany({
         where: { supplierId: supplierWithPO.id },
+
+    describe('INTEGRATION-SUP-01: Core CRUD Operations', () => {
+      let supplierId: string;
+  
+      it('should create supplier with all fields', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/suppliers')
+          .set('Authorization', adminToken)
+          .send({
+            code: `INTEGRATION-SUP-${Date.now()}`,
+            name: 'Sanity Test Supplier',
+            contactInfo: {
+              phone: '1234567890',
+              email: 'sanity@supplier.com',
+              address: '123 Supplier Street',
+            },
+          })
+          .expect(201);
+  
+        expect(response.body).toHaveProperty('id');
+        expect(response.body.name).toBe('Sanity Test Supplier');
+        supplierId = response.body.id;
+      });
+  
+      it('should retrieve supplier by ID', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/suppliers/${supplierId}`)
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(response.body).toHaveProperty('id', supplierId);
+        expect(response.body.name).toBe('Sanity Test Supplier');
+      });
+  
+      //Uncomment when be fix this API
+      // it('should list all suppliers with pagination', async () => {
+      //   const response = await request(app.getHttpServer())
+      //     .get('/suppliers')
+      //     .query({ page: 1, pageSize: 10 })
+      //     .set('Authorization', adminToken)
+      //     .expect(200);
+  
+      //   expect(Array.isArray(response.body.data)).toBe(true);
+      //   expect(response.body.total).toBeGreaterThanOrEqual(1);
+      //   expect(response.body.page).toBe(1);
+      //   expect(response.body.pageSize).toBe(10);
+      // });
+  
+      it('should update supplier successfully', async () => {
+        const response = await request(app.getHttpServer())
+          .patch(`/suppliers/${supplierId}`)
+          .set('Authorization', adminToken)
+          .send({
+            name: 'Updated Sanity Supplier',
+          })
+          .expect(200);
+  
+        expect(response.body.name).toBe('Updated Sanity Supplier');
       });
     });
-  });
+
+    describe('INTEGRATION-SUP-02: Validation Rules', () => {
+      it('should reject duplicate supplier code', async () => {
+        const duplicateCode = `INTEGRATION-DUP-${Date.now()}`;
+        await request(app.getHttpServer())
+          .post('/suppliers')
+          .set('Authorization', adminToken)
+          .send({
+            code: duplicateCode,
+            name: 'First Supplier',
+            contactInfo: { email: 'first@supplier.com' },
+          })
+          .expect(201);
+  
+        await request(app.getHttpServer())
+          .post('/suppliers')
+          .set('Authorization', adminToken)
+          .send({
+            code: duplicateCode,
+            name: 'Second Supplier',
+            contactInfo: { email: 'second@supplier.com' },
+          })
+          .expect(400);
+      });
+  
+      it('should reject missing required fields', async () => {
+        await request(app.getHttpServer())
+          .post('/suppliers')
+          .set('Authorization', adminToken)
+          .send({
+            code: `INTEGRATION-MISSING-${Date.now()}`,
+            // missing name which is required
+          })
+          .expect(400);
+      });
+  
+      it('should reject missing name', async () => {
+        await request(app.getHttpServer())
+          .post('/suppliers')
+          .set('Authorization', adminToken)
+          .send({
+            code: `INTEGRATION-MISSING-${Date.now()}`,
+            // name is missing - should fail
+          })
+          .expect(400);
+      });
+    });
+
+    describe('INTEGRATION-SUP-03: Authorization', () => {
+      it('should allow procurement to view suppliers', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/suppliers')
+          .set('Authorization', procurementToken)
+          .expect(200);
+  
+        expect(Array.isArray(response.body.data)).toBe(true);
+      });
+  
+      it('should allow procurement to create supplier', async () => {
+        await request(app.getHttpServer())
+          .post('/suppliers')
+          .set('Authorization', procurementToken)
+          .send({
+            code: `INTEGRATION-PROC-${Date.now()}`,
+            name: 'Procurement Created Supplier',
+            contactInfo: { email: 'procurement@supplier.com' },
+          })
+          .expect(201);
+      });
+    });
+
+    describe('INTEGRATION-SUP-04: Error Handling', () => {
+      it('should return 404 for non-existent supplier', async () => {
+        await request(app.getHttpServer())
+          .get('/suppliers/00000000-0000-0000-0000-000000000000')
+          .set('Authorization', adminToken)
+          .expect(404);
+      });
+  
+      it('should handle update of non-existent supplier', async () => {
+        await request(app.getHttpServer())
+          .patch('/suppliers/00000000-0000-0000-0000-000000000000')
+          .set('Authorization', adminToken)
+          .send({
+            name: 'Non-existent Supplier',
+          })
+          .expect(404);
+      });
+    });
+
+    describe('INTEGRATION-SUP-05: Search Functionality', () => {
+      it('should search suppliers by name', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/suppliers?q=Sanity')
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(Array.isArray(response.body.data)).toBe(true);
+      });
+  
+      it('should search suppliers by code', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/suppliers?q=SANITY')
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(Array.isArray(response.body.data)).toBe(true);
+      });
+    });
 });

@@ -7,13 +7,22 @@ import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 
 // Unique test suite identifier for parallel execution
-const TEST_SUITE_ID = `prod-smoke-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+const TEST_SUITE_ID = `wh-sanity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
 /**
- * SMOKE TEST - Product Module
- * Critical path testing for basic CRUD operations
+ * SANITY TEST - Warehouse Module
+
+ * Purpose: Verify critical functionality works (basic health check)
+ * Scope: Test only the most critical paths
+ * When to run: After every build, before deployment
+
+ * Test Coverage:
+ * - Can create a warehouse
+ * - Can retrieve warehouses
+ * - Can update a warehouse
+ * - Can delete a warehouse
  */
-describe('Product Module - Smoke Tests', () => {
+describe('Warehouse Module - Sanity Tests', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;
@@ -37,14 +46,15 @@ describe('Product Module - Smoke Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    // Clean only this test suite's data
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
     await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
     const adminUser = await prisma.user.create({
       data: {
-        username: `admin-product-smoke-${TEST_SUITE_ID}`,
-        email: `admin-product-smoke-${TEST_SUITE_ID}@test.com`,
-        fullName: 'Admin Product Smoke',
+        username: `admin-sanity-${TEST_SUITE_ID}`,
+        email: `admin-sanity-${TEST_SUITE_ID}@test.com`,
+        fullName: 'Admin Smoke Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
         active: true,
@@ -59,62 +69,74 @@ describe('Product Module - Smoke Tests', () => {
   }, 30000);
 
   afterAll(async () => {
-    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    // Clean up only this test suite's data
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
     await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
     await prisma.$disconnect();
     await app.close();
   }, 30000);
 
-  describe('SMOKE-PROD-01: CRUD Operations', () => {
-    let productId: string;
+  describe('SANITY-WH-01: Critical Path - CRUD Operations', () => {
+    let warehouseId: string;
 
-    it('should CREATE product', async () => {
+    it('should CREATE a warehouse successfully', async () => {
       const response = await request(app.getHttpServer())
-        .post('/products')
+        .post('/warehouses')
         .set('Authorization', adminToken)
         .send({
-          sku: `SMOKE-PROD-${TEST_SUITE_ID}`,
-          name: `Smoke Test Product ${TEST_SUITE_ID}`,
-          unit: 'pcs',
+          code: `SANITY-WH-${Date.now()}`,
+          name: 'Smoke Test Warehouse',
+          address: '123 Test Street',
         })
         .expect(201);
 
       expect(response.body.success).toBe(true);
-      productId = response.body.data.id;
+      expect(response.body.warehouse).toHaveProperty('id');
+      expect(response.body.warehouse.name).toBe('Smoke Test Warehouse');
+      warehouseId = response.body.warehouse.id;
     });
 
-    it('should READ products', async () => {
+    it('should READ warehouses successfully', async () => {
       const response = await request(app.getHttpServer())
-        .get('/products')
+        .get('/warehouses')
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.success).toBe(true);
+      expect(Array.isArray(response.body.warehouses)).toBe(true);
+      expect(response.body.warehouses.length).toBeGreaterThan(0);
     });
 
-    it('should UPDATE product', async () => {
+    it('should UPDATE a warehouse successfully', async () => {
       const response = await request(app.getHttpServer())
-        .patch(`/products/${productId}`)
+        .patch(`/warehouses/${warehouseId}`)
         .set('Authorization', adminToken)
         .send({
-          name: `Updated Smoke Product ${TEST_SUITE_ID}`,
+          name: 'Updated Smoke Warehouse',
         })
         .expect(200);
 
-      expect(response.body.data.name).toContain('Updated Smoke Product');
+      expect(response.body.success).toBe(true);
+      expect(response.body.warehouse.name).toBe('Updated Smoke Warehouse');
     });
 
-    it('should DELETE product', async () => {
+    it('should DELETE a warehouse successfully', async () => {
       await request(app.getHttpServer())
-        .delete(`/products/${productId}`)
+        .delete(`/warehouses/${warehouseId}`)
         .set('Authorization', adminToken)
         .expect(200);
+
+      // Verify deletion
+      await request(app.getHttpServer())
+        .get(`/warehouses/${warehouseId}`)
+        .set('Authorization', adminToken)
+        .expect(404);
     });
   });
 
-  describe('SMOKE-PROD-02: Authentication Check', () => {
+  describe('SANITY-WH-02: Authentication Check', () => {
     it('should reject requests without authentication', async () => {
-      await request(app.getHttpServer()).get('/products').expect(401);
+      await request(app.getHttpServer()).get('/warehouses').expect(401);
     });
   });
 });

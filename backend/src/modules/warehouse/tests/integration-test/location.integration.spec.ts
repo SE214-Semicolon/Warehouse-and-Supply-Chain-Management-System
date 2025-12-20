@@ -1114,6 +1114,166 @@ describe('Location Module (e2e)', () => {
         .get(`/locations/${locationId}`)
         .set('Authorization', adminToken)
         .expect(404);
+
+    describe('INTEGRATION-LOC-01: Core CRUD Operations', () => {
+      let locationId: string;
+  
+      it('should create location with all valid fields', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/locations')
+          .set('Authorization', adminToken)
+          .send({
+            warehouseId: warehouseId,
+            code: `INTEGRATION-LOC-${Date.now()}`,
+            name: 'Sanity Test Location',
+            capacity: 100,
+            type: 'shelf',
+            properties: { aisle: 'A', rack: '01', shelf: '01', bin: '01' },
+          })
+          .expect(201);
+  
+        expect(response.body.success).toBe(true);
+        expect(response.body.location).toHaveProperty('id');
+        locationId = response.body.location.id;
+      });
+  
+      it('should retrieve location by ID', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/locations/${locationId}`)
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(response.body.success).toBe(true);
+        expect(response.body.location).toHaveProperty('id', locationId);
+      });
+  
+      it('should list all locations with pagination', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/locations?page=1&limit=10')
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(response.body.success).toBe(true);
+        expect(Array.isArray(response.body.locations)).toBe(true);
+        expect(response.body.total).toBeGreaterThanOrEqual(1);
+      });
+  
+      it('should update location successfully', async () => {
+        const response = await request(app.getHttpServer())
+          .patch(`/locations/${locationId}`)
+          .set('Authorization', adminToken)
+          .send({
+            name: 'Updated Sanity Location',
+            properties: { aisle: 'B' },
+          })
+          .expect(200);
+  
+        expect(response.body.success).toBe(true);
+        expect(response.body.location.name).toBe('Updated Sanity Location');
+      });
     });
-  });
+
+    describe('INTEGRATION-LOC-02: Validation Rules', () => {
+      it('should reject duplicate location code in same warehouse', async () => {
+        const duplicateCode = `INTEGRATION-DUP-${Date.now()}`;
+        await request(app.getHttpServer())
+          .post('/locations')
+          .set('Authorization', adminToken)
+          .send({
+            warehouseId: warehouseId,
+            code: duplicateCode,
+            name: 'First Location',
+          })
+          .expect(201);
+  
+        await request(app.getHttpServer())
+          .post('/locations')
+          .set('Authorization', adminToken)
+          .send({
+            warehouseId: warehouseId,
+            code: duplicateCode,
+            name: 'Second Location',
+          })
+          .expect(409);
+      });
+  
+      it('should reject missing required fields', async () => {
+        await request(app.getHttpServer())
+          .post('/locations')
+          .set('Authorization', adminToken)
+          .send({
+            name: 'Missing Code Location',
+          })
+          .expect(400);
+      });
+  
+      it('should reject non-existent warehouse', async () => {
+        await request(app.getHttpServer())
+          .post('/locations')
+          .set('Authorization', adminToken)
+          .send({
+            warehouseId: '00000000-0000-0000-0000-000000000000',
+            code: 'INTEGRATION-NOWAREHOUSE-001',
+            name: 'No Warehouse Location',
+          })
+          .expect(404);
+      });
+    });
+
+    describe('INTEGRATION-LOC-03: Authorization', () => {
+      it('should allow manager to view locations', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/locations')
+          .set('Authorization', managerToken)
+          .expect(200);
+  
+        expect(response.body.success).toBe(true);
+      });
+  
+      it('should allow admin to create location', async () => {
+        await request(app.getHttpServer())
+          .post('/locations')
+          .set('Authorization', adminToken)
+          .send({
+            warehouseId: warehouseId,
+            code: `INTEGRATION-AUTH-${Date.now()}`,
+            name: 'Auth Test Location',
+          })
+          .expect(201);
+      });
+    });
+
+    describe('INTEGRATION-LOC-04: Error Handling', () => {
+      it('should return 404 for non-existent location', async () => {
+        await request(app.getHttpServer())
+          .get('/locations/00000000-0000-0000-0000-000000000000')
+          .set('Authorization', adminToken)
+          .expect(404);
+      });
+  
+      it('should handle update of non-existent location', async () => {
+        await request(app.getHttpServer())
+          .patch('/locations/00000000-0000-0000-0000-000000000000')
+          .set('Authorization', adminToken)
+          .send({
+            name: 'Non-existent Location',
+          })
+          .expect(404);
+      });
+    });
+
+    describe('INTEGRATION-LOC-05: Filter by Warehouse', () => {
+      it('should filter locations by warehouse', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/locations?warehouseId=${warehouseId}`)
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(response.body.success).toBe(true);
+        expect(Array.isArray(response.body.locations)).toBe(true);
+        response.body.locations.forEach((location: any) => {
+          expect(location.warehouseId).toBe(warehouseId);
+        });
+      });
+    });
 });

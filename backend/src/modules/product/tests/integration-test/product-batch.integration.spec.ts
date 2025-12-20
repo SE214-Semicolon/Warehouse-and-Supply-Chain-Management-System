@@ -1047,5 +1047,172 @@ describe('Product Batch Module (e2e)', () => {
         .set('Authorization', adminToken)
         .expect(200);
     }, 30000);
-  });
+
+    describe('INTEGRATION-BATCH-01: Core CRUD Operations', () => {
+      let batchId: string;
+  
+      it('should create batch with all fields', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/product-batches')
+          .set('Authorization', adminToken)
+          .send({
+            productId: productId,
+            batchNo: 'INTEGRATION-BATCH-001',
+            quantity: 200,
+            manufactureDate: '2024-06-01',
+            expiryDate: '2025-06-01',
+            barcodeOrQr: 'QR:12345',
+          })
+          .expect(201);
+  
+        expect(response.body.success).toBe(true);
+        expect(response.body.data).toHaveProperty('id');
+        batchId = response.body.data.id;
+      });
+  
+      it('should retrieve batch by ID', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/product-batches/${batchId}`)
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(response.body.data.batchNo).toBe('INTEGRATION-BATCH-001');
+      });
+  
+      it('should list all batches with pagination', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/product-batches?page=1&limit=10')
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(Array.isArray(response.body.data)).toBe(true);
+      });
+  
+      it('should filter batches by product', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/product-batches')
+          .query({ productId: productId })
+          .set('Authorization', adminToken)
+          .expect(200);
+  
+        expect(Array.isArray(response.body.data)).toBe(true);
+        response.body.data.forEach((batch: any) => {
+          expect(batch.productId).toBe(productId);
+        });
+      });
+  
+      it('should update batch successfully', async () => {
+        const response = await request(app.getHttpServer())
+          .patch(`/product-batches/${batchId}`)
+          .set('Authorization', adminToken)
+          .send({
+            quantity: 250,
+            barcodeOrQr: 'QR:UPDATED',
+          })
+          .expect(200);
+  
+        expect(response.body.data.quantity).toBe(250);
+        expect(response.body.data.barcodeOrQr).toBe('QR:UPDATED');
+      });
+    });
+
+    describe('INTEGRATION-BATCH-02: Validation Rules', () => {
+      it('should reject duplicate batch number', async () => {
+        await request(app.getHttpServer())
+          .post('/product-batches')
+          .set('Authorization', adminToken)
+          .send({
+            productId: productId,
+            batchNo: 'INTEGRATION-DUP-001',
+            quantity: 100,
+          })
+          .expect(201);
+  
+        await request(app.getHttpServer())
+          .post('/product-batches')
+          .set('Authorization', adminToken)
+          .send({
+            productId: productId,
+            batchNo: 'INTEGRATION-DUP-001',
+            quantity: 100,
+          })
+          .expect(409);
+      });
+  
+      it('should reject missing required fields', async () => {
+        await request(app.getHttpServer())
+          .post('/product-batches')
+          .set('Authorization', adminToken)
+          .send({
+            batchNo: 'INTEGRATION-MISSING-001',
+          })
+          .expect(400);
+      });
+  
+      it('should reject non-existent product', async () => {
+        await request(app.getHttpServer())
+          .post('/product-batches')
+          .set('Authorization', adminToken)
+          .send({
+            productId: '00000000-0000-0000-0000-000000000000',
+            batchNo: 'INTEGRATION-NOPRODUCT-001',
+            quantity: 100,
+          })
+          .expect(404);
+      });
+  
+      it('should reject invalid dates', async () => {
+        await request(app.getHttpServer())
+          .post('/product-batches')
+          .set('Authorization', adminToken)
+          .send({
+            productId: productId,
+            batchNo: 'INTEGRATION-BADDATE-001',
+            quantity: 100,
+            manufactureDate: '2025-01-01',
+            expiryDate: '2024-01-01',
+          })
+          .expect(400);
+      });
+    });
+
+    describe('INTEGRATION-BATCH-03: Authorization', () => {
+      it('should allow manager to view batches', async () => {
+        await request(app.getHttpServer())
+          .get('/product-batches')
+          .set('Authorization', managerToken)
+          .expect(200);
+      });
+  
+      it('should allow manager to create batch', async () => {
+        await request(app.getHttpServer())
+          .post('/product-batches')
+          .set('Authorization', managerToken)
+          .send({
+            productId: productId,
+            batchNo: 'INTEGRATION-MANAGER-001',
+            quantity: 100,
+          })
+          .expect(201);
+      });
+    });
+
+    describe('INTEGRATION-BATCH-04: Error Handling', () => {
+      it('should return 404 for non-existent batch', async () => {
+        await request(app.getHttpServer())
+          .get('/product-batches/00000000-0000-0000-0000-000000000000')
+          .set('Authorization', adminToken)
+          .expect(404);
+      });
+  
+      it('should handle update of non-existent batch', async () => {
+        await request(app.getHttpServer())
+          .patch('/product-batches/00000000-0000-0000-0000-000000000000')
+          .set('Authorization', adminToken)
+          .send({
+            quantity: 100,
+          })
+          .expect(404);
+      });
+    });
 });
