@@ -29,6 +29,10 @@ describe('Auth Module - Sanity Tests', () => {
   }, 30000);
 
   afterAll(async () => {
+    // Delete refresh tokens first (foreign key constraint)
+    await prisma.refreshToken.deleteMany({
+      where: { user: { email: { contains: TEST_SUITE_ID } } },
+    });
     await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
     await prisma.$disconnect();
     await app.close();
@@ -43,7 +47,7 @@ describe('Auth Module - Sanity Tests', () => {
         .send({
           email: `sanity-${TEST_SUITE_ID}@test.com`,
           password: 'Test123456',
-          fullName: 'Smoke Test User',
+          fullName: 'Sanity Test User',
         })
         .expect(201);
 

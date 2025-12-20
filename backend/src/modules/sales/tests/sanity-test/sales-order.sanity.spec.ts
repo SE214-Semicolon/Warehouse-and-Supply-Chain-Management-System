@@ -67,7 +67,7 @@ describe('Sales Order Module - Sanity Tests', () => {
     const customer = await prisma.customer.create({
       data: {
         code: `SANITY-CUSTOMER-${TEST_SUITE_ID}`,
-        name: `Smoke Test Customer ${TEST_SUITE_ID}`,
+        name: `Sanity Test Customer ${TEST_SUITE_ID}`,
         contactInfo: JSON.stringify({ email: 'customer@test.com' }),
       },
     });
@@ -97,9 +97,9 @@ describe('Sales Order Module - Sanity Tests', () => {
         })
         .expect(201);
 
-      expect(response.body).toHaveProperty('id');
-      expect(response.body.customerId).toBe(customerId);
-      orderId = response.body.id;
+      expect(response.body.data).toHaveProperty('id');
+      expect(response.body.data.customerId).toBe(customerId);
+      orderId = response.body.data.id;
     });
 
     it('should READ sales orders', async () => {
@@ -118,7 +118,7 @@ describe('Sales Order Module - Sanity Tests', () => {
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response.body.id).toBe(orderId);
+      expect(response.body.data.id).toBe(orderId);
     });
 
     it('should UPDATE sales order', async () => {
@@ -153,10 +153,10 @@ describe('Sales Order Module - Sanity Tests', () => {
         })
         .expect(201);
 
-      const orderId = createResponse.body.id;
+      const soId = createResponse.body.data.id;
 
       const submitResponse = await request(app.getHttpServer())
-        .post(`/sales-orders/${orderId}/submit`)
+        .post(`/sales-orders/${soId}/submit`)
         .set('Authorization', adminToken)
         .send({
           userId: adminUserId,

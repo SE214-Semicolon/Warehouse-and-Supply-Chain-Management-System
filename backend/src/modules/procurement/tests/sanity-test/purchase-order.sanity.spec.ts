@@ -67,7 +67,7 @@ describe('Purchase Order Module - Sanity Tests', () => {
     const supplier = await prisma.supplier.create({
       data: {
         code: `SANITY-SUPPLIER-${TEST_SUITE_ID}`,
-        name: `Smoke Test Supplier ${TEST_SUITE_ID}`,
+        name: `Sanity Test Supplier ${TEST_SUITE_ID}`,
         contactInfo: JSON.stringify({ email: 'supplier@test.com' }),
       },
     });
@@ -97,9 +97,9 @@ describe('Purchase Order Module - Sanity Tests', () => {
         })
         .expect(201);
 
-      expect(response.body).toHaveProperty('id');
-      expect(response.body.supplierId).toBe(supplierId);
-      orderId = response.body.id;
+      expect(response.body.data).toHaveProperty('id');
+      expect(response.body.data.supplierId).toBe(supplierId);
+      orderId = response.body.data.id;
     });
 
     it('should READ orders', async () => {
@@ -121,7 +121,7 @@ describe('Purchase Order Module - Sanity Tests', () => {
         })
         .expect(201);
 
-      expect(response.body.status).toBe('ordered');
+      expect(response.body.data.status).toBe('ordered');
     });
   });
 

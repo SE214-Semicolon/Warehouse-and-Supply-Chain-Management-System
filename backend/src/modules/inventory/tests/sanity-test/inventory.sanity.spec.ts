@@ -21,6 +21,22 @@ describe('Inventory Module - Sanity Tests', () => {
   let productBatchId: string;
   let locationId: string;
 
+  // Helper to cleanup test data
+  const cleanupTestData = async () => {
+    await prisma.inventory.deleteMany({
+      where: { location: { warehouse: { code: { contains: TEST_SUITE_ID } } } },
+    });
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.location.deleteMany({
+      where: { warehouse: { code: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+  };
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -39,24 +55,14 @@ describe('Inventory Module - Sanity Tests', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await prisma.inventory.deleteMany({
-      where: { location: { warehouse: { code: { contains: TEST_SUITE_ID } } } },
-    });
-    await prisma.productBatch.deleteMany({
-      where: { product: { sku: { contains: TEST_SUITE_ID } } },
-    });
-    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
-    await prisma.location.deleteMany({
-      where: { warehouse: { code: { contains: TEST_SUITE_ID } } },
-    });
-    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
-    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await cleanupTestData();
 
+    // Setup test user and token
     const adminUser = await prisma.user.create({
       data: {
         username: `admin-inventory-sanity-${TEST_SUITE_ID}`,
         email: `admin-inventory-sanity-${TEST_SUITE_ID}@test.com`,
-        fullName: 'Admin Inventory Smoke',
+        fullName: 'Admin Inventory Sanity',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
         active: true,
@@ -69,10 +75,11 @@ describe('Inventory Module - Sanity Tests', () => {
       role: adminUser.role,
     })}`;
 
+    // Setup test data: warehouse -> location -> product -> batch
     const warehouse = await prisma.warehouse.create({
       data: {
         code: `SANITY-WH-${TEST_SUITE_ID}`,
-        name: `Smoke Test Warehouse ${TEST_SUITE_ID}`,
+        name: `Sanity Test Warehouse ${TEST_SUITE_ID}`,
       },
     });
 
@@ -80,7 +87,7 @@ describe('Inventory Module - Sanity Tests', () => {
       data: {
         warehouseId: warehouse.id,
         code: `SANITY-LOC-${TEST_SUITE_ID}`,
-        name: `Smoke Test Location ${TEST_SUITE_ID}`,
+        name: `Sanity Test Location ${TEST_SUITE_ID}`,
       },
     });
 
@@ -89,7 +96,7 @@ describe('Inventory Module - Sanity Tests', () => {
     const product = await prisma.product.create({
       data: {
         sku: `SANITY-INV-PROD-${TEST_SUITE_ID}`,
-        name: `Smoke Inventory Product ${TEST_SUITE_ID}`,
+        name: `Sanity Inventory Product ${TEST_SUITE_ID}`,
         unit: 'pcs',
       },
     });
@@ -106,18 +113,7 @@ describe('Inventory Module - Sanity Tests', () => {
   }, 30000);
 
   afterAll(async () => {
-    await prisma.inventory.deleteMany({
-      where: { location: { warehouse: { code: { contains: TEST_SUITE_ID } } } },
-    });
-    await prisma.productBatch.deleteMany({
-      where: { product: { sku: { contains: TEST_SUITE_ID } } },
-    });
-    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
-    await prisma.location.deleteMany({
-      where: { warehouse: { code: { contains: TEST_SUITE_ID } } },
-    });
-    await prisma.warehouse.deleteMany({ where: { code: { contains: TEST_SUITE_ID } } });
-    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await cleanupTestData();
     await prisma.$disconnect();
     await app.close();
   }, 30000);

@@ -54,7 +54,7 @@ describe('Warehouse Module - Sanity Tests', () => {
       data: {
         username: `admin-sanity-${TEST_SUITE_ID}`,
         email: `admin-sanity-${TEST_SUITE_ID}@test.com`,
-        fullName: 'Admin Smoke Test',
+        fullName: 'Admin Sanity Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
         active: true,
@@ -85,15 +85,15 @@ describe('Warehouse Module - Sanity Tests', () => {
         .set('Authorization', adminToken)
         .send({
           code: `SANITY-WH-${Date.now()}`,
-          name: 'Smoke Test Warehouse',
+          name: 'Sanity Test Warehouse',
           address: '123 Test Street',
         })
         .expect(201);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.warehouse).toHaveProperty('id');
-      expect(response.body.warehouse.name).toBe('Smoke Test Warehouse');
-      warehouseId = response.body.warehouse.id;
+      expect(response.body.data).toHaveProperty('id');
+      expect(response.body.data.name).toBe('Sanity Test Warehouse');
+      warehouseId = response.body.data.id;
     });
 
     it('should READ warehouses successfully', async () => {
@@ -103,8 +103,8 @@ describe('Warehouse Module - Sanity Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.warehouses)).toBe(true);
-      expect(response.body.warehouses.length).toBeGreaterThan(0);
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBeGreaterThan(0);
     });
 
     it('should UPDATE a warehouse successfully', async () => {
@@ -117,7 +117,7 @@ describe('Warehouse Module - Sanity Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.warehouse.name).toBe('Updated Smoke Warehouse');
+      expect(response.body.data.name).toBe('Updated Smoke Warehouse');
     });
 
     it('should DELETE a warehouse successfully', async () => {

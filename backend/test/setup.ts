@@ -38,9 +38,11 @@ beforeAll(async () => {
   // Only spawn containers for integration/e2e tests, not unit/smoke/sanity tests
   const testPath = expect.getState().testPath || '';
   const isIntegrationTest = testPath.includes('integration-test') || testPath.includes('e2e.spec');
+  const isSanityTest = testPath.includes('sanity-test') || testPath.includes('sanity.spec');
+  const isSmokeTest = testPath.includes('smoke-test') || testPath.includes('smoke.spec');
 
-  if (!isIntegrationTest) {
-    // Skip Testcontainers for unit/smoke/sanity tests
+  if (!isIntegrationTest || isSanityTest || isSmokeTest) {
+    // Skip Testcontainers for unit/smoke/sanity tests (they use local DB or mocks)
     return;
   }
 

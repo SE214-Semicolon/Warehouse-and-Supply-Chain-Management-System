@@ -1,161 +1,137 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
 import { AppModule } from '../../app.module';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { UserRole } from '@prisma/client';
-
-const TEST_SUITE_ID = `system-smoke-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+import { ConfigService } from '@nestjs/config';
 
 /**
  * SMOKE TEST - System-wide
- * Purpose: Verify application can start and critical paths work
- * Scope: Absolute minimum - just verify app doesn't crash
- * Expected: < 30 seconds execution time
+ * Purpose: Verify application can compile and critical dependencies load
+ * Scope: No database, no HTTP calls - just module/config validation
+ * Expected: < 10 seconds execution time
+ *
+ * TRUE SMOKE TESTS:
+ * - No external dependencies (database, APIs, etc.)
+ * - Use mocks for all services
+ * - Only verify: modules load, configs exist, DI works
  */
 describe('System Smoke Tests', () => {
-  let app: INestApplication;
-  let prisma: PrismaService;
-  let jwtService: JwtService;
-  let adminToken: string;
+  let module: TestingModule;
+
+  // Mock all external dependencies
+  const mockPrismaService = {
+    $connect: jest.fn().mockResolvedValue(undefined),
+    $disconnect: jest.fn().mockResolvedValue(undefined),
+    user: { count: jest.fn().mockResolvedValue(0) },
+  };
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
-    prisma = app.get(PrismaService);
-    jwtService = app.get(JwtService);
-
-    // Create test admin user
-    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
-    const adminUser = await prisma.user.create({
-      data: {
-        username: `admin-smoke-${TEST_SUITE_ID}`,
-        email: `admin-smoke-${TEST_SUITE_ID}@test.com`,
-        fullName: 'Admin Smoke',
-        passwordHash: '$2b$10$K7L/K.hUzHJhLEjLbKmE3eZjV3gGxZzK9mZ9xGxGxGxGxGxGxGxGxG',
-        role: UserRole.admin,
-        active: true,
-      },
-    });
-
-    adminToken = `Bearer ${jwtService.sign({
-      sub: adminUser.id,
-      email: adminUser.email,
-      role: adminUser.role,
-    })}`;
-  }, 30000);
+    })
+      .overrideProvider(PrismaService)
+      .useValue(mockPrismaService)
+      .compile();
+  }, 10000);
 
   afterAll(async () => {
-    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
-    await prisma.$disconnect();
-    await app.close();
-  }, 30000);
+    if (module) {
+      await module.close();
+    }
+  });
 
-  describe('Application Health', () => {
-    it('should initialize application successfully', () => {
-      expect(app).toBeDefined();
+  describe('Application Bootstrap', () => {
+    it('should compile AppModule successfully', () => {
+      expect(module).toBeDefined();
     });
 
-    it('should connect to PostgreSQL database', async () => {
-      const result = await prisma.$queryRaw`SELECT 1 as result`;
-      expect(result).toBeDefined();
-    });
+    it('should have all critical services registered', () => {
+      const prisma = module.get(PrismaService, { strict: false });
+      const jwtService = module.get(JwtService, { strict: false });
+      const configService = module.get(ConfigService, { strict: false });
 
-    it('should verify database models accessible', async () => {
-      // Test that core models can be queried
-      const userCount = await prisma.user.count();
-      expect(typeof userCount).toBe('number');
+      expect(prisma).toBeDefined();
+      expect(jwtService).toBeDefined();
+      expect(configService).toBeDefined();
     });
   });
 
-  describe('Authentication', () => {
-    it('should reject unauthenticated requests', async () => {
-      await request(app.getHttpServer()).get('/alerts').expect(401);
+  describe('Environment Configuration', () => {
+    it('should have JWT configuration', () => {
+      const jwtSecret = process.env.JWT_ACCESS_SECRET;
+
+      expect(jwtSecret).toBeDefined();
+      expect(jwtSecret?.length).toBeGreaterThan(0);
     });
 
-    it('should accept valid JWT token', async () => {
-      await request(app.getHttpServer())
-        .get('/alerts')
-        .set('Authorization', adminToken)
-        .expect((res) => expect(res.status).toBeLessThan(500));
+    it('should have database URL configured', () => {
+      expect(process.env.DATABASE_URL).toBeDefined();
+      expect(process.env.DATABASE_URL).toContain('postgresql://');
+    });
+
+    it('should have valid Node environment', () => {
+      expect(process.env.NODE_ENV).toBeDefined();
+      expect(['development', 'test', 'production']).toContain(process.env.NODE_ENV);
+    });
+
+    it('should have port configured', () => {
+      const port = process.env.PORT || '3000';
+      expect(parseInt(port)).toBeGreaterThan(0);
+      expect(parseInt(port)).toBeLessThan(65536);
     });
   });
 
-  describe('Critical Module Endpoints', () => {
-    it('should respond to /alerts endpoint', async () => {
-      await request(app.getHttpServer())
-        .get('/alerts')
-        .set('Authorization', adminToken)
-        .expect((res) => expect(res.status).toBeLessThan(500));
+  describe('Core Service Dependencies', () => {
+    it('should resolve PrismaService', () => {
+      const prisma = module.get(PrismaService, { strict: false });
+      expect(prisma).toBeDefined();
+      expect(prisma.$connect).toBeDefined();
     });
 
-    it('should respond to /purchase-orders endpoint', async () => {
-      await request(app.getHttpServer())
-        .get('/purchase-orders')
-        .set('Authorization', adminToken)
-        .expect((res) => expect(res.status).toBeLessThan(500));
+    it('should resolve JwtService', () => {
+      const jwtService = module.get(JwtService, { strict: false });
+      expect(jwtService).toBeDefined();
+      expect(jwtService.sign).toBeDefined();
+      expect(jwtService.verify).toBeDefined();
     });
 
-    it('should respond to /sales-orders endpoint', async () => {
-      await request(app.getHttpServer())
-        .get('/sales-orders')
-        .set('Authorization', adminToken)
-        .expect((res) => expect(res.status).toBeLessThan(500));
+    it('should resolve ConfigService', () => {
+      const configService = module.get(ConfigService, { strict: false });
+      expect(configService).toBeDefined();
+      expect(configService.get).toBeDefined();
+    });
+  });
+
+  describe('Module Registration', () => {
+    it('should have AppModule defined with all imports', () => {
+      // Module compilation success means all controllers and providers are registered
+      expect(module).toBeDefined();
+      expect(module.select(AppModule)).toBeDefined();
+    });
+  });
+
+  describe('JWT Token Generation', () => {
+    it('should generate valid JWT tokens', () => {
+      const jwtService = module.get(JwtService, { strict: false });
+      const payload = { sub: 'test-user-id', email: 'test@example.com', role: 'admin' };
+
+      const token = jwtService.sign(payload);
+
+      expect(token).toBeDefined();
+      expect(typeof token).toBe('string');
+      expect(token.split('.').length).toBe(3); // JWT has 3 parts
     });
 
-    it('should respond to /inventory endpoint', async () => {
-      await request(app.getHttpServer())
-        .get('/inventory')
-        .set('Authorization', adminToken)
-        .expect((res) => expect(res.status).toBeLessThan(500));
-    });
+    it('should verify JWT tokens', () => {
+      const jwtService = module.get(JwtService, { strict: false });
+      const payload = { sub: 'test-user-id', email: 'test@example.com', role: 'admin' };
 
-    it('should respond to /products endpoint', async () => {
-      await request(app.getHttpServer())
-        .get('/products')
-        .set('Authorization', adminToken)
-        .expect((res) => expect(res.status).toBeLessThan(500));
-    });
+      const token = jwtService.sign(payload);
+      const decoded = jwtService.verify(token);
 
-    it('should respond to /suppliers endpoint', async () => {
-      await request(app.getHttpServer())
-        .get('/suppliers')
-        .set('Authorization', adminToken)
-        .expect((res) => expect(res.status).toBeLessThan(500));
-    });
-
-    it('should respond to /warehouses endpoint', async () => {
-      await request(app.getHttpServer())
-        .get('/warehouses')
-        .set('Authorization', adminToken)
-        .expect((res) => expect(res.status).toBeLessThan(500));
-    });
-
-    it('should respond to /shipments endpoint', async () => {
-      await request(app.getHttpServer())
-        .get('/shipments')
-        .set('Authorization', adminToken)
-        .expect((res) => expect(res.status).toBeLessThan(500));
-    });
-
-    it('should respond to /users endpoint', async () => {
-      await request(app.getHttpServer())
-        .get('/users')
-        .set('Authorization', adminToken)
-        .expect((res) => expect(res.status).toBeLessThan(500));
-    });
-
-    it('should respond to /audit-logs endpoint', async () => {
-      await request(app.getHttpServer())
-        .get('/audit-logs')
-        .set('Authorization', adminToken)
-        .expect((res) => expect(res.status).toBeLessThan(500));
+      expect(decoded).toBeDefined();
+      expect(decoded.sub).toBe(payload.sub);
+      expect(decoded.email).toBe(payload.email);
     });
   });
 });

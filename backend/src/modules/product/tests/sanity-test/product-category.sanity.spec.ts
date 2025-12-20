@@ -73,7 +73,7 @@ describe('Product Category Module - Sanity Tests', () => {
         .post('/product-categories')
         .set('Authorization', adminToken)
         .send({
-          name: `Smoke Test Category ${TEST_SUITE_ID}`,
+          name: `Sanity Test Category ${TEST_SUITE_ID}`,
         })
         .expect(201);
 

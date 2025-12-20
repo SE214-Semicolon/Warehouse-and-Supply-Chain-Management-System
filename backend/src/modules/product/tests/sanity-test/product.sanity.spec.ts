@@ -74,7 +74,7 @@ describe('Product Module - Sanity Tests', () => {
         .set('Authorization', adminToken)
         .send({
           sku: `SANITY-PROD-${TEST_SUITE_ID}`,
-          name: `Smoke Test Product ${TEST_SUITE_ID}`,
+          name: `Sanity Test Product ${TEST_SUITE_ID}`,
           unit: 'pcs',
         })
         .expect(201);

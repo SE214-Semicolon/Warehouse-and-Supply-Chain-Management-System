@@ -74,14 +74,14 @@ describe('Supplier Module - Sanity Tests', () => {
         .set('Authorization', adminToken)
         .send({
           code: `SANITY-SUP-${Date.now()}`,
-          name: 'Smoke Test Supplier',
+          name: 'Sanity Test Supplier',
           contactInfo: { email: 'smoke@supplier.com' },
         })
         .expect(201);
 
-      expect(response.body).toHaveProperty('id');
-      expect(response.body.name).toBe('Smoke Test Supplier');
-      supplierId = response.body.id;
+      expect(response.body.data).toHaveProperty('id');
+      expect(response.body.data.name).toBe('Sanity Test Supplier');
+      supplierId = response.body.data.id;
     });
 
     it('should READ suppliers', async () => {
@@ -104,7 +104,7 @@ describe('Supplier Module - Sanity Tests', () => {
         })
         .expect(200);
 
-      expect(response.body.name).toBe('Updated Smoke Supplier');
+      expect(response.body.data.name).toBe('Updated Smoke Supplier');
     });
 
     it('should DELETE supplier', async () => {

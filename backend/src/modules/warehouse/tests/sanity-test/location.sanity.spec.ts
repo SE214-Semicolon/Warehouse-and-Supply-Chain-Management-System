@@ -62,7 +62,7 @@ describe('Location Module - Sanity Tests', () => {
     const warehouse = await prisma.warehouse.create({
       data: {
         code: `SANITY-WH-${TEST_SUITE_ID}`,
-        name: `Smoke Test Warehouse ${TEST_SUITE_ID}`,
+        name: `Sanity Test Warehouse ${TEST_SUITE_ID}`,
       },
     });
 
@@ -87,13 +87,14 @@ describe('Location Module - Sanity Tests', () => {
         .send({
           warehouseId: warehouseId,
           code: `SANITY-LOC-${Date.now()}`,
-          name: 'Smoke Test Location',
+          name: 'Sanity Test Location',
         })
         .expect(201);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.location).toHaveProperty('id');
-      locationId = response.body.location.id;
+      expect(response.body.data).toHaveProperty('id');
+      expect(response.body.data.name).toBe('Sanity Test Location');
+      locationId = response.body.data.id;
     });
 
     it('should READ locations', async () => {
@@ -103,8 +104,8 @@ describe('Location Module - Sanity Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.locations)).toBe(true);
-      expect(response.body.locations.length).toBeGreaterThan(0);
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBeGreaterThan(0);
     });
 
     it('should UPDATE location', async () => {
@@ -112,12 +113,12 @@ describe('Location Module - Sanity Tests', () => {
         .patch(`/locations/${locationId}`)
         .set('Authorization', adminToken)
         .send({
-          name: 'Updated Smoke Location',
+          name: 'Updated Sanity Location',
         })
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.location.name).toBe('Updated Smoke Location');
+      expect(response.body.data.name).toBe('Updated Sanity Location');
     });
 
     it('should DELETE location', async () => {
