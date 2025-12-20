@@ -127,11 +127,11 @@ const Warehouse = () => {
         quantity: parseInt(formData.quantity),
       };
     }
-    let res;
+
     if (dialogMode === "edit" && selectedRow?.id) {
-      res = await config.service.update(selectedRow.id, preparedData);
+      await config.service.update(selectedRow.id, preparedData);
     } else {
-      res = await config.service.create(preparedData);
+      await config.service.create(preparedData);
     }
 
     const reload = await config.fetchData();
