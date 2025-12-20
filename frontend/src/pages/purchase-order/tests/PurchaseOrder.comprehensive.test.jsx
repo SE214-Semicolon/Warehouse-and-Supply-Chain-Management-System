@@ -16,7 +16,7 @@ vi.mock('react-router-dom', async () => {
 
 // Mock components
 vi.mock('@/components/DataTable', () => ({
-  default: ({ title, columns, data, onEdit, onView, onDelete }) => (
+  default: ({ title, data, onEdit, onView, onDelete }) => (
     <div data-testid="data-table">
       <h3>{title}</h3>
       <div data-testid="table-data">{JSON.stringify(data)}</div>
@@ -54,7 +54,7 @@ vi.mock('@/components/ActionButton', () => ({
 }));
 
 vi.mock('../../components/Toolbar', () => ({
-  default: ({ menuItems, selectedMenu }) => (
+  default: ({ menuItems }) => (
     <div data-testid="toolbar-container">
       {menuItems?.map((item) => (
         <button key={item.id}>{item.label}</button>
@@ -88,7 +88,7 @@ describe('PurchaseOrder Page - Simplified Comprehensive Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockNavigate.mockClear();
-    global.alert = vi.fn();
+    globalThis.alert = vi.fn();
   });
 
   // ==================== BASIC RENDERING ====================
@@ -410,7 +410,7 @@ describe('PurchaseOrder Page - Simplified Comprehensive Tests', () => {
       
       await user.click(screen.getByText('Delete First'));
       
-      expect(global.alert).toHaveBeenCalled();
+      expect(globalThis.alert).toHaveBeenCalled();
     });
 
     it('alert includes PO identifier', async () => {
@@ -419,8 +419,8 @@ describe('PurchaseOrder Page - Simplified Comprehensive Tests', () => {
       
       await user.click(screen.getByText('Delete First'));
       
-      expect(global.alert).toHaveBeenCalled();
-      const alertMessage = global.alert.mock.calls[0][0];
+      expect(globalThis.alert).toHaveBeenCalled();
+      const alertMessage = globalThis.alert.mock.calls[0][0];
       expect(alertMessage).toContain('Xóa');
     });
 
@@ -430,8 +430,8 @@ describe('PurchaseOrder Page - Simplified Comprehensive Tests', () => {
       
       await user.click(screen.getByText('Delete First'));
       
-      expect(global.alert).toHaveBeenCalled();
-      const alertMessage = global.alert.mock.calls[0][0];
+      expect(globalThis.alert).toHaveBeenCalled();
+      const alertMessage = globalThis.alert.mock.calls[0][0];
       expect(alertMessage).toMatch(/Xóa/);
     });
   });
@@ -561,7 +561,7 @@ describe('PurchaseOrder Page - Simplified Comprehensive Tests', () => {
       
       // Delete
       await user.click(screen.getByText('Delete First'));
-      expect(global.alert).toHaveBeenCalled();
+      expect(globalThis.alert).toHaveBeenCalled();
     });
   });
 });

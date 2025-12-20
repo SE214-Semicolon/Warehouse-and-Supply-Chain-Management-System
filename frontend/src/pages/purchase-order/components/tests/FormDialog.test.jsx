@@ -1,165 +1,140 @@
-import { describe, it, expect, vi } from 'vitest';
+// src/pages/purchase-order/components/tests/FormDialog.test.jsx
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import FormDialog from '../FormDialog';
 
-/**
- * UNIT TEST: Purchase Order FormDialog Component
- * 
- * Testing Techniques:
- * - Happy Path: Normal creation and editing flows
- * - Equivalence Partitioning: Add vs Edit modes
- * - BVA: Null/undefined values, edge cases
- * - Error Guessing: Missing props, invalid data
- * - State & Rendering: Dialog open/close states
- */
-
-// Mock DialogButtons
-vi.mock('@/components/DialogButtons', () => ({
-  default: ({ onClose, onAction }) => (
-    <div data-testid="dialog-buttons">
-      <button onClick={onClose}>Hủy</button>
-      <button onClick={onAction}>Lưu</button>
-    </div>
-  ),
-}));
-
-// Mock FieldConfig
-vi.mock('../FieldConfig', () => ({
-  fieldConfigs: {
-    supplier: [
-      {
-        id: 'name',
-        label: 'Tên nhà cung cấp',
-        type: 'text',
-      },
-      {
-        id: 'contact',
-        label: 'Liên hệ',
-        type: 'text',
-      },
-      {
-        id: 'email',
-        label: 'Email',
-        type: 'email',
-      },
-    ],
+// Mock services and hooks
+vi.mock('../../services/po.service', () => ({
+  default: {
+    createDraft: vi.fn(),
+    update: vi.fn(),
+    submitOrder: vi.fn(),
   },
 }));
 
-describe.skip('Purchase Order FormDialog Component - Unit Tests (SKIPPED - Incorrect mocks for Purchase Order, needs rewrite)', () => {
+vi.mock('../../services/supplier.service', () => ({
+  default: {
+    getAll: vi.fn(() => Promise.resolve({ data: [] })),
+  },
+}));
+
+vi.mock('../../services/product.service', () => ({
+  default: {
+    getAll: vi.fn(() => Promise.resolve({ data: [] })),
+  },
+}));
+
+describe('Purchase Order FormDialog Component - Unit Tests', () => {
+  const mockOnClose = vi.fn();
+  const mockOnSuccess = vi.fn();
+
   const defaultProps = {
     open: true,
-    onClose: vi.fn(),
+    onClose: mockOnClose,
     mode: 'add',
+    onSuccess: mockOnSuccess,
     selectedRow: null,
   };
 
+  const mockDraftPO = {
+    id: 1,
+    supplierId: 1,
+    status: 'draft',
+    expectedArrival: '2024-12-31',
+    notes: 'Test notes',
+    items: [],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('Happy Path', () => {
-    it('should render dialog when open', () => {
+    it('should render dialog when open in add mode', () => {
       render(<FormDialog {...defaultProps} />);
       
-      expect(screen.getByText('Add Supplier')).toBeInTheDocument();
+      expect(screen.getByText('Tạo Purchase Order mới')).toBeInTheDocument();
     });
 
-    it('should show add title in add mode', () => {
+    it('should show correct title in add mode', () => {
       render(<FormDialog {...defaultProps} mode="add" />);
       
-      expect(screen.getByText('Add Supplier')).toBeInTheDocument();
+      expect(screen.getByText('Tạo Purchase Order mới')).toBeInTheDocument();
     });
 
-    it('should show edit title in edit mode', () => {
+    it('should show correct title in edit mode', () => {
       render(
         <FormDialog
           {...defaultProps}
           mode="edit"
-          selectedRow={{ name: 'ABC Corp' }}
+          selectedRow={mockDraftPO}
         />
       );
       
-      expect(screen.getByText('Edit Supplier')).toBeInTheDocument();
+      expect(screen.getByText('Sửa Purchase Order')).toBeInTheDocument();
     });
 
-    it('should render all form fields', () => {
+    it('should render supplier autocomplete field', () => {
       render(<FormDialog {...defaultProps} />);
       
-      expect(screen.getByLabelText('Tên nhà cung cấp')).toBeInTheDocument();
-      expect(screen.getByLabelText('Liên hệ')).toBeInTheDocument();
-      expect(screen.getByLabelText('Email')).toBeInTheDocument();
+      expect(screen.getByLabelText(/Nhà cung cấp/i)).toBeInTheDocument();
     });
 
-    it('should render DialogButtons', () => {
+    it('should render action buttons', () => {
       render(<FormDialog {...defaultProps} />);
       
-      expect(screen.getByTestId('dialog-buttons')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Hủy' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Lưu' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Hủy/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Lưu nháp/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Đặt hàng/i })).toBeInTheDocument();
     });
   });
 
   describe('Equivalence Partitioning - Modes', () => {
-    it('should handle add mode with empty fields', () => {
+    it('should handle add mode with empty form', () => {
       render(<FormDialog {...defaultProps} mode="add" />);
       
-      const nameInput = screen.getByLabelText('Tên nhà cung cấp');
-      expect(nameInput).toHaveValue('');
+      const supplierInput = screen.getByLabelText(/Nhà cung cấp/i);
+      expect(supplierInput).toHaveValue('');
     });
 
-    it('should handle edit mode with populated fields', () => {
-      const selectedRow = {
-        name: 'Test Supplier',
-        contact: '0123456789',
-        email: 'test@example.com',
-      };
-
+    it('should handle edit mode with existing data', () => {
       render(
         <FormDialog
           {...defaultProps}
           mode="edit"
-          selectedRow={selectedRow}
+          selectedRow={mockDraftPO}
         />
       );
       
-      expect(screen.getByLabelText('Tên nhà cung cấp')).toHaveValue('Test Supplier');
-      expect(screen.getByLabelText('Liên hệ')).toHaveValue('0123456789');
-      expect(screen.getByLabelText('Email')).toHaveValue('test@example.com');
+      expect(screen.getByText('Sửa Purchase Order')).toBeInTheDocument();
     });
   });
 
   describe('User Interactions', () => {
     it('should call onClose when cancel button is clicked', async () => {
       const user = userEvent.setup();
-      const onClose = vi.fn();
-
-      render(<FormDialog {...defaultProps} onClose={onClose} />);
-
-      await user.click(screen.getByRole('button', { name: 'Hủy' }));
-
-      expect(onClose).toHaveBeenCalled();
-    });
-
-    it('should handle save action when save button is clicked', async () => {
-      const user = userEvent.setup();
-      const consoleSpy = vi.spyOn(console, 'log');
 
       render(<FormDialog {...defaultProps} />);
 
-      await user.click(screen.getByRole('button', { name: 'Lưu' }));
+      await user.click(screen.getByRole('button', { name: /Hủy/i }));
 
-      expect(consoleSpy).toHaveBeenCalledWith('Save');
-      
-      consoleSpy.mockRestore();
+      expect(mockOnClose).toHaveBeenCalled();
     });
 
-    it('should allow typing in text fields', async () => {
-      const user = userEvent.setup();
-
+    it('should render product table', () => {
       render(<FormDialog {...defaultProps} />);
 
-      const nameInput = screen.getByLabelText('Tên nhà cung cấp');
-      await user.type(nameInput, 'New Supplier');
+      expect(screen.getByText('Danh sách sản phẩm')).toBeInTheDocument();
+      expect(screen.getByText('Sản phẩm *')).toBeInTheDocument();
+      expect(screen.getByText('SL *')).toBeInTheDocument();
+      expect(screen.getByText('Đơn giá *')).toBeInTheDocument();
+    });
 
-      expect(nameInput).toHaveValue('New Supplier');
+    it('should show add product button', () => {
+      render(<FormDialog {...defaultProps} />);
+
+      expect(screen.getByRole('button', { name: /Thêm sản phẩm/i })).toBeInTheDocument();
     });
   });
 
@@ -167,10 +142,10 @@ describe.skip('Purchase Order FormDialog Component - Unit Tests (SKIPPED - Incor
     it('should not render when closed', () => {
       render(<FormDialog {...defaultProps} open={false} />);
       
-      expect(screen.queryByText('Add Supplier')).not.toBeInTheDocument();
+      expect(screen.queryByText('Tạo Purchase Order mới')).not.toBeInTheDocument();
     });
 
-    it('should show error message when edit mode without selectedRow', () => {
+    it('should handle edit mode without selectedRow gracefully', () => {
       render(
         <FormDialog
           {...defaultProps}
@@ -179,56 +154,55 @@ describe.skip('Purchase Order FormDialog Component - Unit Tests (SKIPPED - Incor
         />
       );
       
-      expect(screen.getByText('Không có dữ liệu để hiển thị')).toBeInTheDocument();
+      // Should still render the form
+      expect(screen.getByText('Sửa Purchase Order')).toBeInTheDocument();
     });
 
-    it('should handle selectedRow with missing fields', () => {
+    it('should handle missing optional props', () => {
       render(
         <FormDialog
-          {...defaultProps}
-          mode="edit"
-          selectedRow={{ name: 'Only Name' }}
+          open={true}
+          mode="add"
+          onClose={mockOnClose}
+          selectedRow={null}
         />
       );
       
-      expect(screen.getByLabelText('Tên nhà cung cấp')).toHaveValue('Only Name');
-      expect(screen.getByLabelText('Liên hệ')).toHaveValue('');
+      expect(screen.getByText('Tạo Purchase Order mới')).toBeInTheDocument();
     });
   });
 
   describe('Error Guessing', () => {
-    it('should handle undefined mode', () => {
+    it('should handle undefined mode (defaults to add)', () => {
       render(<FormDialog {...defaultProps} mode={undefined} />);
       
-      expect(screen.getByText('Add Supplier')).toBeInTheDocument();
+      expect(screen.getByText('Tạo Purchase Order mới')).toBeInTheDocument();
     });
 
     it('should handle null selectedRow in add mode', () => {
       render(<FormDialog {...defaultProps} selectedRow={null} />);
       
-      expect(screen.getByLabelText('Tên nhà cung cấp')).toBeInTheDocument();
+      expect(screen.getByLabelText(/Nhà cung cấp/i)).toBeInTheDocument();
     });
 
     it('should handle missing onClose', () => {
       render(<FormDialog {...defaultProps} onClose={undefined} />);
       
-      expect(screen.getByText('Add Supplier')).toBeInTheDocument();
+      expect(screen.getByText('Tạo Purchase Order mới')).toBeInTheDocument();
     });
   });
 
   describe('Field Rendering', () => {
-    it('should render text fields with correct type', () => {
+    it('should render expected arrival date field', () => {
       render(<FormDialog {...defaultProps} />);
       
-      const emailInput = screen.getByLabelText('Email');
-      expect(emailInput).toHaveAttribute('type', 'email');
+      expect(screen.getByLabelText(/Ngày giao hàng dự kiến/i)).toBeInTheDocument();
     });
 
-    it('should render all fields in correct order', () => {
+    it('should render total amount display', () => {
       render(<FormDialog {...defaultProps} />);
-      
-      const inputs = screen.getAllByRole('textbox');
-      expect(inputs).toHaveLength(3);
+
+      expect(screen.getByText(/Tổng tiền:/i)).toBeInTheDocument();
     });
   });
 
@@ -239,19 +213,17 @@ describe.skip('Purchase Order FormDialog Component - Unit Tests (SKIPPED - Incor
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
-    it('should have accessible form fields', () => {
+    it('should have accessible supplier field', () => {
       render(<FormDialog {...defaultProps} />);
       
-      expect(screen.getByLabelText('Tên nhà cung cấp')).toBeEnabled();
-      expect(screen.getByLabelText('Liên hệ')).toBeEnabled();
-      expect(screen.getByLabelText('Email')).toBeEnabled();
+      expect(screen.getByLabelText(/Nhà cung cấp/i)).toBeEnabled();
     });
 
     it('should have accessible buttons', () => {
       render(<FormDialog {...defaultProps} />);
       
-      expect(screen.getByRole('button', { name: 'Hủy' })).toBeEnabled();
-      expect(screen.getByRole('button', { name: 'Lưu' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: /Hủy/i })).toBeEnabled();
+      expect(screen.getByRole('button', { name: /Lưu nháp/i })).toBeEnabled();
     });
   });
 });
