@@ -25,19 +25,23 @@ export default function FormFieldsRenderer({
   mode,
   onSubmit,
   onCancel,
+  serverErrorField,
 }) {
   const isEdit = mode === "edit";
+
   const baseFields = useMemo(() => {
     return fieldConfigs[selectedMenu] || [];
   }, [selectedMenu]);
 
-  const { options: dynamicOptions, initialValue: dynamicInitial } =
-    useDynamicOptions(selectedMenu, true, selectedRow);
+  const { options: dynamicOptions, initialValue: dynamicInitial } = useDynamicOptions(
+    selectedMenu,
+    true,
+    selectedRow
+  );
 
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState(new Set());
 
-  // Init form data
   useEffect(() => {
     const initial = {};
     baseFields.forEach((field) => {
@@ -56,15 +60,27 @@ export default function FormFieldsRenderer({
     setErrors(new Set());
   }, [selectedRow, selectedMenu, baseFields, dynamicInitial]);
 
+  const isFieldDisabled = (fieldId) => {
+    if (!isEdit) return false;
+    if (selectedMenu === "locations" && fieldId === "warehouseId") return true;
+    if (selectedMenu === "batches" && fieldId === "productId") return true;
+    return false;
+  };
+
   const handleChange = (id, value) => {
     setFormData((prev) => ({ ...prev, [id]: value }));
 
     setErrors((prev) => {
       const next = new Set(prev);
 
-      const max = MAX_LENGTHS[id];
-      if (max && value.length > max) next.add(id);
-      else next.delete(id);
+      if (id === "barcode") {
+        if (value.length > BARCODE_LENGTHS) next.add("barcode");
+        else next.delete("barcode");
+      } else {
+        const max = MAX_LENGTHS[id];
+        if (max && value.length > max) next.add(id);
+        else next.delete(id);
+      }
 
       if (LIMIT_FIELDS.includes(id)) {
         const num = Number(value);
@@ -73,12 +89,11 @@ export default function FormFieldsRenderer({
       }
 
       if (id === "manufactureDate" || id === "expiryDate") {
-        const dateErrors = validateDates(id, value, formData);
-
-        ["manufactureDate", "expiryDate"].forEach((field) => {
-          if (dateErrors.has(field)) next.add(field);
-          else next.delete(field);
-        });
+        const tempData = { ...formData, [id]: value };
+        const dateErrors = validateDates(id, value, tempData);
+        ["manufactureDate", "expiryDate"].forEach((f) =>
+          dateErrors.has(f) ? next.add(f) : next.delete(f)
+        );
       }
 
       return next;
@@ -111,8 +126,7 @@ export default function FormFieldsRenderer({
       }
     });
 
-    const dateErrors = validateDates(null, null, formData);
-    dateErrors.forEach((e) => next.add(e));
+    validateDates(null, null, formData).forEach((e) => next.add(e));
 
     return next;
   };
@@ -124,8 +138,12 @@ export default function FormFieldsRenderer({
       return;
     }
 
-    const payload = { ...formData };
-    delete payload.totalArea;
+    const payload = {};
+    Object.entries(formData).forEach(([key, value]) => {
+      if (!isFieldDisabled(key)) {
+        payload[key] = value;
+      }
+    });
 
     if (selectedMenu === "warehouses") {
       payload.metadata = {
@@ -137,90 +155,69 @@ export default function FormFieldsRenderer({
     onSubmit(payload);
   };
 
-  const validateDates = (id, value, formData) => {
-    const nextErrors = new Set();
+  const validateDates = (_id, _value, data) => {
+    const errors = new Set();
+    const mfg = data.manufactureDate;
+    const exp = data.expiryDate;
 
-    const mfg = id === "manufactureDate" ? value : formData.manufactureDate;
-
-    const exp = id === "expiryDate" ? value : formData.expiryDate;
-
-    const manufactureDate = mfg ? new Date(mfg) : null;
-    const expiryDate = exp ? new Date(exp) : null;
-
+    const mfgDate = mfg ? new Date(mfg) : null;
+    const expDate = exp ? new Date(exp) : null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (manufactureDate && manufactureDate > today) {
-      nextErrors.add("manufactureDate");
-    }
+    if (mfgDate && mfgDate > today) errors.add("manufactureDate");
+    if (expDate && expDate < today) errors.add("expiryDate");
+    if (mfgDate && expDate && expDate <= mfgDate) errors.add("expiryDate");
 
-    if (expiryDate && expiryDate < today) {
-      nextErrors.add("expiryDate");
-    }
-
-    if (manufactureDate && expiryDate && expiryDate <= manufactureDate) {
-      nextErrors.add("expiryDate");
-    }
-
-    return nextErrors;
+    return errors;
   };
 
   const handleKeyDown = (field, e) => {
-    const allowedKeys = [
-      "Backspace",
-      "Delete",
-      "ArrowLeft",
-      "ArrowRight",
-      "Tab",
-    ];
+    const allowedKeys = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"];
     const isNumber = /[0-9]/.test(e.key);
 
-    if (
-      NUMERIC_ONLY.includes(field.id) &&
-      !isNumber &&
-      !allowedKeys.includes(e.key)
-    ) {
+    if (NUMERIC_ONLY.includes(field.id) && !isNumber && !allowedKeys.includes(e.key)) {
       e.preventDefault();
     }
-
-    if (
-      NUMERIC_BLOCK.includes(field.id) &&
-      isNumber &&
-      !allowedKeys.includes(e.key)
-    ) {
+    if (NUMERIC_BLOCK.includes(field.id) && isNumber && !allowedKeys.includes(e.key)) {
       e.preventDefault();
     }
   };
 
   const getHelperText = (fieldId) => {
-    if (fieldId !== "barcode" && !errors.has(fieldId)) return "";
+    if (fieldId === "barcode") {
+      const len = formData.barcode?.length || 0;
+      const countText = `${len}/${BARCODE_LENGTHS}`;
+
+      if (errors.has("barcode")) {
+        if (len > BARCODE_LENGTHS) {
+          return `Limit exceeded (${countText})`;
+        }
+        return `Must be exactly 13 digits (${countText})`;
+      }
+
+      return `Length: ${countText}`;
+    }
+
+    if (serverErrorField === fieldId) return "";
+
+    if (!errors.has(fieldId)) return "";
 
     const label =
-      fieldConfigs[selectedMenu].find((f) => f.id === fieldId)?.label ||
-      fieldId;
-
+      fieldConfigs[selectedMenu]?.find((f) => f.id === fieldId)?.label || fieldId;
     const max = MAX_LENGTHS[fieldId];
+
     if (max && formData[fieldId]?.length > max)
       return `${label} must not exceed ${max} characters`;
 
     if (LIMIT_FIELDS.includes(fieldId)) {
       const val = Number(formData[fieldId]);
       if (val > MAX_VALUE)
-        return `${label} must not exceed ${MAX_VALUE.toLocaleString("en-US")}`;
+        return `${label} must not exceed ${MAX_VALUE.toLocaleString()}`;
     }
 
-    if (fieldId === "manufactureDate")
-      return `${label} must be today or earlier`;
-    if (fieldId === "expiryDate")
-      return `${label} must be after Manufacture Date and not earlier than today`;
-
-    if (fieldId === "barcode") {
-      const len = formData.barcode?.length || 0;
-      if (errors.has("barcode")) {
-        return `${label} must be exactly ${BARCODE_LENGTHS} digits`;
-      }
-      return `Barcode length: ${len} / ${BARCODE_LENGTHS} digits`;
-    }
+    if (fieldId === "manufactureDate") return `${label} must be today or earlier`;
+    if (fieldId === "expiryDate") return `${label} invalid range`;
 
     return `${label} is required`;
   };
@@ -229,38 +226,30 @@ export default function FormFieldsRenderer({
     <>
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, py: 1 }}>
         {baseFields.map((field) => {
-          const value = formData[field.id] ?? "";
-          const hasError = errors.has(field.id);
+          let options = field.options || [];
 
-          let fieldOptions = field.options || [];
-          if (field.id === "categoryId" && selectedMenu === "products") {
-            fieldOptions = dynamicOptions;
-          }
-          if (field.id === "warehouseId" && selectedMenu === "locations") {
-            fieldOptions = dynamicOptions;
-          }
-          if (field.id === "productId" && selectedMenu === "batches") {
-            fieldOptions = dynamicOptions;
-          }
+          if (field.id === "categoryId" && selectedMenu === "products")
+            options = dynamicOptions;
+          if (field.id === "warehouseId" && selectedMenu === "locations")
+            options = dynamicOptions;
+          if (field.id === "productId" && selectedMenu === "batches")
+            options = dynamicOptions;
 
-          const disabled =
-            isEdit &&
-            ((selectedMenu === "locations" && field.id === "warehouseId") ||
-              (selectedMenu === "batches" && field.id === "productId"));
+          const isServerError = serverErrorField === field.id;
 
           return (
             <FormInput
               key={field.id}
               label={field.label}
               type={field.type || "text"}
-              value={value}
+              value={formData[field.id] ?? ""}
               onChange={(val) => handleChange(field.id, val)}
               onKeyDown={(e) => handleKeyDown(field, e)}
-              options={fieldOptions}
+              options={options}
               required={field.required}
-              error={hasError}
+              error={errors.has(field.id) || isServerError}
               helperText={getHelperText(field.id)}
-              disabled={disabled}
+              disabled={isFieldDisabled(field.id)}
             />
           );
         })}

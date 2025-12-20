@@ -61,8 +61,7 @@ const MovementDialog = ({ open, type, locations, onClose, onSubmit }) => {
       nextErrors.delete(field);
       if (!value) nextErrors.add(field);
 
-      const from =
-        field === "fromLocationId" ? value : currentData.fromLocationId;
+      const from = field === "fromLocationId" ? value : currentData.fromLocationId;
       const to = field === "toLocationId" ? value : currentData.toLocationId;
 
       nextErrors.delete("same_location");
@@ -209,9 +208,7 @@ const MovementDialog = ({ open, type, locations, onClose, onSubmit }) => {
                 value={formData.toLocationId}
                 onChange={(val) => handleChange("toLocationId", val)}
                 required
-                error={
-                  errors.has("toLocationId") || errors.has("same_location")
-                }
+                error={errors.has("toLocationId") || errors.has("same_location")}
                 helperText={getHelperText("toLocationId")}
               />
             </>
@@ -230,11 +227,7 @@ const MovementDialog = ({ open, type, locations, onClose, onSubmit }) => {
         </Box>
       </DialogContent>
 
-      <DialogButtons
-        onClose={onClose}
-        onAction={handleSubmit}
-        labelAction="Save"
-      />
+      <DialogButtons onClose={onClose} onAction={handleSubmit} labelAction="Save" />
     </Dialog>
   );
 };

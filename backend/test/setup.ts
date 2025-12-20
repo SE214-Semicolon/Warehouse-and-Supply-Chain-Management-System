@@ -53,18 +53,44 @@ beforeAll(async () => {
     .withExposedPorts(5432)
     .start();
 
-  process.env.DATABASE_URL = pgContainer.getConnectionUri();
+  // process.env.DATABASE_URL = pgContainer.getConnectionUri();
+  const newPgUrl = pgContainer.getConnectionUri();
+  delete process.env.DATABASE_URL;
+  delete process.env.POSTGRES_URL;
+  process.env.DATABASE_URL = newPgUrl;
+  process.env.POSTGRES_URL = newPgUrl;
+  console.log('Testcontainers Postgres started at:', newPgUrl);
 
   // Provision isolated MongoDB for tests
   originalMongoUrl = process.env.MONGO_URL;
   mongoContainer = await new MongoDBContainer('mongo:7').withExposedPorts(27017).start();
 
-  process.env.MONGO_URL = mongoContainer.getConnectionString();
+  // process.env.MONGO_URL = mongoContainer.getConnectionString();
+  let newMongoUrl = mongoContainer.getConnectionString();
+
+  if (newMongoUrl.includes('?')) {
+    newMongoUrl += '&directConnection=true';
+  } else {
+    newMongoUrl += '?directConnection=true';
+  }
+
+  delete process.env.MONGO_URL;
+  delete process.env.MONGODB_URL;
+
+  process.env.MONGO_URL = newMongoUrl;
+  process.env.MONGODB_URL = newMongoUrl;
+  console.log('Testcontainers MongoDB started at:', newMongoUrl);
 
   // Ensure schema exists for suites that don't run migrations themselves.
-  await execAsync('npx prisma migrate deploy', {
+  //   await execAsync('npx prisma migrate deploy', {
+  //     env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL },
+  //   });
+  // }, 120000);
+
+  await execAsync('npx prisma db push --accept-data-loss', {
     env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL },
   });
+  console.log('Prisma schema synced to container');
 }, 120000);
 
 afterAll(async () => {

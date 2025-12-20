@@ -6,6 +6,7 @@ import ProductBatchService from "@/services/batch.service";
 import InventoryService from "@/services/inventory.service";
 import LocationService from "@/services/location.service";
 import UserService from "@/services/user.service";
+
 import { formatDate } from "@/utils/formatDate";
 import { convertDate } from "@/utils/convertDate";
 
@@ -13,6 +14,7 @@ import DetailHeader from "./components/DetailHeader";
 import InfoCard from "./components/InfoCard";
 import EmptyStateCard from "./components/EmptyStateCard";
 import FormDialog from "./components/FormDialog";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 import BatchActions from "./components/batch_detail/BatchActions";
 import BatchTabsSection from "./components/batch_detail/BatchTabsSection";
@@ -31,6 +33,8 @@ const BatchDetail = () => {
   const [loading, setLoading] = useState(true);
 
   const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+
   const [openMovementDialog, setOpenMovementDialog] = useState(false);
   const [movementType, setMovementType] = useState("");
 
@@ -42,11 +46,9 @@ const BatchDetail = () => {
           LocationService.getAll(),
         ]);
         setCurrentUser(user);
-        setLocations(
-          locRes.data?.locations ?? locRes.data?.data?.locations ?? []
-        );
+        setLocations(locRes.data?.data ?? locRes.data ?? []);
       } catch (error) {
-        console.error("Error initializing data:", error);
+        console.error("Init error:", error);
       }
     };
     initData();
@@ -60,15 +62,23 @@ const BatchDetail = () => {
 
       if (!batchData) {
         setBatch(null);
-      } else {
-        setBatch(batchData);
-        const invRes = await InventoryService.getByBatch(id);
-        setInventory(invRes?.inventories || []);
-        setMovements(invRes.data?.movements || []);
+        setInventory([]);
+        setMovements([]);
+        return;
       }
+
+      setBatch(batchData);
+
+      const invRes = await InventoryService.getByBatch(id);
+      setInventory(invRes?.inventories || invRes?.data?.inventories || []);
+
+      const movementRes = await InventoryService.getMovementByBatch(id);
+      setMovements(movementRes?.movements || []);
     } catch (error) {
-      console.error("Error fetching batch:", error);
+      console.error("Fetch batch error:", error);
       setBatch(null);
+      setInventory([]);
+      setMovements([]);
     } finally {
       setLoading(false);
     }
@@ -83,8 +93,14 @@ const BatchDetail = () => {
     navigate("/warehouse");
   };
 
-  const handleEditBatch = () => {
-    setOpenEditDialog(true);
+  const handleEditBatch = () => setOpenEditDialog(true);
+
+  const handleDeleteBatch = () => setOpenDeleteDialog(true);
+
+  const confirmDeleteBatch = async () => {
+    await ProductBatchService.delete(id);
+    localStorage.setItem("selectedMenu", "batches");
+    navigate("/warehouse");
   };
 
   const handleSaveBatch = async (formData) => {
@@ -116,15 +132,9 @@ const BatchDetail = () => {
 
     const actions = {
       receive: () =>
-        InventoryService.receive({
-          ...payload,
-          locationId: formData.locationId,
-        }),
+        InventoryService.receive({ ...payload, locationId: formData.locationId }),
       dispatch: () =>
-        InventoryService.dispatch({
-          ...payload,
-          locationId: formData.locationId,
-        }),
+        InventoryService.dispatch({ ...payload, locationId: formData.locationId }),
       transfer: () =>
         InventoryService.transfer({
           ...payload,
@@ -132,15 +142,9 @@ const BatchDetail = () => {
           toLocationId: formData.toLocationId,
         }),
       reserve: () =>
-        InventoryService.reserve({
-          ...payload,
-          locationId: formData.locationId,
-        }),
+        InventoryService.reserve({ ...payload, locationId: formData.locationId }),
       release: () =>
-        InventoryService.release({
-          ...payload,
-          locationId: formData.locationId,
-        }),
+        InventoryService.release({ ...payload, locationId: formData.locationId }),
     };
 
     if (actions[movementType]) {
@@ -152,12 +156,7 @@ const BatchDetail = () => {
 
   if (loading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="70vh"
-      >
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="70vh">
         <CircularProgress />
       </Box>
     );
@@ -180,6 +179,8 @@ const BatchDetail = () => {
         title={batch.batchNo}
         onBack={handleBack}
         onEdit={handleEditBatch}
+        onDelete={handleDeleteBatch}
+        disableDelete={inventory && inventory.length > 0}
         subtitleItems={[
           { label: "Product", value: batch.product?.name },
           { label: "SKU", value: batch.product?.sku },
@@ -190,19 +191,13 @@ const BatchDetail = () => {
       <InfoCard
         title="Batch Information"
         subtitle="Tracking details"
-        headerColor="#1976d2"
+        headerColor="#764ba2"
         leftFields={[
           { label: "Batch No", value: batch.batchNo },
           { label: "Quantity", value: batch.quantity },
           { label: "Barcode/QR", value: batch.barcodeOrQr || "-" },
-          {
-            label: "Manufacture Date",
-            value: formatDate(batch.manufactureDate || "-"),
-          },
-          {
-            label: "Expiry Date",
-            value: formatDate(batch.expiryDate) || "-",
-          },
+          { label: "Manufacture Date", value: formatDate(batch.manufactureDate) },
+          { label: "Expiry Date", value: formatDate(batch.expiryDate) },
         ]}
         rightFields={[
           { label: "Product", value: batch.product?.name },
@@ -234,6 +229,13 @@ const BatchDetail = () => {
         locations={locations}
         onClose={() => setOpenMovementDialog(false)}
         onSubmit={handleSubmitMovement}
+      />
+
+      <ConfirmDeleteDialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        onConfirm={confirmDeleteBatch}
+        selectedRow={batch}
       />
     </Box>
   );

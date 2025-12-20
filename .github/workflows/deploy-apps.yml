@@ -2,28 +2,28 @@ name: Deploy Applications
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - 'backend/**'
-      - 'frontend/**'
-      - '.github/workflows/deploy-apps.yml'
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/deploy-apps.yml"
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy'
+        description: "Environment to deploy"
         required: true
-        default: 'staging'
+        default: "staging"
         type: choice
         options:
-        - staging
-        - production
+          - staging
+          - production
       deploy_backend:
-        description: 'Deploy backend'
+        description: "Deploy backend"
         required: true
         default: true
         type: boolean
       deploy_frontend:
-        description: 'Deploy frontend'
+        description: "Deploy frontend"
         required: true
         default: true
         type: boolean
@@ -45,122 +45,123 @@ jobs:
       backend-changed: ${{ steps.changes.outputs.backend }}
       frontend-changed: ${{ steps.changes.outputs.frontend }}
     # NOTE: Integration tests use Testcontainers to provision PostgreSQL and MongoDB dynamically
-    steps:         
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Check for changes
-      uses: dorny/paths-filter@v2
-      id: changes
-      with:
-        base: ${{ github.event.before }}
-        filters: |
-          backend:
-            - 'backend/**'
-          frontend:
-            - 'frontend/**'
+      - name: Check for changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          base: ${{ github.event.before }}
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: |
-          backend/package-lock.json
-          frontend/package-lock.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
 
-    # ============================================
-    # UNIT TESTS
-    # ============================================
-    - name: Install backend dependencies
-      if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
-      working-directory: ./backend
-      run: npm ci
+      # ============================================
+      # UNIT TESTS
+      # ============================================
+      - name: Install backend dependencies
+        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./backend
+        run: npm ci
 
-    - name: Generate Prisma Client
-      if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
-      working-directory: ./backend
-      run: npx prisma generate
+      - name: Generate Prisma Client
+        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./backend
+        run: npx prisma generate
 
-    - name: Run Backend Unit Tests
-      if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
-      working-directory: ./backend
-      run: |
-        chmod +x scripts/run-tests-by-type.sh
-        ./scripts/run-tests-by-type.sh unit
-      env:
-        NODE_ENV: test
-        # Provide dummy values for config validation (unit tests mock DB connections)
-        DATABASE_URL: postgresql://test:test@localhost:5432/test
-        MONGO_URL: mongodb://localhost:27017/test
-        JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
-        JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
-        JWT_ACCESS_TTL: 15m
-        JWT_REFRESH_TTL: 7d
+      - name: Run Backend Unit Tests
+        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./backend
+        run: |
+          chmod +x scripts/run-tests-by-type.sh
+          ./scripts/run-tests-by-type.sh unit
+        env:
+          NODE_ENV: test
+          # Provide dummy values for config validation (unit tests mock DB connections)
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          MONGO_URL: mongodb://localhost:27017/test
+          JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
+          JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
+          JWT_ACCESS_TTL: 15m
+          JWT_REFRESH_TTL: 7d
 
-    # ============================================
-    # INTEGRATION TESTS (uses Testcontainers for PostgreSQL + MongoDB)
-    # ============================================
-    #- name: Run Backend Integration Tests
-    #  if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
-    #  working-directory: ./backend
-    #  run: |
-    #    chmod +x scripts/run-tests-by-type.sh
-    #   ./scripts/run-tests-by-type.sh integration -- --testTimeout=120000
-    #  env:
-    #    NODE_ENV: test
-        # Testcontainers will provision databases dynamically
-        # These are fallback/dummy values for config validation
-    #    DATABASE_URL: postgresql://test:test@localhost:5432/test
-    #    POSTGRES_URL: postgresql://test:test@localhost:5432/test
-    #    MONGODB_URL: mongodb://localhost:27017/test
-    #    MONGO_URL: mongodb://localhost:27017/test
-        # JWT secrets for authentication in tests
-    #    JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
-    #    JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
-    #    JWT_ACCESS_TTL: 15m
-    #    JWT_REFRESH_TTL: 7d
-        # Testcontainers configuration for GitHub Actions
-    #    TESTCONTAINERS_HOST_OVERRIDE: localhost
-    #    TESTCONTAINERS_RYUK_DISABLED: true
-        
+      # ============================================
+      # INTEGRATION TESTS (uses Testcontainers for PostgreSQL + MongoDB)
+      # ============================================
+      - name: Run Backend Integration Tests
+        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./backend
+        run: |
+          chmod +x scripts/run-tests-by-type.sh
+           ./scripts/run-tests-by-type.sh integration -- --testTimeout=120000
+        env:
+          NODE_ENV:
+            test
+            # Testcontainers will provision databases dynamically
+            # These are fallback/dummy values for config validation
+          #    DATABASE_URL: postgresql://test:test@localhost:5432/test
+          #    POSTGRES_URL: postgresql://test:test@localhost:5432/test
+          #    MONGODB_URL: mongodb://localhost:27017/test
+          #    MONGO_URL: mongodb://localhost:27017/test
+          # JWT secrets for authentication in tests
+          JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
+          JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
+          JWT_ACCESS_TTL: 15m
+          JWT_REFRESH_TTL:
+            7d
+            # Testcontainers configuration for GitHub Actions
+          TESTCONTAINERS_HOST_OVERRIDE: localhost
+          TESTCONTAINERS_RYUK_DISABLED: true
 
-    # ============================================
-    # SMOKE TESTS
-    # ============================================
-    #- name: Run Backend Smoke Tests
-    #  if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
-    #  working-directory: ./backend
-    #  run: |
-    #    chmod +x scripts/run-tests-by-type.sh
-    #    ./scripts/run-tests-by-type.sh smoke
-    #  env:
-    #    NODE_ENV: test
-        # Provide dummy values for config validation (smoke tests may mock DB)
-    #    DATABASE_URL: postgresql://test:test@localhost:5432/test
-    #    POSTGRES_URL: postgresql://test:test@localhost:5432/test
-    #    MONGODB_URL: mongodb://localhost:27017/test
-    #    MONGO_URL: mongodb://localhost:27017/test
-    #    JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
-    #    JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
-    #    JWT_ACCESS_TTL: 15m
-    #    JWT_REFRESH_TTL: 7d
+      # ============================================
+      # SMOKE TESTS
+      # ============================================
+      - name: Run Backend Smoke Tests
+        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./backend
+        run: |
+          chmod +x scripts/run-tests-by-type.sh
+          ./scripts/run-tests-by-type.sh smoke
+        env:
+          NODE_ENV:
+            test
+            # Provide dummy values for config validation (smoke tests may mock DB)
+          #    DATABASE_URL: postgresql://test:test@localhost:5432/test
+          #    POSTGRES_URL: postgresql://test:test@localhost:5432/test
+          #    MONGODB_URL: mongodb://localhost:27017/test
+          #    MONGO_URL: mongodb://localhost:27017/test
+          JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
+          JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
+          JWT_ACCESS_TTL: 15m
+          JWT_REFRESH_TTL: 7d
 
+      # ============================================
+      # FRONTEND TESTS (TODO: Enable when ready)
+      # ============================================
+      - name: Install frontend dependencies
+        if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./frontend
+        run: npm ci
 
-    # ============================================
-    # FRONTEND TESTS (TODO: Enable when ready)
-    # ============================================
-    # - name: Install frontend dependencies
-    #   if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
-    #   working-directory: ./frontend
-    #   run: npm ci
-    #
-    # - name: Run frontend tests
-    #   if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
-    #   working-directory: ./frontend
-    #   run: npm run test
+      - name: Run frontend tests
+        if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./frontend
+        run: npm run test
 
   build-images:
     needs: [code-check, build-and-test]
@@ -174,40 +175,40 @@ jobs:
         app: [backend, frontend]
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Log in to Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ matrix.app == 'backend' && env.BACKEND_IMAGE_NAME || env.FRONTEND_IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ matrix.app == 'backend' && env.BACKEND_IMAGE_NAME || env.FRONTEND_IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
-    - name: Build and push Docker image
-      if: |
-        (matrix.app == 'backend' && (needs.build-and-test.outputs.backend-changed == 'true' || github.event_name == 'workflow_dispatch')) ||
-        (matrix.app == 'frontend' && (needs.build-and-test.outputs.frontend-changed == 'true' || github.event_name == 'workflow_dispatch'))
-      uses: docker/build-push-action@v5
-      with:
-        context: ./${{ matrix.app }}
-        file: ./${{ matrix.app }}/Dockerfile.prod
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        build-args: |
-          VITE_BASE_URL=${{ github.ref == 'refs/heads/main' && vars.BACKEND_URL_PRODUCTION || vars.BACKEND_URL_STAGING }}
+      - name: Build and push Docker image
+        if: |
+          (matrix.app == 'backend' && (needs.build-and-test.outputs.backend-changed == 'true' || github.event_name == 'workflow_dispatch')) ||
+          (matrix.app == 'frontend' && (needs.build-and-test.outputs.frontend-changed == 'true' || github.event_name == 'workflow_dispatch'))
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.app }}
+          file: ./${{ matrix.app }}/Dockerfile.prod
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_BASE_URL=${{ github.ref == 'refs/heads/main' && vars.BACKEND_URL_PRODUCTION || vars.BACKEND_URL_STAGING }}
 
   deploy-staging:
     if: |
@@ -218,40 +219,40 @@ jobs:
     environment: staging
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Login to Azure
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Deploy Backend to Azure App Service
-      if: |
-        needs.build-and-test.outputs.backend-changed == 'true' ||
-        github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_backend == 'true'
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: warehouse-mgmt-staging-backend
-        images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:develop
+      - name: Deploy Backend to Azure App Service
+        if: |
+          needs.build-and-test.outputs.backend-changed == 'true' ||
+          github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_backend == 'true'
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: warehouse-mgmt-staging-backend
+          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:develop
 
-    - name: Deploy Frontend to Azure App Service
-      if: |
-        needs.build-and-test.outputs.frontend-changed == 'true' ||
-        github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_frontend == 'true'
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: warehouse-mgmt-staging-frontend
-        images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:develop
+      - name: Deploy Frontend to Azure App Service
+        if: |
+          needs.build-and-test.outputs.frontend-changed == 'true' ||
+          github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_frontend == 'true'
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: warehouse-mgmt-staging-frontend
+          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:develop
 
-    - name: Run Database Migrations
-      if: needs.build-and-test.outputs.backend-changed == 'true'
-      run: |
-        # Run Prisma migrations using Azure CLI
-        az webapp config appsettings set \
-          --resource-group warehouse-mgmt-staging-rg \
-          --name warehouse-mgmt-staging-backend \
-          --settings RUN_MIGRATIONS=true
+      - name: Run Database Migrations
+        if: needs.build-and-test.outputs.backend-changed == 'true'
+        run: |
+          # Run Prisma migrations using Azure CLI
+          az webapp config appsettings set \
+            --resource-group warehouse-mgmt-staging-rg \
+            --name warehouse-mgmt-staging-backend \
+            --settings RUN_MIGRATIONS=true
 
   deploy-production:
     if: |
@@ -262,96 +263,96 @@ jobs:
     environment: production
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Login to Azure
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Deploy to staging slot first (Blue-Green deployment)
-    - name: Deploy Backend to Staging Slot
-      if: |
-        needs.build-and-test.outputs.backend-changed == 'true' ||
-        github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_backend == 'true'
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: warehouse-mgmt-production-backend
-        slot-name: staging
-        images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest
+      # Deploy to staging slot first (Blue-Green deployment)
+      - name: Deploy Backend to Staging Slot
+        if: |
+          needs.build-and-test.outputs.backend-changed == 'true' ||
+          github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_backend == 'true'
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: warehouse-mgmt-production-backend
+          slot-name: staging
+          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest
 
-    - name: Deploy Frontend to Staging Slot
-      if: |
-        needs.build-and-test.outputs.frontend-changed == 'true' ||
-        github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_frontend == 'true'
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: warehouse-mgmt-production-frontend
-        slot-name: staging
-        images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+      - name: Deploy Frontend to Staging Slot
+        if: |
+          needs.build-and-test.outputs.frontend-changed == 'true' ||
+          github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_frontend == 'true'
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: warehouse-mgmt-production-frontend
+          slot-name: staging
+          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
 
-    # Health check on staging slot
-    - name: Health Check Staging Slot
-      run: |
-        echo "Performing health checks on staging slots..."
-        
-        # Check backend health
-        backend_health=$(curl -s -o /dev/null -w "%{http_code}" https://warehouse-mgmt-production-backend-staging.azurewebsites.net/health)
-        if [ "$backend_health" != "200" ]; then
-          echo "Backend health check failed with status: $backend_health"
-          exit 1
-        fi
-        
-        # Check frontend health
-        frontend_health=$(curl -s -o /dev/null -w "%{http_code}" https://warehouse-mgmt-production-frontend-staging.azurewebsites.net/health)
-        if [ "$frontend_health" != "200" ]; then
-          echo "Frontend health check failed with status: $frontend_health"
-          exit 1
-        fi
-        
-        echo "All health checks passed!"
+      # Health check on staging slot
+      - name: Health Check Staging Slot
+        run: |
+          echo "Performing health checks on staging slots..."
 
-    # Swap slots (Blue-Green deployment)
-    - name: Swap Backend Deployment Slots
-      if: |
-        needs.build-and-test.outputs.backend-changed == 'true' ||
-        github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_backend == 'true'
-      run: |
-        az webapp deployment slot swap \
-          --resource-group warehouse-mgmt-production-rg \
-          --name warehouse-mgmt-production-backend \
-          --slot staging \
-          --target-slot production
+          # Check backend health
+          backend_health=$(curl -s -o /dev/null -w "%{http_code}" https://warehouse-mgmt-production-backend-staging.azurewebsites.net/health)
+          if [ "$backend_health" != "200" ]; then
+            echo "Backend health check failed with status: $backend_health"
+            exit 1
+          fi
 
-    - name: Swap Frontend Deployment Slots
-      if: |
-        needs.build-and-test.outputs.frontend-changed == 'true' ||
-        github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_frontend == 'true'
-      run: |
-        az webapp deployment slot swap \
-          --resource-group warehouse-mgmt-production-rg \
-          --name warehouse-mgmt-production-frontend \
-          --slot staging \
-          --target-slot production
+          # Check frontend health
+          frontend_health=$(curl -s -o /dev/null -w "%{http_code}" https://warehouse-mgmt-production-frontend-staging.azurewebsites.net/health)
+          if [ "$frontend_health" != "200" ]; then
+            echo "Frontend health check failed with status: $frontend_health"
+            exit 1
+          fi
 
-    # Final health check on production
-    - name: Final Health Check
-      run: |
-        echo "Performing final health checks on production..."
-        
-        # Check backend health
-        backend_health=$(curl -s -o /dev/null -w "%{http_code}" https://warehouse-mgmt-production-backend.azurewebsites.net/health)
-        if [ "$backend_health" != "200" ]; then
-          echo "Production backend health check failed with status: $backend_health"
-          exit 1
-        fi
-        
-        # Check frontend health
-        frontend_health=$(curl -s -o /dev/null -w "%{http_code}" https://warehouse-mgmt-production-frontend.azurewebsites.net/health)
-        if [ "$frontend_health" != "200" ]; then
-          echo "Production frontend health check failed with status: $frontend_health"
-          exit 1
-        fi
-        
-        echo "Production deployment successful!"
+          echo "All health checks passed!"
+
+      # Swap slots (Blue-Green deployment)
+      - name: Swap Backend Deployment Slots
+        if: |
+          needs.build-and-test.outputs.backend-changed == 'true' ||
+          github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_backend == 'true'
+        run: |
+          az webapp deployment slot swap \
+            --resource-group warehouse-mgmt-production-rg \
+            --name warehouse-mgmt-production-backend \
+            --slot staging \
+            --target-slot production
+
+      - name: Swap Frontend Deployment Slots
+        if: |
+          needs.build-and-test.outputs.frontend-changed == 'true' ||
+          github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_frontend == 'true'
+        run: |
+          az webapp deployment slot swap \
+            --resource-group warehouse-mgmt-production-rg \
+            --name warehouse-mgmt-production-frontend \
+            --slot staging \
+            --target-slot production
+
+      # Final health check on production
+      - name: Final Health Check
+        run: |
+          echo "Performing final health checks on production..."
+
+          # Check backend health
+          backend_health=$(curl -s -o /dev/null -w "%{http_code}" https://warehouse-mgmt-production-backend.azurewebsites.net/health)
+          if [ "$backend_health" != "200" ]; then
+            echo "Production backend health check failed with status: $backend_health"
+            exit 1
+          fi
+
+          # Check frontend health
+          frontend_health=$(curl -s -o /dev/null -w "%{http_code}" https://warehouse-mgmt-production-frontend.azurewebsites.net/health)
+          if [ "$frontend_health" != "200" ]; then
+            echo "Production frontend health check failed with status: $frontend_health"
+            exit 1
+          fi
+
+          echo "Production deployment successful!"

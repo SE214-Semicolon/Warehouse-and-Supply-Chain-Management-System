@@ -1,7 +1,16 @@
 import { Card, Box, Typography, Button } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import { useEffect, useState } from 'react';
+import FormDialog from '../components/FormDialog';
 
-export default function SupplierHeader({ supplier }) {
+export default function SupplierHeader({ supplier, onSuccess }) {
+  const [openDialog, setOpenDialog] = useState(false);
+  const [sup, setSup] = useState({});
+
+  useEffect(() => {
+    setSup(supplier);
+  }, [supplier]);
+
   return (
     <Card
       sx={{
@@ -28,7 +37,7 @@ export default function SupplierHeader({ supplier }) {
               color: 'text.primary',
             }}
           >
-            {supplier.name}
+            {sup.name}
           </Typography>
           <Typography
             variant="body1"
@@ -47,7 +56,7 @@ export default function SupplierHeader({ supplier }) {
                 marginLeft: 1,
               }}
             >
-              {supplier.code}
+              {sup.code}
             </Box>
           </Typography>
         </div>
@@ -63,6 +72,7 @@ export default function SupplierHeader({ supplier }) {
             variant="contained"
             color="primary"
             startIcon={<EditIcon size={18} />}
+            onClick={() => setOpenDialog(true)}
             sx={{
               backgroundColor: 'primary.main',
               '&:hover': {
@@ -78,6 +88,13 @@ export default function SupplierHeader({ supplier }) {
           >
             Chỉnh sửa
           </Button>
+          <FormDialog
+            open={openDialog}
+            onClose={() => setOpenDialog(false)}
+            mode="edit"
+            selectedRow={supplier}
+            onSuccess={onSuccess}
+          />
         </Box>
       </Box>
     </Card>

@@ -1,18 +1,24 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Typography, Link } from '@mui/material';
 import ApartmentIcon from '@mui/icons-material/Apartment';
 import InfoCard from '@/components/InfoCard';
 
 export default function BasicInfoSection({ data }) {
-  const fields = [
-    { label: 'Địa chỉ', value: data.address },
-    { label: 'Điện thoại', value: data.phone },
-    { label: 'Email', value: data.email },
-    { label: 'Website', value: data.website, isLink: true },
-    { label: 'Mã số thuế', value: data.taxCode },
-    { label: 'Ngành hàng', value: data.category },
-    { label: 'Ngày hợp tác', value: data.cooperationDate },
-  ];
+  const [fields, setFields] = useState([]);
+
+  useEffect(() => {
+    setFields([
+      { label: 'Địa chỉ', value: data.address },
+      { label: 'Điện thoại', value: data.contactInfo.phone },
+      { label: 'Email', value: data.contactInfo.email },
+      { label: 'Người liên hệ', value: data.contactInfo.contactPerson },
+      // { label: 'Website', value: data.website, isLink: true },
+      // { label: 'Mã số thuế', value: data.taxCode },
+      // { label: 'Ngành hàng', value: data.category },
+      // { label: 'Ngày hợp tác', value: data.cooperationDate },
+    ]);
+  }, [data]);
+
   return (
     <InfoCard title="Thông tin cơ bản" icon={ApartmentIcon} iconColor="blue">
       <Box
