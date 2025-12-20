@@ -65,6 +65,11 @@ docker compose exec -T backend sh -lc "npx prisma migrate deploy"
 docker compose restart backend
 ```
 
+**Lưu ý về Seed Data:**
+- Seed data tạo sẵn 7 users test, 50 products, 20 purchase orders, 50 sales orders, v.v.
+- Xem chi tiết tại: `backend/SEED_DATA_QA_GUIDE.md`
+- Tài khoản test: `admin` / `admin123`, `manager` / `manager123`, `staff` / `staff123`, ...
+
 
 ### 6. Cấu trúc dự án
 ```
