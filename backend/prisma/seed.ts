@@ -22,6 +22,25 @@ function createDecimal(value: number): Prisma.Decimal {
   return new Prisma.Decimal(value.toFixed(2));
 }
 
+type SeedPurchaseOrderItem = {
+  productId: string;
+  qtyOrdered: number;
+  qtyReceived: number;
+  unitPrice: Prisma.Decimal;
+  lineTotal: Prisma.Decimal;
+  remark?: string;
+};
+
+type SeedSalesOrderItem = {
+  productId: string;
+  productBatchId?: string;
+  locationId?: string;
+  qty: number;
+  qtyFulfilled: number;
+  unitPrice: Prisma.Decimal;
+  lineTotal: Prisma.Decimal;
+};
+
 /**
  * Tạo ngày tháng ngẫu nhiên trong 3 tháng gần đây
  */
@@ -258,7 +277,7 @@ async function seedSuppliers(): Promise<Prisma.SupplierGetPayload<Record<string,
     name,
     contactInfo: {
       email: faker.internet.email({ firstName: name.split(' ')[0] }),
-      phone: faker.phone.number('+84##########'),
+      phone: faker.phone.number({ style: 'international' }),
       contactPerson: faker.person.fullName(),
     },
     address: faker.location.streetAddress({ useFullAddress: true }),
@@ -295,7 +314,7 @@ async function seedCustomers(): Promise<Prisma.CustomerGetPayload<Record<string,
       name: companyName,
       contactInfo: {
         email: faker.internet.email({ firstName: companyName.split(' ')[0] }),
-        phone: faker.phone.number('+84##########'),
+        phone: faker.phone.number({ style: 'international' }),
         contactPerson: faker.person.fullName(),
         rank,
         type,
@@ -565,37 +584,32 @@ async function seedPurchaseOrders(
     const itemCount = faker.number.int({ min: 1, max: 5 });
     const selectedProducts = faker.helpers.arrayElements(products, itemCount);
 
-    const items: Prisma.PurchaseOrderItemCreateWithoutPurchaseOrderInput[] = selectedProducts.map(
-      (product) => {
-        const qtyOrdered = faker.number.int({ min: 10, max: 100 });
-        const unitPrice = createDecimal(
-          faker.number.float({ min: 100000, max: 50000000, fractionDigits: 2 }),
-        );
-        const lineTotal = createDecimal(qtyOrdered * parseFloat(unitPrice.toString()));
+    const items: SeedPurchaseOrderItem[] = selectedProducts.map((product) => {
+      const qtyOrdered = faker.number.int({ min: 10, max: 100 });
+      const unitPrice = createDecimal(
+        faker.number.float({ min: 100000, max: 50000000, fractionDigits: 2 }),
+      );
+      const lineTotal = createDecimal(qtyOrdered * parseFloat(unitPrice.toString()));
 
-        let qtyReceived = 0;
-        if (status === PoStatus.received) {
-          qtyReceived = qtyOrdered;
-        } else if (status === PoStatus.partial) {
-          qtyReceived = faker.number.int({ min: 1, max: qtyOrdered - 1 });
-        }
+      let qtyReceived = 0;
+      if (status === PoStatus.received) {
+        qtyReceived = qtyOrdered;
+      } else if (status === PoStatus.partial) {
+        qtyReceived = faker.number.int({ min: 1, max: qtyOrdered - 1 });
+      }
 
-        return {
-          product: { connect: { id: product.id } },
-          qtyOrdered,
-          qtyReceived,
-          unitPrice,
-          lineTotal,
-          remark:
-            faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.3 }) || undefined,
-        };
-      },
-    );
+      return {
+        productId: product.id,
+        qtyOrdered,
+        qtyReceived,
+        unitPrice,
+        lineTotal,
+        remark:
+          faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.3 }) || undefined,
+      };
+    });
 
-    const totalAmount = items.reduce(
-      (sum, item) => sum.plus(item.lineTotal || 0),
-      createDecimal(0),
-    );
+    const totalAmount = items.reduce((sum, item) => sum.plus(item.lineTotal), createDecimal(0));
 
     const po = await prisma.purchaseOrder.create({
       data: {
@@ -608,7 +622,16 @@ async function seedPurchaseOrders(
         notes: faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.5 }) || undefined,
         createdBy: { connect: { id: createdBy.id } },
         createdAt: placedAt || randomDateInLast3Months(),
-        items: { create: items },
+        items: {
+          create: items.map((item) => ({
+            product: { connect: { id: item.productId } },
+            qtyOrdered: item.qtyOrdered,
+            qtyReceived: item.qtyReceived,
+            unitPrice: item.unitPrice,
+            lineTotal: item.lineTotal,
+            remark: item.remark,
+          })),
+        },
       },
     });
 
@@ -651,7 +674,7 @@ async function seedSalesOrders(
     const itemCount = faker.number.int({ min: 1, max: 4 });
     const selectedProducts = faker.helpers.arrayElements(products, itemCount);
 
-    const items: Prisma.SalesOrderItemCreateWithoutSalesOrderInput[] = await Promise.all(
+    const items: SeedSalesOrderItem[] = await Promise.all(
       selectedProducts.map(async (product) => {
         // Tìm batch có sẵn cho product này
         const availableBatches = batches.filter((b) => b.productId === product.id);
@@ -682,9 +705,9 @@ async function seedSalesOrders(
         }
 
         return {
-          product: { connect: { id: product.id } },
-          productBatch: batch ? { connect: { id: batch.id } } : undefined,
-          location: location ? { connect: { id: location.id } } : undefined,
+          productId: product.id,
+          productBatchId: batch?.id,
+          locationId: location?.id,
           qty,
           qtyFulfilled,
           unitPrice,
@@ -693,10 +716,7 @@ async function seedSalesOrders(
       }),
     );
 
-    const totalAmount = items.reduce(
-      (sum, item) => sum.plus(item.lineTotal || 0),
-      createDecimal(0),
-    );
+    const totalAmount = items.reduce((sum, item) => sum.plus(item.lineTotal), createDecimal(0));
 
     const so = await prisma.salesOrder.create({
       data: {
@@ -707,7 +727,19 @@ async function seedSalesOrders(
         totalAmount,
         createdBy: { connect: { id: createdBy.id } },
         createdAt: placedAt,
-        items: { create: items },
+        items: {
+          create: items.map((item) => ({
+            product: { connect: { id: item.productId } },
+            productBatch: item.productBatchId
+              ? { connect: { id: item.productBatchId } }
+              : undefined,
+            location: item.locationId ? { connect: { id: item.locationId } } : undefined,
+            qty: item.qty,
+            qtyFulfilled: item.qtyFulfilled,
+            unitPrice: item.unitPrice,
+            lineTotal: item.lineTotal,
+          })),
+        },
       },
     });
 
