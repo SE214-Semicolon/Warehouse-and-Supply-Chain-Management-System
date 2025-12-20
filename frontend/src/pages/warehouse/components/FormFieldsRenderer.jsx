@@ -25,6 +25,7 @@ export default function FormFieldsRenderer({
   mode,
   onSubmit,
   onCancel,
+  serverErrorField,
 }) {
   const isEdit = mode === "edit";
 
@@ -43,7 +44,6 @@ export default function FormFieldsRenderer({
 
   useEffect(() => {
     const initial = {};
-
     baseFields.forEach((field) => {
       initial[field.id] = selectedRow?.[field.id] ?? "";
     });
@@ -62,10 +62,8 @@ export default function FormFieldsRenderer({
 
   const isFieldDisabled = (fieldId) => {
     if (!isEdit) return false;
-
     if (selectedMenu === "locations" && fieldId === "warehouseId") return true;
     if (selectedMenu === "batches" && fieldId === "productId") return true;
-
     return false;
   };
 
@@ -75,9 +73,14 @@ export default function FormFieldsRenderer({
     setErrors((prev) => {
       const next = new Set(prev);
 
-      const max = MAX_LENGTHS[id];
-      if (max && value.length > max) next.add(id);
-      else next.delete(id);
+      if (id === "barcode") {
+        if (value.length > BARCODE_LENGTHS) next.add("barcode");
+        else next.delete("barcode");
+      } else {
+        const max = MAX_LENGTHS[id];
+        if (max && value.length > max) next.add(id);
+        else next.delete(id);
+      }
 
       if (LIMIT_FIELDS.includes(id)) {
         const num = Number(value);
@@ -86,7 +89,8 @@ export default function FormFieldsRenderer({
       }
 
       if (id === "manufactureDate" || id === "expiryDate") {
-        const dateErrors = validateDates(id, value, formData);
+        const tempData = { ...formData, [id]: value };
+        const dateErrors = validateDates(id, value, tempData);
         ["manufactureDate", "expiryDate"].forEach((f) =>
           dateErrors.has(f) ? next.add(f) : next.delete(f)
         );
@@ -135,7 +139,6 @@ export default function FormFieldsRenderer({
     }
 
     const payload = {};
-
     Object.entries(formData).forEach(([key, value]) => {
       if (!isFieldDisabled(key)) {
         payload[key] = value;
@@ -152,15 +155,13 @@ export default function FormFieldsRenderer({
     onSubmit(payload);
   };
 
-  const validateDates = (id, value, data) => {
+  const validateDates = (_id, _value, data) => {
     const errors = new Set();
-
-    const mfg = id === "manufactureDate" ? value : data.manufactureDate;
-    const exp = id === "expiryDate" ? value : data.expiryDate;
+    const mfg = data.manufactureDate;
+    const exp = data.expiryDate;
 
     const mfgDate = mfg ? new Date(mfg) : null;
     const expDate = exp ? new Date(exp) : null;
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -178,19 +179,34 @@ export default function FormFieldsRenderer({
     if (NUMERIC_ONLY.includes(field.id) && !isNumber && !allowedKeys.includes(e.key)) {
       e.preventDefault();
     }
-
     if (NUMERIC_BLOCK.includes(field.id) && isNumber && !allowedKeys.includes(e.key)) {
       e.preventDefault();
     }
   };
 
   const getHelperText = (fieldId) => {
-    if (!errors.has(fieldId) && fieldId !== "barcode") return "";
+    if (fieldId === "barcode") {
+      const len = formData.barcode?.length || 0;
+      const countText = `${len}/${BARCODE_LENGTHS}`;
+
+      if (errors.has("barcode")) {
+        if (len > BARCODE_LENGTHS) {
+          return `Limit exceeded (${countText})`;
+        }
+        return `Must be exactly 13 digits (${countText})`;
+      }
+
+      return `Length: ${countText}`;
+    }
+
+    if (serverErrorField === fieldId) return "";
+
+    if (!errors.has(fieldId)) return "";
 
     const label =
       fieldConfigs[selectedMenu]?.find((f) => f.id === fieldId)?.label || fieldId;
-
     const max = MAX_LENGTHS[fieldId];
+
     if (max && formData[fieldId]?.length > max)
       return `${label} must not exceed ${max} characters`;
 
@@ -201,12 +217,7 @@ export default function FormFieldsRenderer({
     }
 
     if (fieldId === "manufactureDate") return `${label} must be today or earlier`;
-
-    if (fieldId === "expiryDate")
-      return `${label} must be after Manufacture Date and not earlier than today`;
-
-    if (fieldId === "barcode")
-      return `${label} must be exactly ${BARCODE_LENGTHS} digits`;
+    if (fieldId === "expiryDate") return `${label} invalid range`;
 
     return `${label} is required`;
   };
@@ -224,6 +235,8 @@ export default function FormFieldsRenderer({
           if (field.id === "productId" && selectedMenu === "batches")
             options = dynamicOptions;
 
+          const isServerError = serverErrorField === field.id;
+
           return (
             <FormInput
               key={field.id}
@@ -234,7 +247,7 @@ export default function FormFieldsRenderer({
               onKeyDown={(e) => handleKeyDown(field, e)}
               options={options}
               required={field.required}
-              error={errors.has(field.id)}
+              error={errors.has(field.id) || isServerError}
               helperText={getHelperText(field.id)}
               disabled={isFieldDisabled(field.id)}
             />

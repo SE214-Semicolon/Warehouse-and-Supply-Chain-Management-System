@@ -127,7 +127,6 @@ const Warehouse = () => {
         quantity: parseInt(formData.quantity),
       };
     }
-
     let res;
     if (dialogMode === "edit" && selectedRow?.id) {
       res = await config.service.update(selectedRow.id, preparedData);
@@ -135,12 +134,9 @@ const Warehouse = () => {
       res = await config.service.create(preparedData);
     }
 
-    if (res) {
-      const reload = await config.fetchData();
-      const cleanData = Array.isArray(reload) ? reload : reload?.data || [];
-      setDynamicData((prev) => ({ ...prev, [selectedMenu]: cleanData }));
-    }
-    setOpenDialog(false);
+    const reload = await config.fetchData();
+    const cleanData = Array.isArray(reload) ? reload : reload?.data || [];
+    setDynamicData((prev) => ({ ...prev, [selectedMenu]: cleanData }));
   };
 
   const currentMenuConfig = menuItems.find((m) => m.id === selectedMenu);
