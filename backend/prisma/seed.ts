@@ -1,838 +1,936 @@
-import { PrismaClient, UserRole, StockMovementType } from '@prisma/client';
+import {
+  PrismaClient,
+  Prisma,
+  UserRole,
+  PoStatus,
+  OrderStatus,
+  ShipmentStatus,
+} from '@prisma/client';
+import { faker } from '@faker-js/faker';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log('🌱 Starting seed...');
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
 
-  // Create users
-  console.log('Creating users...');
-  const adminUser = await prisma.user.upsert({
-    where: { username: 'admin' },
-    update: {},
-    create: {
+/**
+ * Tạo số thập phân cho tiền tệ sử dụng Prisma.Decimal
+ */
+function createDecimal(value: number): Prisma.Decimal {
+  return new Prisma.Decimal(value.toFixed(2));
+}
+
+/**
+ * Tạo ngày tháng ngẫu nhiên trong 3 tháng gần đây
+ */
+function randomDateInLast3Months(): Date {
+  const now = new Date();
+  const threeMonthsAgo = new Date(now);
+  threeMonthsAgo.setMonth(now.getMonth() - 3);
+  return faker.date.between({ from: threeMonthsAgo, to: now });
+}
+
+/**
+ * Tạo ngày tháng trong tương lai (cho expectedArrival)
+ */
+function randomFutureDate(daysFromNow: number = 7): Date {
+  const now = new Date();
+  const future = new Date(now);
+  future.setDate(now.getDate() + daysFromNow);
+  return faker.date.between({ from: now, to: future });
+}
+
+/**
+ * Format log message đẹp
+ */
+function log(message: string): void {
+  console.log(`\n📦 ${message}`);
+}
+
+function logSuccess(message: string): void {
+  console.log(`   ✅ ${message}`);
+}
+
+function logError(message: string): void {
+  console.error(`   ❌ ${message}`);
+}
+
+// ============================================================================
+// CLEAN DATABASE
+// ============================================================================
+
+async function cleanDatabase(): Promise<void> {
+  log('Đang xóa dữ liệu cũ...');
+
+  // Xóa theo thứ tự ràng buộc khóa ngoại (từ bảng con đến bảng cha)
+  await prisma.shipmentTrackingEvent.deleteMany();
+  await prisma.shipmentItem.deleteMany();
+  await prisma.shipment.deleteMany();
+  await prisma.salesOrderItem.deleteMany();
+  await prisma.salesOrder.deleteMany();
+  await prisma.purchaseOrderItem.deleteMany();
+  await prisma.purchaseOrder.deleteMany();
+  await prisma.demandForecast.deleteMany();
+  await prisma.stockMovement.deleteMany();
+  await prisma.inventory.deleteMany();
+  await prisma.productBatch.deleteMany();
+  await prisma.product.deleteMany();
+  await prisma.productCategory.deleteMany();
+  await prisma.location.deleteMany();
+  await prisma.warehouse.deleteMany();
+  await prisma.customer.deleteMany();
+  await prisma.supplier.deleteMany();
+  await prisma.refreshToken.deleteMany();
+  await prisma.userInvite.deleteMany();
+  await prisma.user.deleteMany();
+
+  logSuccess('Đã xóa toàn bộ dữ liệu cũ');
+}
+
+// ============================================================================
+// SEED USERS
+// ============================================================================
+
+async function seedUsers(): Promise<Prisma.UserGetPayload<Record<string, never>>[]> {
+  log('Đang tạo Users...');
+
+  const users: Prisma.UserCreateInput[] = [
+    {
       username: 'admin',
-      fullName: 'System Administrator',
+      fullName: 'Nguyễn Văn Admin',
       email: 'admin@warehouse.com',
       passwordHash: await bcrypt.hash('admin123', 10),
       role: UserRole.admin,
       active: true,
     },
-  });
-
-  const managerUser = await prisma.user.upsert({
-    where: { username: 'manager' },
-    update: {},
-    create: {
+    {
       username: 'manager',
-      fullName: 'Warehouse Manager',
+      fullName: 'Trần Thị Manager',
       email: 'manager@warehouse.com',
       passwordHash: await bcrypt.hash('manager123', 10),
       role: UserRole.manager,
       active: true,
     },
-  });
-
-  const staffUser = await prisma.user.upsert({
-    where: { username: 'staff' },
-    update: {},
-    create: {
+    {
       username: 'staff',
-      fullName: 'Warehouse Staff',
+      fullName: 'Lê Văn Staff',
       email: 'staff@warehouse.com',
       passwordHash: await bcrypt.hash('staff123', 10),
       role: UserRole.warehouse_staff,
       active: true,
     },
-  });
-
-  // Create warehouses
-  console.log('Creating warehouses...');
-  const mainWarehouse = await prisma.warehouse.upsert({
-    where: { code: 'MAIN' },
-    update: {},
-    create: {
-      code: 'MAIN',
-      name: 'Main Warehouse',
-      address: '123 Industrial Street, City, Country',
+    {
+      username: 'sales1',
+      fullName: 'Phạm Thị Sales',
+      email: 'sales1@warehouse.com',
+      passwordHash: await bcrypt.hash('sales123', 10),
+      role: UserRole.sales,
+      active: true,
     },
-  });
-
-  const secondaryWarehouse = await prisma.warehouse.upsert({
-    where: { code: 'SEC' },
-    update: {},
-    create: {
-      code: 'SEC',
-      name: 'Secondary Warehouse',
-      address: '456 Commerce Avenue, City, Country',
+    {
+      username: 'procurement',
+      fullName: 'Hoàng Văn Procurement',
+      email: 'procurement@warehouse.com',
+      passwordHash: await bcrypt.hash('procurement123', 10),
+      role: UserRole.procurement,
+      active: true,
     },
-  });
-
-  // Create locations
-  console.log('Creating locations...');
-  const locations = await Promise.all([
-    prisma.location.upsert({
-      where: { warehouseId_code: { warehouseId: mainWarehouse.id, code: 'A-01' } },
-      update: {},
-      create: {
-        warehouseId: mainWarehouse.id,
-        code: 'A-01',
-        name: 'Zone A - Shelf 01',
-        capacity: 1000,
-        type: 'shelf',
-      },
-    }),
-    prisma.location.upsert({
-      where: { warehouseId_code: { warehouseId: mainWarehouse.id, code: 'A-02' } },
-      update: {},
-      create: {
-        warehouseId: mainWarehouse.id,
-        code: 'A-02',
-        name: 'Zone A - Shelf 02',
-        capacity: 1000,
-        type: 'shelf',
-      },
-    }),
-    prisma.location.upsert({
-      where: { warehouseId_code: { warehouseId: mainWarehouse.id, code: 'B-01' } },
-      update: {},
-      create: {
-        warehouseId: mainWarehouse.id,
-        code: 'B-01',
-        name: 'Zone B - Shelf 01',
-        capacity: 800,
-        type: 'shelf',
-      },
-    }),
-    prisma.location.upsert({
-      where: { warehouseId_code: { warehouseId: secondaryWarehouse.id, code: 'C-01' } },
-      update: {},
-      create: {
-        warehouseId: secondaryWarehouse.id,
-        code: 'C-01',
-        name: 'Zone C - Shelf 01',
-        capacity: 1200,
-        type: 'shelf',
-      },
-    }),
-  ]);
-
-  // Create product categories
-  console.log('Creating product categories...');
-  const electronicsCategory = await prisma.productCategory.upsert({
-    where: { name: 'Electronics' },
-    update: {},
-    create: {
-      name: 'Electronics',
+    {
+      username: 'logistics',
+      fullName: 'Vũ Thị Logistics',
+      email: 'logistics@warehouse.com',
+      passwordHash: await bcrypt.hash('logistics123', 10),
+      role: UserRole.logistics,
+      active: true,
     },
-  });
-
-  const clothingCategory = await prisma.productCategory.upsert({
-    where: { name: 'Clothing' },
-    update: {},
-    create: {
-      name: 'Clothing',
+    {
+      username: 'analyst',
+      fullName: 'Đỗ Văn Analyst',
+      email: 'analyst@warehouse.com',
+      passwordHash: await bcrypt.hash('analyst123', 10),
+      role: UserRole.analyst,
+      active: true,
     },
-  });
+  ];
 
-  const foodCategory = await prisma.productCategory.upsert({
-    where: { name: 'Food & Beverages' },
-    update: {},
-    create: {
-      name: 'Food & Beverages',
-    },
-  });
+  const createdUsers = await Promise.all(users.map((user) => prisma.user.create({ data: user })));
 
-  // Create products
-  console.log('Creating products...');
-  const products = await Promise.all([
-    prisma.product.upsert({
-      where: { sku: 'LAPTOP-001' },
-      update: {},
-      create: {
-        sku: 'LAPTOP-001',
-        name: 'Business Laptop',
-        categoryId: electronicsCategory.id,
-        unit: 'piece',
-        barcode: '1234567890123',
-        parameters: {
-          unitCost: 1200.0,
-          brand: 'TechCorp',
-          warranty: '2 years',
-        },
-      },
-    }),
-    prisma.product.upsert({
-      where: { sku: 'PHONE-001' },
-      update: {},
-      create: {
-        sku: 'PHONE-001',
-        name: 'Smartphone',
-        categoryId: electronicsCategory.id,
-        unit: 'piece',
-        barcode: '1234567890124',
-        parameters: {
-          unitCost: 800.0,
-          brand: 'MobileTech',
-          warranty: '1 year',
-        },
-      },
-    }),
-    prisma.product.upsert({
-      where: { sku: 'TSHIRT-001' },
-      update: {},
-      create: {
-        sku: 'TSHIRT-001',
-        name: 'Cotton T-Shirt',
-        categoryId: clothingCategory.id,
-        unit: 'piece',
-        barcode: '1234567890125',
-        parameters: {
-          unitCost: 15.0,
-          size: 'M',
-          color: 'Blue',
-        },
-      },
-    }),
-    prisma.product.upsert({
-      where: { sku: 'MILK-001' },
-      update: {},
-      create: {
-        sku: 'MILK-001',
-        name: 'Fresh Milk',
-        categoryId: foodCategory.id,
-        unit: 'liter',
-        barcode: '1234567890126',
-        parameters: {
-          unitCost: 2.5,
-          fatContent: '3.5%',
-          organic: true,
-        },
-      },
-    }),
-    prisma.product.upsert({
-      where: { sku: 'BREAD-001' },
-      update: {},
-      create: {
-        sku: 'BREAD-001',
-        name: 'Whole Wheat Bread',
-        categoryId: foodCategory.id,
-        unit: 'loaf',
-        barcode: '1234567890127',
-        parameters: {
-          unitCost: 3.0,
-          weight: '500g',
-          organic: false,
-        },
-      },
-    }),
-  ]);
-
-  // Create product batches with different expiry dates
-  console.log('Creating product batches...');
-  const now = new Date();
-  const batches = await Promise.all([
-    // Current stock - good expiry dates
-    prisma.productBatch.upsert({
-      where: { productId_batchNo: { productId: products[0].id, batchNo: 'L2024-001' } },
-      update: {},
-      create: {
-        productId: products[0].id,
-        batchNo: 'L2024-001',
-        manufactureDate: new Date('2024-01-15'),
-        expiryDate: new Date('2026-01-15'),
-      },
-    }),
-    prisma.productBatch.upsert({
-      where: { productId_batchNo: { productId: products[1].id, batchNo: 'P2024-001' } },
-      update: {},
-      create: {
-        productId: products[1].id,
-        batchNo: 'P2024-001',
-        manufactureDate: new Date('2024-02-01'),
-        expiryDate: new Date('2025-08-01'),
-      },
-    }),
-    // Low stock items
-    prisma.productBatch.upsert({
-      where: { productId_batchNo: { productId: products[2].id, batchNo: 'T2024-001' } },
-      update: {},
-      create: {
-        productId: products[2].id,
-        batchNo: 'T2024-001',
-        manufactureDate: new Date('2024-03-01'),
-        expiryDate: new Date('2025-12-01'),
-      },
-    }),
-    // Expiring soon
-    prisma.productBatch.upsert({
-      where: { productId_batchNo: { productId: products[3].id, batchNo: 'M2024-001' } },
-      update: {},
-      create: {
-        productId: products[3].id,
-        batchNo: 'M2024-001',
-        manufactureDate: new Date('2024-09-01'),
-        expiryDate: new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
-      },
-    }),
-    // Already expired (for testing)
-    prisma.productBatch.upsert({
-      where: { productId_batchNo: { productId: products[4].id, batchNo: 'B2024-001' } },
-      update: {},
-      create: {
-        productId: products[4].id,
-        batchNo: 'B2024-001',
-        manufactureDate: new Date('2024-08-01'),
-        expiryDate: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-      },
-    }),
-  ]);
-
-  // Create inventory records
-  console.log('Creating inventory records...');
-  const inventoryRecords = await Promise.all([
-    // Normal stock levels
-    prisma.inventory.upsert({
-      where: {
-        productBatchId_locationId: {
-          productBatchId: batches[0].id,
-          locationId: locations[0].id,
-        },
-      },
-      update: {},
-      create: {
-        productBatchId: batches[0].id,
-        locationId: locations[0].id,
-        availableQty: 25,
-        reservedQty: 5,
-      },
-    }),
-    prisma.inventory.upsert({
-      where: {
-        productBatchId_locationId: {
-          productBatchId: batches[1].id,
-          locationId: locations[1].id,
-        },
-      },
-      update: {},
-      create: {
-        productBatchId: batches[1].id,
-        locationId: locations[1].id,
-        availableQty: 75,
-        reservedQty: 10,
-      },
-    }),
-    // Low stock
-    prisma.inventory.upsert({
-      where: {
-        productBatchId_locationId: {
-          productBatchId: batches[2].id,
-          locationId: locations[2].id,
-        },
-      },
-      update: {},
-      create: {
-        productBatchId: batches[2].id,
-        locationId: locations[2].id,
-        availableQty: 3, // Low stock alert
-        reservedQty: 0,
-      },
-    }),
-    // Expiring soon
-    prisma.inventory.upsert({
-      where: {
-        productBatchId_locationId: {
-          productBatchId: batches[3].id,
-          locationId: locations[0].id,
-        },
-      },
-      update: {},
-      create: {
-        productBatchId: batches[3].id,
-        locationId: locations[0].id,
-        availableQty: 150,
-        reservedQty: 20,
-      },
-    }),
-    // Expired
-    prisma.inventory.upsert({
-      where: {
-        productBatchId_locationId: {
-          productBatchId: batches[4].id,
-          locationId: locations[3].id,
-        },
-      },
-      update: {},
-      create: {
-        productBatchId: batches[4].id,
-        locationId: locations[3].id,
-        availableQty: 15,
-        reservedQty: 0,
-      },
-    }),
-  ]);
-
-  // Create some historical stock movements
-  console.log('Creating stock movements...');
-  await Promise.all([
-    // Initial receipts
-    prisma.stockMovement.create({
-      data: {
-        productBatchId: batches[0].id,
-        toLocationId: locations[0].id,
-        quantity: 30,
-        movementType: StockMovementType.purchase_receipt,
-        createdById: staffUser.id,
-        createdAt: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
-      },
-    }),
-    prisma.stockMovement.create({
-      data: {
-        productBatchId: batches[1].id,
-        toLocationId: locations[1].id,
-        quantity: 85,
-        movementType: StockMovementType.purchase_receipt,
-        createdById: staffUser.id,
-        createdAt: new Date(now.getTime() - 25 * 24 * 60 * 60 * 1000), // 25 days ago
-      },
-    }),
-    // Some dispatches
-    prisma.stockMovement.create({
-      data: {
-        productBatchId: batches[0].id,
-        fromLocationId: locations[0].id,
-        quantity: 5,
-        movementType: StockMovementType.sale_issue,
-        createdById: staffUser.id,
-        createdAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
-      },
-    }),
-    prisma.stockMovement.create({
-      data: {
-        productBatchId: batches[1].id,
-        fromLocationId: locations[1].id,
-        quantity: 10,
-        movementType: StockMovementType.sale_issue,
-        createdById: staffUser.id,
-        createdAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-      },
-    }),
-    // Some adjustments
-    prisma.stockMovement.create({
-      data: {
-        productBatchId: batches[2].id,
-        toLocationId: locations[2].id,
-        quantity: 8,
-        movementType: StockMovementType.adjustment,
-        createdById: managerUser.id,
-        reference: 'Initial stock adjustment',
-        createdAt: new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000), // 20 days ago
-      },
-    }),
-    // Some reservations
-    prisma.stockMovement.create({
-      data: {
-        productBatchId: batches[0].id,
-        toLocationId: locations[0].id,
-        quantity: 5,
-        movementType: StockMovementType.reservation,
-        createdById: staffUser.id,
-        reference: 'ORDER-001',
-        createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-      },
-    }),
-  ]);
-
-  // Create customers
-  console.log('Creating customers...');
-  const customers = await Promise.all([
-    prisma.customer.upsert({
-      where: { code: 'CUST-001' },
-      update: {},
-      create: {
-        code: 'CUST-001',
-        name: 'Cửa hàng ABC',
-        contactInfo: {
-          email: 'contact@abcstore.com',
-          phone: '+84901111111',
-          contactPerson: 'Nguyễn Văn B',
-        },
-        address: '123 Main Street, City',
-      },
-    }),
-    prisma.customer.upsert({
-      where: { code: 'CUST-002' },
-      update: {},
-      create: {
-        code: 'CUST-002',
-        name: 'Siêu thị XYZ',
-        contactInfo: {
-          email: 'sales@xyzmart.com',
-          phone: '+84902222222',
-          contactPerson: 'Trần Thị C',
-        },
-        address: '456 Commerce Ave, City',
-      },
-    }),
-  ]);
-
-  // Create suppliers
-  console.log('Creating suppliers...');
-  const suppliers = await Promise.all([
-    prisma.supplier.upsert({
-      where: { code: 'SUP-001' },
-      update: {},
-      create: {
-        code: 'SUP-001',
-        name: 'Nhà cung cấp Electronics Pro',
-        contactInfo: {
-          email: 'info@elecpro.com',
-          phone: '+84903333333',
-          contactPerson: 'Lê Văn D',
-        },
-        address: '789 Industrial Zone, City',
-      },
-    }),
-    prisma.supplier.upsert({
-      where: { code: 'SUP-002' },
-      update: {},
-      create: {
-        code: 'SUP-002',
-        name: 'Nhà cung cấp Food Fresh',
-        contactInfo: {
-          email: 'fresh@foodsupply.com',
-          phone: '+84904444444',
-          contactPerson: 'Phạm Văn E',
-        },
-        address: '321 Farm Road, City',
-      },
-    }),
-  ]);
-
-  // Create purchase orders
-  console.log('Creating purchase orders...');
-  const purchaseOrders = await Promise.all([
-    prisma.purchaseOrder.upsert({
-      where: { poNo: 'PO-202410-001' },
-      update: {},
-      create: {
-        poNo: 'PO-202410-001',
-        supplierId: suppliers[0].id,
-        status: 'draft',
-        totalAmount: 36000000,
-        placedAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-        expectedArrival: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-        notes: 'Regular electronics restock',
-        createdById: managerUser.id,
-        items: {
-          create: [
-            {
-              productId: products[0].id, // Laptop
-              qtyOrdered: 30,
-              qtyReceived: 0,
-              unitPrice: 1200000,
-              lineTotal: 36000000,
-              remark: 'Latest model',
-            },
-          ],
-        },
-      },
-    }),
-    prisma.purchaseOrder.upsert({
-      where: { poNo: 'PO-202410-002' },
-      update: {},
-      create: {
-        poNo: 'PO-202410-002',
-        supplierId: suppliers[1].id,
-        status: 'ordered',
-        totalAmount: 100000,
-        placedAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-        expectedArrival: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
-        notes: 'Fresh food supplies',
-        createdById: managerUser.id,
-        items: {
-          create: [
-            {
-              productId: products[3].id, // Milk
-              qtyOrdered: 100,
-              qtyReceived: 50,
-              unitPrice: 500,
-              lineTotal: 50000,
-            },
-            {
-              productId: products[4].id, // Bread
-              qtyOrdered: 50,
-              qtyReceived: 0,
-              unitPrice: 1000,
-              lineTotal: 50000,
-            },
-          ],
-        },
-      },
-    }),
-    prisma.purchaseOrder.upsert({
-      where: { poNo: 'PO-202410-003' },
-      update: {},
-      create: {
-        poNo: 'PO-202410-003',
-        supplierId: suppliers[0].id,
-        status: 'received',
-        totalAmount: 750000,
-        placedAt: new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
-        expectedArrival: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000),
-        notes: 'Completed order',
-        createdById: managerUser.id,
-        items: {
-          create: [
-            {
-              productId: products[1].id, // Phone
-              qtyOrdered: 50,
-              qtyReceived: 50,
-              unitPrice: 15000,
-              lineTotal: 750000,
-            },
-          ],
-        },
-      },
-    }),
-  ]);
-
-  // Create sales orders
-  console.log('Creating sales orders...');
-  const salesOrders = await Promise.all([
-    prisma.salesOrder.upsert({
-      where: { soNo: 'SO-202410-001' },
-      update: {},
-      create: {
-        soNo: 'SO-202410-001',
-        customerId: customers[0].id,
-        status: 'pending',
-        totalAmount: 2400000,
-        placedAt: now,
-        createdById: managerUser.id,
-        items: {
-          create: [
-            {
-              productId: products[0].id,
-              qty: 2,
-              qtyFulfilled: 0,
-              unitPrice: 1200000,
-              lineTotal: 2400000,
-            },
-          ],
-        },
-      },
-    }),
-    prisma.salesOrder.upsert({
-      where: { soNo: 'SO-202410-002' },
-      update: {},
-      create: {
-        soNo: 'SO-202410-002',
-        customerId: customers[1].id,
-        status: 'approved',
-        totalAmount: 45000,
-        placedAt: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000),
-        createdById: staffUser.id,
-        items: {
-          create: [
-            {
-              productId: products[2].id,
-              qty: 3,
-              qtyFulfilled: 0,
-              unitPrice: 15000,
-              lineTotal: 45000,
-            },
-          ],
-        },
-      },
-    }),
-  ]);
-
-  // Create Shipments với tracking
-  console.log('Creating shipments...');
-  const shipments = await Promise.all([
-    prisma.shipment.create({
-      data: {
-        shipmentNo: 'SHIP-2024-001',
-        warehouseId: mainWarehouse.id,
-        salesOrderId: salesOrders[0].id,
-        status: 'delivered',
-        shippedAt: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000),
-        deliveredAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
-        estimatedDelivery: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
-        carrier: 'Express Logistics',
-        trackingCode: 'EXP123456789',
-        notes: 'Delivered successfully',
-        items: {
-          create: [
-            {
-              salesOrderId: salesOrders[0].id,
-              productId: products[0].id,
-              productBatchId: batches[0].id,
-              qty: 2,
-            },
-          ],
-        },
-        trackingEvents: {
-          create: [
-            {
-              eventTime: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000),
-              location: 'Warehouse',
-              statusText: 'Picked up from warehouse',
-            },
-            {
-              eventTime: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000),
-              location: 'Transit Hub',
-              statusText: 'In transit',
-            },
-            {
-              eventTime: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
-              location: 'Customer Location',
-              statusText: 'Delivered',
-            },
-          ],
-        },
-      },
-    }),
-    prisma.shipment.create({
-      data: {
-        shipmentNo: 'SHIP-2024-002',
-        warehouseId: mainWarehouse.id,
-        salesOrderId: salesOrders[1].id,
-        status: 'in_transit',
-        shippedAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
-        estimatedDelivery: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
-        carrier: 'Fast Delivery Co.',
-        trackingCode: 'FDC987654321',
-        items: {
-          create: [
-            {
-              salesOrderId: salesOrders[1].id,
-              productId: products[2].id,
-              productBatchId: batches[2].id,
-              qty: 3,
-            },
-          ],
-        },
-        trackingEvents: {
-          create: [
-            {
-              eventTime: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
-              location: 'Warehouse',
-              statusText: 'Picked up',
-            },
-            {
-              eventTime: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000),
-              location: 'Sorting Facility',
-              statusText: 'Sorting in progress',
-            },
-          ],
-        },
-      },
-    }),
-    prisma.shipment.create({
-      data: {
-        shipmentNo: 'SHIP-2024-003',
-        warehouseId: secondaryWarehouse.id,
-        salesOrderId: salesOrders[1].id,
-        status: 'preparing',
-        estimatedDelivery: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
-        items: {
-          create: [
-            {
-              salesOrderId: salesOrders[1].id,
-              productId: products[1].id,
-              qty: 1,
-            },
-          ],
-        },
-      },
-    }),
-  ]);
-
-  // Create Demand Forecasts
-  console.log('Creating demand forecasts...');
-  const forecasts = await Promise.all([
-    prisma.demandForecast.create({
-      data: {
-        productId: products[0].id,
-        forecastDate: new Date(now.getFullYear(), now.getMonth() + 1, 1),
-        forecastedQuantity: 50,
-        algorithmUsed: 'MOVING_AVERAGE',
-      },
-    }),
-    prisma.demandForecast.create({
-      data: {
-        productId: products[0].id,
-        forecastDate: new Date(now.getFullYear(), now.getMonth() + 2, 1),
-        forecastedQuantity: 55,
-        algorithmUsed: 'EXPONENTIAL_SMOOTHING',
-      },
-    }),
-    prisma.demandForecast.create({
-      data: {
-        productId: products[1].id,
-        forecastDate: new Date(now.getFullYear(), now.getMonth() + 1, 1),
-        forecastedQuantity: 80,
-        algorithmUsed: 'SIMPLE_MOVING_AVERAGE',
-      },
-    }),
-    prisma.demandForecast.create({
-      data: {
-        productId: products[2].id,
-        forecastDate: new Date(now.getFullYear(), now.getMonth() + 1, 1),
-        forecastedQuantity: 200,
-        algorithmUsed: 'MOVING_AVERAGE',
-      },
-    }),
-    prisma.demandForecast.create({
-      data: {
-        productId: products[3].id,
-        forecastDate: new Date(now.getFullYear(), now.getMonth() + 1, 1),
-        forecastedQuantity: 300,
-        algorithmUsed: 'EXPONENTIAL_SMOOTHING',
-      },
-    }),
-  ]);
-
-  console.log('✅ Seed completed successfully!');
-  console.log('\n📊 Test Data Summary:');
-  console.log(`   Users: ${[adminUser, managerUser, staffUser].length}`);
-  console.log(`   Warehouses: ${[mainWarehouse, secondaryWarehouse].length}`);
-  console.log(`   Locations: ${locations.length}`);
-  console.log(`   Categories: ${[electronicsCategory, clothingCategory, foodCategory].length}`);
-  console.log(`   Products: ${products.length}`);
-  console.log(`   Batches: ${batches.length}`);
-  console.log(`   Inventory Records: ${inventoryRecords.length}`);
-  console.log(`   Customers: ${customers.length}`);
-  console.log(`   Suppliers: ${suppliers.length}`);
-  console.log(`   Purchase Orders: ${purchaseOrders.length}`);
-  console.log(`   Sales Orders: ${salesOrders.length}`);
-
-  console.log('\n🔐 Test Accounts:');
-  console.log('   Admin: admin / admin123');
-  console.log('   Manager: manager / manager123');
-  console.log('   Staff: staff / staff123');
-
-  console.log('\n🧪 Test Scenarios Available:');
-  console.log('   • Low stock alerts (TSHIRT-001: 3 units)');
-  console.log('   • Expiry alerts (MILK-001: expires in 15 days)');
-  console.log('   • Expired items (BREAD-001: expired 5 days ago)');
-  console.log('   • Stock transfers between locations');
-  console.log('   • Inventory reports and valuation');
-  console.log('   • Reservation and release operations');
-  console.log('   • Purchase Order flows (draft, ordered, partial, received)');
-  console.log('   • Sales Order fulfillment with qtyFulfilled tracking');
-  console.log('   • Shipment tracking (3 shipments: delivered, in_transit, preparing)');
-  console.log(`   • Demand forecasting (${forecasts.length} forecasts with multiple algorithms)`);
+  logSuccess(`Đã tạo ${createdUsers.length} users`);
+  return createdUsers;
 }
 
+// ============================================================================
+// SEED WAREHOUSES & LOCATIONS
+// ============================================================================
+
+async function seedWarehousesAndLocations(): Promise<{
+  warehouses: Prisma.WarehouseGetPayload<Record<string, never>>[];
+  locations: Prisma.LocationGetPayload<Record<string, never>>[];
+}> {
+  log('Đang tạo Warehouses và Locations...');
+
+  const warehouseData: Prisma.WarehouseCreateInput[] = [
+    {
+      code: 'WH-HCM-001',
+      name: 'Kho Tân Bình - TP.HCM',
+      address: '123 Đường Tân Bình, Phường 1, Quận Tân Bình, TP.HCM',
+    },
+    {
+      code: 'WH-HCM-002',
+      name: 'Kho Bình Tân - TP.HCM',
+      address: '456 Đường Bình Tân, Phường 2, Quận Bình Tân, TP.HCM',
+    },
+    {
+      code: 'WH-HN-001',
+      name: 'Kho Long Biên - Hà Nội',
+      address: '789 Đường Long Biên, Phường Long Biên, Quận Long Biên, Hà Nội',
+    },
+  ];
+
+  const warehouses = await Promise.all(
+    warehouseData.map((warehouse) => prisma.warehouse.create({ data: warehouse })),
+  );
+
+  logSuccess(`Đã tạo ${warehouses.length} warehouses`);
+
+  // Tạo locations cho mỗi warehouse (10-20 locations mỗi kho)
+  const locationTypes = ['shelf', 'rack', 'pallet', 'bin', 'zone'];
+  const allLocations: Prisma.LocationGetPayload<Record<string, never>>[] = [];
+
+  for (const warehouse of warehouses) {
+    const locationCount = faker.number.int({ min: 10, max: 20 });
+    const locations: Prisma.LocationCreateInput[] = [];
+
+    for (let i = 1; i <= locationCount; i++) {
+      const zone = String.fromCharCode(65 + Math.floor((i - 1) / 5)); // A, B, C, D...
+      const shelf = String(i % 5 || 5).padStart(2, '0');
+      const locationType = faker.helpers.arrayElement(locationTypes);
+
+      locations.push({
+        warehouse: { connect: { id: warehouse.id } },
+        code: `${zone}-${shelf}`,
+        name: `Khu vực ${zone} - Kệ ${shelf}`,
+        capacity: faker.number.int({ min: 100, max: 2000 }),
+        type: locationType,
+        properties: {
+          temperature: locationType === 'zone' ? faker.number.int({ min: 15, max: 25 }) : null,
+          humidity: locationType === 'zone' ? faker.number.int({ min: 40, max: 60 }) : null,
+        },
+      });
+    }
+
+    const createdLocations = await Promise.all(
+      locations.map((location) => prisma.location.create({ data: location })),
+    );
+
+    allLocations.push(...createdLocations);
+  }
+
+  logSuccess(`Đã tạo ${allLocations.length} locations`);
+
+  return { warehouses, locations: allLocations };
+}
+
+// ============================================================================
+// SEED SUPPLIERS
+// ============================================================================
+
+async function seedSuppliers(): Promise<Prisma.SupplierGetPayload<Record<string, never>>[]> {
+  log('Đang tạo Suppliers...');
+
+  const supplierNames = [
+    'Samsung Electronics Vietnam',
+    'Apple Vietnam',
+    'LG Electronics Vietnam',
+    'Sony Vietnam',
+    'Panasonic Vietnam',
+    'Toshiba Vietnam',
+    'Canon Vietnam',
+    'HP Vietnam',
+    'Dell Vietnam',
+    'Lenovo Vietnam',
+  ];
+
+  const suppliers: Prisma.SupplierCreateInput[] = supplierNames.map((name, index) => ({
+    code: `SUP-${String(index + 1).padStart(3, '0')}`,
+    name,
+    contactInfo: {
+      email: faker.internet.email({ firstName: name.split(' ')[0] }),
+      phone: faker.phone.number('+84##########'),
+      contactPerson: faker.person.fullName(),
+    },
+    address: faker.location.streetAddress({ useFullAddress: true }),
+    createdAt: randomDateInLast3Months(),
+  }));
+
+  const createdSuppliers = await Promise.all(
+    suppliers.map((supplier) => prisma.supplier.create({ data: supplier })),
+  );
+
+  logSuccess(`Đã tạo ${createdSuppliers.length} suppliers`);
+  return createdSuppliers;
+}
+
+// ============================================================================
+// SEED CUSTOMERS
+// ============================================================================
+
+async function seedCustomers(): Promise<Prisma.CustomerGetPayload<Record<string, never>>[]> {
+  log('Đang tạo Customers...');
+
+  const customerRanks = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond'];
+  const customerTypes = ['Retailer', 'Wholesaler', 'Distributor', 'Supermarket', 'E-commerce'];
+
+  const customers: Prisma.CustomerCreateInput[] = [];
+
+  for (let i = 1; i <= 50; i++) {
+    const rank = faker.helpers.arrayElement(customerRanks);
+    const type = faker.helpers.arrayElement(customerTypes);
+    const companyName = faker.company.name();
+
+    customers.push({
+      code: `CUST-${String(i).padStart(4, '0')}`,
+      name: companyName,
+      contactInfo: {
+        email: faker.internet.email({ firstName: companyName.split(' ')[0] }),
+        phone: faker.phone.number('+84##########'),
+        contactPerson: faker.person.fullName(),
+        rank,
+        type,
+      },
+      address: faker.location.streetAddress({ useFullAddress: true }),
+      createdAt: randomDateInLast3Months(),
+    });
+  }
+
+  const createdCustomers = await Promise.all(
+    customers.map((customer) => prisma.customer.create({ data: customer })),
+  );
+
+  logSuccess(`Đã tạo ${createdCustomers.length} customers`);
+  return createdCustomers;
+}
+
+// ============================================================================
+// SEED CATEGORIES & PRODUCTS
+// ============================================================================
+
+async function seedCategoriesAndProducts(): Promise<{
+  categories: Prisma.ProductCategoryGetPayload<Record<string, never>>[];
+  products: Prisma.ProductGetPayload<Record<string, never>>[];
+}> {
+  log('Đang tạo Categories và Products...');
+
+  const categoryNames = [
+    'Điện tử - Điện lạnh',
+    'Điện thoại - Máy tính bảng',
+    'Máy tính - Laptop',
+    'Phụ kiện công nghệ',
+    'Thiết bị văn phòng',
+  ];
+
+  const categories = await Promise.all(
+    categoryNames.map((name) =>
+      prisma.productCategory.create({
+        data: { name },
+      }),
+    ),
+  );
+
+  logSuccess(`Đã tạo ${categories.length} categories`);
+
+  // Tạo 50 products (10 products mỗi category)
+  const productTemplates = [
+    // Điện tử - Điện lạnh
+    {
+      category: 0,
+      names: [
+        'Tủ lạnh Samsung',
+        'Máy giặt LG',
+        'Điều hòa Panasonic',
+        'Tủ đông Sharp',
+        'Máy sấy Electrolux',
+        'Bếp từ Bosch',
+        'Lò vi sóng Sharp',
+        'Máy lọc nước Kangaroo',
+        'Quạt điều hòa Daikin',
+        'Máy hút bụi Dyson',
+      ],
+    },
+    // Điện thoại - Máy tính bảng
+    {
+      category: 1,
+      names: [
+        'iPhone 15 Pro Max',
+        'Samsung Galaxy S24 Ultra',
+        'iPad Pro 12.9"',
+        'Xiaomi 14 Pro',
+        'OnePlus 12',
+        'Google Pixel 8 Pro',
+        'Huawei Mate 60 Pro',
+        'Oppo Find X6 Pro',
+        'Vivo X100 Pro',
+        'Realme GT 5 Pro',
+      ],
+    },
+    // Máy tính - Laptop
+    {
+      category: 2,
+      names: [
+        'MacBook Pro M3',
+        'Dell XPS 15',
+        'HP Spectre x360',
+        'Lenovo ThinkPad X1',
+        'ASUS ROG Strix',
+        'Acer Predator Helios',
+        'MSI Stealth 16',
+        'Razer Blade 15',
+        'Microsoft Surface Laptop',
+        'LG Gram 17',
+      ],
+    },
+    // Phụ kiện công nghệ
+    {
+      category: 3,
+      names: [
+        'Tai nghe AirPods Pro',
+        'Chuột Logitech MX Master',
+        'Bàn phím cơ Keychron',
+        'Webcam Logitech C920',
+        'Ổ cứng SSD Samsung',
+        'Pin sạc dự phòng Anker',
+        'Cáp USB-C Belkin',
+        'Adapter HDMI Apple',
+        'Balo laptop Targus',
+        'Giá đỡ màn hình Ergotron',
+      ],
+    },
+    // Thiết bị văn phòng
+    {
+      category: 4,
+      names: [
+        'Máy in Canon PIXMA',
+        'Máy scan Fujitsu',
+        'Máy fax Brother',
+        'Máy hủy giấy Fellowes',
+        'Máy chiếu Epson',
+        'Máy photocopy Ricoh',
+        'Máy đóng gáy GBC',
+        'Máy bấm lỗ Rapesco',
+        'Máy đếm tiền Glory',
+        'Máy đóng dấu tự động',
+      ],
+    },
+  ];
+
+  const products: Prisma.ProductCreateInput[] = [];
+  let productIndex = 1;
+
+  // Tạo 10 products cho mỗi category (tổng 50)
+  for (let categoryIndex = 0; categoryIndex < categories.length; categoryIndex++) {
+    const template = productTemplates[categoryIndex];
+
+    for (let i = 0; i < 10 && productIndex <= 50; i++) {
+      const baseName = template.names[i];
+      const sku = `SKU-${String(productIndex).padStart(6, '0')}`;
+
+      products.push({
+        sku,
+        name: baseName,
+        category: { connect: { id: categories[categoryIndex].id } },
+        unit: 'piece',
+        barcode: faker.string.numeric(13),
+        parameters: {
+          brand: baseName.split(' ')[0],
+          model: baseName,
+          warranty: `${faker.number.int({ min: 1, max: 3 })} years`,
+          color: faker.helpers.arrayElement(['Black', 'White', 'Silver', 'Gold', 'Space Gray']),
+        },
+        minStockLevel: faker.number.int({ min: 10, max: 50 }),
+        reorderPoint: faker.number.int({ min: 20, max: 100 }),
+        leadTimeDays: faker.number.int({ min: 3, max: 14 }),
+        safetyStockLevel: faker.number.int({ min: 5, max: 30 }),
+        createdAt: randomDateInLast3Months(),
+      });
+
+      productIndex++;
+    }
+  }
+
+  const createdProducts = await Promise.all(
+    products.map((product) => prisma.product.create({ data: product })),
+  );
+
+  logSuccess(`Đã tạo ${createdProducts.length} products`);
+
+  return { categories, products: createdProducts };
+}
+
+// ============================================================================
+// SEED INVENTORY (ProductBatch & Inventory)
+// ============================================================================
+
+async function seedInventory(
+  products: Prisma.ProductGetPayload<Record<string, never>>[],
+  locations: Prisma.LocationGetPayload<Record<string, never>>[],
+): Promise<{
+  batches: Prisma.ProductBatchGetPayload<Record<string, never>>[];
+  inventoryRecords: Prisma.InventoryGetPayload<Record<string, never>>[];
+}> {
+  log('Đang tạo Inventory (ProductBatch & Inventory)...');
+
+  const batches: Prisma.ProductBatchGetPayload<Record<string, never>>[] = [];
+  const inventoryRecords: Prisma.InventoryGetPayload<Record<string, never>>[] = [];
+
+  // Tạo batches cho mỗi product (1-3 batches mỗi product)
+  for (const product of products) {
+    const batchCount = faker.number.int({ min: 1, max: 3 });
+
+    for (let i = 1; i <= batchCount; i++) {
+      const manufactureDate = randomDateInLast3Months();
+      const expiryDate = faker.date.future({ years: 2, refDate: manufactureDate });
+
+      const batch = await prisma.productBatch.create({
+        data: {
+          product: { connect: { id: product.id } },
+          batchNo: `BATCH-${product.sku}-${String(i).padStart(3, '0')}`,
+          manufactureDate,
+          expiryDate,
+          barcodeOrQr: faker.string.alphanumeric(20),
+          createdAt: manufactureDate,
+        },
+      });
+
+      batches.push(batch);
+
+      // Tạo inventory records cho batch này tại các locations ngẫu nhiên
+      const locationCount = faker.number.int({ min: 1, max: 3 });
+      const selectedLocations = faker.helpers.arrayElements(locations, locationCount);
+
+      for (const location of selectedLocations) {
+        const availableQty = faker.number.int({ min: 10, max: 500 });
+        const reservedQty = faker.number.int({ min: 0, max: Math.floor(availableQty * 0.3) });
+
+        const inventory = await prisma.inventory.create({
+          data: {
+            productBatch: { connect: { id: batch.id } },
+            location: { connect: { id: location.id } },
+            availableQty,
+            reservedQty,
+          },
+        });
+
+        inventoryRecords.push(inventory);
+      }
+    }
+  }
+
+  logSuccess(`Đã tạo ${batches.length} product batches`);
+  logSuccess(`Đã tạo ${inventoryRecords.length} inventory records`);
+
+  return { batches, inventoryRecords };
+}
+
+// ============================================================================
+// SEED PURCHASE ORDERS
+// ============================================================================
+
+async function seedPurchaseOrders(
+  suppliers: Prisma.SupplierGetPayload<Record<string, never>>[],
+  products: Prisma.ProductGetPayload<Record<string, never>>[],
+  users: Prisma.UserGetPayload<Record<string, never>>[],
+): Promise<Prisma.PurchaseOrderGetPayload<Record<string, never>>[]> {
+  log('Đang tạo Purchase Orders...');
+
+  const purchaseOrders: Prisma.PurchaseOrderGetPayload<Record<string, never>>[] = [];
+  const statuses: PoStatus[] = [
+    PoStatus.draft,
+    PoStatus.ordered,
+    PoStatus.partial,
+    PoStatus.received,
+  ];
+
+  for (let i = 1; i <= 20; i++) {
+    const supplier = faker.helpers.arrayElement(suppliers);
+    const createdBy = faker.helpers.arrayElement(users);
+    const status = faker.helpers.arrayElement(statuses);
+    const placedAt = status !== PoStatus.draft ? randomDateInLast3Months() : null;
+    const expectedArrival = placedAt
+      ? new Date(placedAt.getTime() + faker.number.int({ min: 3, max: 14 }) * 24 * 60 * 60 * 1000)
+      : randomFutureDate();
+
+    // Tạo 1-5 items cho mỗi PO
+    const itemCount = faker.number.int({ min: 1, max: 5 });
+    const selectedProducts = faker.helpers.arrayElements(products, itemCount);
+
+    const items: Prisma.PurchaseOrderItemCreateWithoutPurchaseOrderInput[] = selectedProducts.map(
+      (product) => {
+        const qtyOrdered = faker.number.int({ min: 10, max: 100 });
+        const unitPrice = createDecimal(
+          faker.number.float({ min: 100000, max: 50000000, fractionDigits: 2 }),
+        );
+        const lineTotal = createDecimal(qtyOrdered * parseFloat(unitPrice.toString()));
+
+        let qtyReceived = 0;
+        if (status === PoStatus.received) {
+          qtyReceived = qtyOrdered;
+        } else if (status === PoStatus.partial) {
+          qtyReceived = faker.number.int({ min: 1, max: qtyOrdered - 1 });
+        }
+
+        return {
+          product: { connect: { id: product.id } },
+          qtyOrdered,
+          qtyReceived,
+          unitPrice,
+          lineTotal,
+          remark:
+            faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.3 }) || undefined,
+        };
+      },
+    );
+
+    const totalAmount = items.reduce(
+      (sum, item) => sum.plus(item.lineTotal || 0),
+      createDecimal(0),
+    );
+
+    const po = await prisma.purchaseOrder.create({
+      data: {
+        poNo: `PO-${new Date().getFullYear()}-${String(i).padStart(4, '0')}`,
+        supplier: { connect: { id: supplier.id } },
+        status,
+        placedAt,
+        expectedArrival,
+        totalAmount,
+        notes: faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.5 }) || undefined,
+        createdBy: { connect: { id: createdBy.id } },
+        createdAt: placedAt || randomDateInLast3Months(),
+        items: { create: items },
+      },
+    });
+
+    purchaseOrders.push(po);
+  }
+
+  logSuccess(`Đã tạo ${purchaseOrders.length} purchase orders`);
+  return purchaseOrders;
+}
+
+// ============================================================================
+// SEED SALES ORDERS
+// ============================================================================
+
+async function seedSalesOrders(
+  customers: Prisma.CustomerGetPayload<Record<string, never>>[],
+  products: Prisma.ProductGetPayload<Record<string, never>>[],
+  batches: Prisma.ProductBatchGetPayload<Record<string, never>>[],
+  locations: Prisma.LocationGetPayload<Record<string, never>>[],
+  users: Prisma.UserGetPayload<Record<string, never>>[],
+): Promise<Prisma.SalesOrderGetPayload<Record<string, never>>[]> {
+  log('Đang tạo Sales Orders...');
+
+  const salesOrders: Prisma.SalesOrderGetPayload<Record<string, never>>[] = [];
+  const statuses: OrderStatus[] = [
+    OrderStatus.pending,
+    OrderStatus.approved,
+    OrderStatus.processing,
+    OrderStatus.shipped,
+    OrderStatus.closed,
+  ];
+
+  for (let i = 1; i <= 50; i++) {
+    const customer = faker.helpers.arrayElement(customers);
+    const createdBy = faker.helpers.arrayElement(users);
+    const status = faker.helpers.arrayElement(statuses);
+    const placedAt = randomDateInLast3Months();
+
+    // Tạo 1-4 items cho mỗi SO
+    const itemCount = faker.number.int({ min: 1, max: 4 });
+    const selectedProducts = faker.helpers.arrayElements(products, itemCount);
+
+    const items: Prisma.SalesOrderItemCreateWithoutSalesOrderInput[] = await Promise.all(
+      selectedProducts.map(async (product) => {
+        // Tìm batch có sẵn cho product này
+        const availableBatches = batches.filter((b) => b.productId === product.id);
+        const batch =
+          availableBatches.length > 0 ? faker.helpers.arrayElement(availableBatches) : null;
+
+        // Tìm location có inventory cho product này
+        let location: Prisma.LocationGetPayload<Record<string, never>> | null = null;
+        if (batch) {
+          const inventory = await prisma.inventory.findFirst({
+            where: { productBatchId: batch.id, availableQty: { gt: 0 } },
+            include: { location: true },
+          });
+          location = inventory?.location || null;
+        }
+
+        const qty = faker.number.int({ min: 1, max: 20 });
+        const unitPrice = createDecimal(
+          faker.number.float({ min: 50000, max: 10000000, fractionDigits: 2 }),
+        );
+        const lineTotal = createDecimal(qty * parseFloat(unitPrice.toString()));
+
+        let qtyFulfilled = 0;
+        if (status === OrderStatus.shipped || status === OrderStatus.closed) {
+          qtyFulfilled = qty;
+        } else if (status === OrderStatus.processing) {
+          qtyFulfilled = qty > 1 ? faker.number.int({ min: 1, max: qty - 1 }) : 1;
+        }
+
+        return {
+          product: { connect: { id: product.id } },
+          productBatch: batch ? { connect: { id: batch.id } } : undefined,
+          location: location ? { connect: { id: location.id } } : undefined,
+          qty,
+          qtyFulfilled,
+          unitPrice,
+          lineTotal,
+        };
+      }),
+    );
+
+    const totalAmount = items.reduce(
+      (sum, item) => sum.plus(item.lineTotal || 0),
+      createDecimal(0),
+    );
+
+    const so = await prisma.salesOrder.create({
+      data: {
+        soNo: `SO-${new Date().getFullYear()}-${String(i).padStart(4, '0')}`,
+        customer: { connect: { id: customer.id } },
+        status,
+        placedAt,
+        totalAmount,
+        createdBy: { connect: { id: createdBy.id } },
+        createdAt: placedAt,
+        items: { create: items },
+      },
+    });
+
+    salesOrders.push(so);
+  }
+
+  logSuccess(`Đã tạo ${salesOrders.length} sales orders`);
+  return salesOrders;
+}
+
+// ============================================================================
+// SEED SHIPMENTS
+// ============================================================================
+
+async function seedShipments(
+  salesOrders: Prisma.SalesOrderGetPayload<Record<string, never>>[],
+  warehouses: Prisma.WarehouseGetPayload<Record<string, never>>[],
+): Promise<Prisma.ShipmentGetPayload<Record<string, never>>[]> {
+  log('Đang tạo Shipments...');
+
+  const shipments: Prisma.ShipmentGetPayload<Record<string, never>>[] = [];
+  const statuses: ShipmentStatus[] = [
+    ShipmentStatus.preparing,
+    ShipmentStatus.in_transit,
+    ShipmentStatus.delivered,
+    ShipmentStatus.delayed,
+  ];
+
+  const carriers = [
+    'Viettel Post',
+    'Vietnam Post',
+    'Giao Hàng Nhanh',
+    'J&T Express',
+    'Shopee Express',
+  ];
+
+  // Chỉ tạo shipments cho các SO đã approved trở lên
+  const eligibleSOs = salesOrders.filter(
+    (so) =>
+      so.status === OrderStatus.approved ||
+      so.status === OrderStatus.processing ||
+      so.status === OrderStatus.shipped ||
+      so.status === OrderStatus.closed,
+  );
+
+  // Tạo shipment cho khoảng 70% các SO đủ điều kiện
+  const soCount = Math.floor(eligibleSOs.length * 0.7);
+  const selectedSOs = faker.helpers.arrayElements(eligibleSOs, soCount);
+
+  for (const salesOrder of selectedSOs) {
+    const warehouse = faker.helpers.arrayElement(warehouses);
+    const status = faker.helpers.arrayElement(statuses);
+    const carrier = faker.helpers.arrayElement(carriers);
+    const trackingCode = faker.string.alphanumeric(12).toUpperCase();
+
+    const placedAt = salesOrder.placedAt || salesOrder.createdAt;
+    const shippedAt =
+      status === ShipmentStatus.in_transit ||
+      status === ShipmentStatus.delivered ||
+      status === ShipmentStatus.delayed
+        ? new Date(placedAt.getTime() + faker.number.int({ min: 1, max: 3 }) * 24 * 60 * 60 * 1000)
+        : null;
+
+    const deliveredAt =
+      status === ShipmentStatus.delivered
+        ? new Date(
+            (shippedAt || placedAt).getTime() +
+              faker.number.int({ min: 1, max: 5 }) * 24 * 60 * 60 * 1000,
+          )
+        : null;
+
+    const estimatedDelivery = shippedAt
+      ? new Date(shippedAt.getTime() + faker.number.int({ min: 2, max: 7 }) * 24 * 60 * 60 * 1000)
+      : randomFutureDate(7);
+
+    // Lấy items từ sales order
+    const soItems = await prisma.salesOrderItem.findMany({
+      where: { salesOrderId: salesOrder.id },
+      include: { product: true, productBatch: true },
+    });
+
+    const shipmentItems: Prisma.ShipmentItemCreateWithoutShipmentInput[] = soItems.map((item) => ({
+      salesOrder: { connect: { id: salesOrder.id } },
+      product: { connect: { id: item.productId } },
+      productBatch: item.productBatchId ? { connect: { id: item.productBatchId } } : undefined,
+      qty: item.qtyFulfilled || item.qty,
+    }));
+
+    // Tạo tracking events
+    const trackingEvents: Prisma.ShipmentTrackingEventCreateWithoutShipmentInput[] = [];
+
+    if (shippedAt) {
+      trackingEvents.push({
+        eventTime: shippedAt,
+        location: warehouse.name,
+        statusText: 'Đã lấy hàng từ kho',
+      });
+
+      if (status === ShipmentStatus.in_transit || status === ShipmentStatus.delivered) {
+        trackingEvents.push({
+          eventTime: new Date(shippedAt.getTime() + 2 * 60 * 60 * 1000), // 2 giờ sau
+          location: 'Trung tâm phân loại',
+          statusText: 'Đang vận chuyển',
+        });
+      }
+
+      if (status === ShipmentStatus.delivered && deliveredAt) {
+        trackingEvents.push({
+          eventTime: deliveredAt,
+          location: 'Điểm giao hàng',
+          statusText: 'Đã giao hàng thành công',
+        });
+      }
+    }
+
+    const shipment = await prisma.shipment.create({
+      data: {
+        shipmentNo: `SHIP-${new Date().getFullYear()}-${String(shipments.length + 1).padStart(4, '0')}`,
+        warehouse: { connect: { id: warehouse.id } },
+        salesOrder: { connect: { id: salesOrder.id } },
+        carrier,
+        trackingCode,
+        status,
+        shippedAt,
+        deliveredAt,
+        estimatedDelivery,
+        notes: faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.3 }) || undefined,
+        items: { create: shipmentItems },
+        trackingEvents: { create: trackingEvents },
+      },
+    });
+
+    shipments.push(shipment);
+  }
+
+  logSuccess(`Đã tạo ${shipments.length} shipments`);
+  return shipments;
+}
+
+// ============================================================================
+// MAIN FUNCTION
+// ============================================================================
+
+async function main(): Promise<void> {
+  try {
+    console.log('\n🌱 ============================================');
+    console.log('   BẮT ĐẦU SEED DATABASE');
+    console.log('   Warehouse & Supply Chain Management');
+    console.log('============================================\n');
+
+    // 1. Clean database
+    await cleanDatabase();
+
+    // 2. Seed Users
+    const users = await seedUsers();
+
+    // 3. Seed Warehouses & Locations
+    const { warehouses, locations } = await seedWarehousesAndLocations();
+
+    // 4. Seed Suppliers
+    const suppliers = await seedSuppliers();
+
+    // 5. Seed Customers
+    const customers = await seedCustomers();
+
+    // 6. Seed Categories & Products
+    const { categories, products } = await seedCategoriesAndProducts();
+
+    // 7. Seed Inventory
+    const { batches, inventoryRecords } = await seedInventory(products, locations);
+
+    // 8. Seed Purchase Orders
+    const purchaseOrders = await seedPurchaseOrders(suppliers, products, users);
+
+    // 9. Seed Sales Orders
+    const salesOrders = await seedSalesOrders(customers, products, batches, locations, users);
+
+    // 10. Seed Shipments
+    const shipments = await seedShipments(salesOrders, warehouses);
+
+    // Summary
+    console.log('\n📊 ============================================');
+    console.log('   TÓM TẮT DỮ LIỆU ĐÃ TẠO');
+    console.log('============================================');
+    console.log(`   👥 Users: ${users.length}`);
+    console.log(`   🏭 Warehouses: ${warehouses.length}`);
+    console.log(`   📍 Locations: ${locations.length}`);
+    console.log(`   🏢 Suppliers: ${suppliers.length}`);
+    console.log(`   👤 Customers: ${customers.length}`);
+    console.log(`   📂 Categories: ${categories.length}`);
+    console.log(`   📦 Products: ${products.length}`);
+    console.log(`   🏷️  Product Batches: ${batches.length}`);
+    console.log(`   📊 Inventory Records: ${inventoryRecords.length}`);
+    console.log(`   🛒 Purchase Orders: ${purchaseOrders.length}`);
+    console.log(`   💰 Sales Orders: ${salesOrders.length}`);
+    console.log(`   🚚 Shipments: ${shipments.length}`);
+    console.log('============================================\n');
+
+    console.log('🔐 TÀI KHOẢN TEST:');
+    console.log('   Admin:       admin / admin123');
+    console.log('   Manager:     manager / manager123');
+    console.log('   Staff:       staff / staff123');
+    console.log('   Sales:       sales1 / sales123');
+    console.log('   Procurement: procurement / procurement123');
+    console.log('   Logistics:   logistics / logistics123');
+    console.log('   Analyst:     analyst / analyst123');
+    console.log('\n✅ Seed hoàn tất thành công!\n');
+  } catch (error) {
+    logError('Seed thất bại!');
+    console.error(error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// EXECUTE
+// ============================================================================
+
 main()
-  .catch((e) => {
-    console.error('❌ Seed failed:', e);
+  .catch((error) => {
+    console.error('❌ Lỗi khi chạy seed:', error);
     process.exit(1);
   })
-  .finally(async () => {
-    await prisma.$disconnect();
+  .finally(() => {
+    void prisma.$disconnect();
   });

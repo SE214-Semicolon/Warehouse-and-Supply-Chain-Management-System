@@ -154,7 +154,6 @@ describe('Inventory Module (e2e)', () => {
   }, 30000);
 
   async function cleanDatabase() {
-
     if (!prisma) return;
 
     await prisma.stockMovement.deleteMany({

@@ -73,19 +73,19 @@ beforeAll(async () => {
   } else {
     newMongoUrl += '?directConnection=true';
   }
-  
+
   delete process.env.MONGO_URL;
   delete process.env.MONGODB_URL;
-  
+
   process.env.MONGO_URL = newMongoUrl;
   process.env.MONGODB_URL = newMongoUrl;
   console.log('Testcontainers MongoDB started at:', newMongoUrl);
 
   // Ensure schema exists for suites that don't run migrations themselves.
-//   await execAsync('npx prisma migrate deploy', {
-//     env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL },
-//   });
-// }, 120000);
+  //   await execAsync('npx prisma migrate deploy', {
+  //     env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL },
+  //   });
+  // }, 120000);
 
   await execAsync('npx prisma db push --accept-data-loss', {
     env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL },
