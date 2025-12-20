@@ -25,10 +25,9 @@ describe('DetailHeader - Comprehensive Tests', () => {
     it('renders without back button when onBack not provided', () => {
       render(<DetailHeader title="Test" />);
       
-      // Only Edit button should render (no back button)
-      expect(screen.getByText('Edit')).toBeInTheDocument();
-      // Back button icon should not be present
+      // Back button icon should not be present when onBack is not provided
       expect(screen.queryByTestId('ArrowBackIcon')).not.toBeInTheDocument();
+      // Edit button only renders if onEdit is provided
     });
 
     it('calls onBack when back button clicked', async () => {

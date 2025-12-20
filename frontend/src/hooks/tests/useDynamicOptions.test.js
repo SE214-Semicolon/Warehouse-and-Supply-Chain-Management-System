@@ -49,7 +49,7 @@ describe('useDynamicOptions Hook - Unit Tests', () => {
     });
 
     WarehouseService.getAll = vi.fn().mockResolvedValue({
-      data: { warehouses: mockWarehouses },
+      data: { data: mockWarehouses },
     });
 
     ProductService.getAll = vi.fn().mockResolvedValue({

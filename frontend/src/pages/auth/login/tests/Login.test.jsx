@@ -96,7 +96,7 @@ describe('Login Component - Unit Tests', () => {
           email: 'test@example.com',
           password: 'password123',
         });
-        expect(mockNavigate).toHaveBeenCalledWith('/inventory');
+        expect(mockNavigate).toHaveBeenCalledWith('/');
       });
     });
   });

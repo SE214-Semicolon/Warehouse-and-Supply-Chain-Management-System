@@ -84,12 +84,12 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
         />
       );
 
-      expect(screen.getByLabelText('Code')).toBeInTheDocument();
-      expect(screen.getByLabelText('Name')).toBeInTheDocument();
-      expect(screen.getByLabelText('Phone')).toBeInTheDocument();
-      expect(screen.getByLabelText('Email')).toBeInTheDocument();
-      expect(screen.getByLabelText('Contact Person')).toBeInTheDocument();
-      expect(screen.getByLabelText('Address')).toBeInTheDocument();
+      expect(screen.getByLabelText(/Mã nhà cung cấp/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Tên nhà cung cấp/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Điện thoại/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Người liên hệ/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Địa chỉ/)).toBeInTheDocument();
     });
 
     it('should call onClose when Cancel clicked', async () => {
@@ -139,7 +139,7 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
         />
       );
 
-      expect(screen.getByText('Add Supplier')).toBeInTheDocument();
+      expect(screen.getByText('Thêm nhà cung cấp mới')).toBeInTheDocument();
     });
 
     it('should show "Edit Supplier" title in edit mode', () => {
@@ -180,10 +180,10 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
       );
 
       // Check fields are rendered (defaultValue doesn't show in controlled tests)
-      expect(screen.getByLabelText('Code')).toBeInTheDocument();
-      expect(screen.getByLabelText('Name')).toBeInTheDocument();
-      expect(screen.getByLabelText('Email')).toBeInTheDocument();
-      expect(screen.getByLabelText('Phone')).toBeInTheDocument();
+      expect(screen.getByLabelText(/Mã nhà cung cấp/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Tên nhà cung cấp/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Điện thoại/)).toBeInTheDocument();
     });
 
     it('should have empty fields in create mode', () => {
@@ -196,8 +196,8 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
         />
       );
 
-      const nameInput = screen.getByLabelText('Name');
-      const emailInput = screen.getByLabelText('Email');
+      const nameInput = screen.getByLabelText(/Tên nhà cung cấp/);
+      const emailInput = screen.getByLabelText(/Email/);
       
       expect(nameInput.value).toBe('');
       expect(emailInput.value).toBe('');
@@ -216,7 +216,8 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
         />
       );
 
-      expect(screen.getByText('Không có dữ liệu để hiển thị')).toBeInTheDocument();
+      // In edit mode with null selectedRow, dialog still renders with empty fields
+      expect(screen.getByText('Sửa nhà cung cấp')).toBeInTheDocument();
     });
 
     it('should handle edit mode with empty selectedRow', () => {
@@ -230,7 +231,7 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
       );
 
       // Should render fields with empty values
-      expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      expect(screen.getByLabelText('Tên nhà cung cấp')).toBeInTheDocument();
     });
 
     it('should handle edit mode with partial data', () => {
@@ -250,9 +251,9 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
       );
 
       // Verify fields are rendered
-      expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      expect(screen.getByLabelText('Tên nhà cung cấp')).toBeInTheDocument();
       expect(screen.getByLabelText('Email')).toBeInTheDocument();
-      expect(screen.getByLabelText('Phone')).toBeInTheDocument();
+      expect(screen.getByLabelText('Điện thoại')).toBeInTheDocument();
     });
 
     it('should handle very long field values', () => {
@@ -273,8 +274,8 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
       );
 
       // Verify all fields rendered
-      expect(screen.getByLabelText('Code')).toBeInTheDocument();
-      expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      expect(screen.getByLabelText('Mã nhà cung cấp')).toBeInTheDocument();
+      expect(screen.getByLabelText('Tên nhà cung cấp')).toBeInTheDocument();
     });
   });
 
@@ -291,7 +292,7 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
       );
 
       // Should default to create mode behavior
-      expect(screen.getByText('Add Supplier')).toBeInTheDocument();
+      expect(screen.getByText('Thêm nhà cung cấp mới')).toBeInTheDocument();
     });
 
     it('should handle invalid mode string', () => {
@@ -305,7 +306,7 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
       );
 
       // Should default to create mode
-      expect(screen.getByText('Add Supplier')).toBeInTheDocument();
+      expect(screen.getByText('Thêm nhà cung cấp mới')).toBeInTheDocument();
     });
 
     it('should handle missing onClose', () => {
@@ -318,7 +319,7 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
         />
       );
 
-      expect(screen.getByText('Add Supplier')).toBeInTheDocument();
+      expect(screen.getByText('Thêm nhà cung cấp mới')).toBeInTheDocument();
     });
 
     it('should handle special characters in data', () => {
@@ -339,7 +340,7 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
       );
 
       // Verify fields rendered
-      expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      expect(screen.getByLabelText('Tên nhà cung cấp')).toBeInTheDocument();
       expect(screen.getByLabelText('Email')).toBeInTheDocument();
     });
   });
@@ -396,7 +397,7 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
         />
       );
 
-      expect(screen.getByText('Add Supplier')).toBeInTheDocument();
+      expect(screen.getByText('Thêm nhà cung cấp mới')).toBeInTheDocument();
 
       rerender(
         <FormDialog
@@ -407,7 +408,7 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
         />
       );
 
-      expect(screen.getByText('Edit Supplier')).toBeInTheDocument();
+      expect(screen.getByText('Sửa nhà cung cấp')).toBeInTheDocument();
     });
   });
 
@@ -436,10 +437,10 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
         />
       );
 
-      expect(screen.getByLabelText('Code')).toBeInTheDocument();
-      expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      expect(screen.getByLabelText('Mã nhà cung cấp')).toBeInTheDocument();
+      expect(screen.getByLabelText('Tên nhà cung cấp')).toBeInTheDocument();
       expect(screen.getByLabelText('Email')).toBeInTheDocument();
-      expect(screen.getByLabelText('Phone')).toBeInTheDocument();
+      expect(screen.getByLabelText('Điện thoại')).toBeInTheDocument();
     });
 
     it('should have proper field types', () => {
@@ -452,10 +453,10 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
         />
       );
 
-      const emailInput = screen.getByLabelText('Email');
-      const phoneInput = screen.getByLabelText('Phone');
+      const emailInput = screen.getByLabelText(/Email/);
+      const phoneInput = screen.getByLabelText(/Điện thoại/);
       
-      expect(emailInput).toHaveAttribute('type', 'text');
+      expect(emailInput).toHaveAttribute('type', 'email');
       expect(phoneInput).toHaveAttribute('type', 'text');
     });
 
@@ -489,9 +490,9 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
         />
       );
 
-      await user.type(screen.getByLabelText('Name'), 'New Supplier');
-      await user.type(screen.getByLabelText('Email'), 'new@supplier.com');
-      await user.type(screen.getByLabelText('Phone'), '1234567890');
+      await user.type(screen.getByLabelText(/Tên nhà cung cấp/), 'New Supplier');
+      await user.type(screen.getByLabelText(/Email/), 'new@supplier.com');
+      await user.type(screen.getByLabelText(/Điện thoại/), '1234567890');
 
       expect(screen.getByDisplayValue('New Supplier')).toBeInTheDocument();
       expect(screen.getByDisplayValue('new@supplier.com')).toBeInTheDocument();
@@ -516,8 +517,8 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
       );
 
       // Verify edit mode
-      expect(screen.getByText('Edit Supplier')).toBeInTheDocument();
-      expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      expect(screen.getByText('Sửa nhà cung cấp')).toBeInTheDocument();
+      expect(screen.getByLabelText('Tên nhà cung cấp')).toBeInTheDocument();
     });
 
     it('should handle form submission flow', async () => {
@@ -533,7 +534,7 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
         />
       );
 
-      await user.type(screen.getByLabelText('Name'), 'Test Supplier');
+      await user.type(screen.getByLabelText(/Tên nhà cung cấp/), 'Test Supplier');
       await user.click(screen.getByText('Save'));
       
       expect(consoleSpy).toHaveBeenCalledWith('Save');
@@ -550,7 +551,7 @@ describe('Supplier FormDialog Component - Unit Tests', () => {
         />
       );
 
-      await user.type(screen.getByLabelText('Name'), 'Test');
+      await user.type(screen.getByLabelText(/Tên nhà cung cấp/), 'Test');
       await user.click(screen.getByText('Cancel'));
       
       expect(mockOnClose).toHaveBeenCalled();

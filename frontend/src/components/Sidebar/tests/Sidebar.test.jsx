@@ -46,28 +46,25 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter();
 
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
-      expect(screen.getByText('Purchase Order')).toBeInTheDocument();
-      expect(screen.getByText('Inventory')).toBeInTheDocument();
       expect(screen.getByText('Warehouse')).toBeInTheDocument();
-      expect(screen.getByText('Supplier')).toBeInTheDocument();
+      expect(screen.getByText('Procurement')).toBeInTheDocument();
       expect(screen.getByText('Shipment')).toBeInTheDocument();
-      expect(screen.getByText('Logistics')).toBeInTheDocument();
     });
 
     it('should navigate when menu item clicked', async () => {
       const user = userEvent.setup();
       renderWithRouter();
 
-      await user.click(screen.getByText('Inventory'));
+      await user.click(screen.getByText('Warehouse'));
       
-      expect(mockNavigate).toHaveBeenCalledWith('/inventory');
+      expect(mockNavigate).toHaveBeenCalledWith('/warehouse');
     });
 
     it('should highlight active route', () => {
-      renderWithRouter('/inventory');
+      renderWithRouter('/warehouse');
 
-      const inventoryButton = screen.getByRole('button', { name: 'Inventory' });
-      expect(inventoryButton).toHaveClass('Mui-selected');
+      const warehouseButton = screen.getByRole('button', { name: 'Warehouse' });
+      expect(warehouseButton).toHaveClass('Mui-selected');
     });
 
     it('should navigate to dashboard', async () => {
@@ -89,20 +86,6 @@ describe('Sidebar Component - Unit Tests', () => {
       expect(dashboardButton).toHaveClass('Mui-selected');
     });
 
-    it('should highlight Purchase Order route', () => {
-      renderWithRouter('/purchase-order');
-
-      const button = screen.getByRole('button', { name: 'Purchase Order' });
-      expect(button).toHaveClass('Mui-selected');
-    });
-
-    it('should highlight Inventory route', () => {
-      renderWithRouter('/inventory');
-
-      const button = screen.getByRole('button', { name: 'Inventory' });
-      expect(button).toHaveClass('Mui-selected');
-    });
-
     it('should highlight Warehouse route', () => {
       renderWithRouter('/warehouse');
 
@@ -110,10 +93,10 @@ describe('Sidebar Component - Unit Tests', () => {
       expect(button).toHaveClass('Mui-selected');
     });
 
-    it('should highlight Supplier route', () => {
-      renderWithRouter('/supplier');
+    it('should highlight Procurement route', () => {
+      renderWithRouter('/procurement');
 
-      const button = screen.getByRole('button', { name: 'Supplier' });
+      const button = screen.getByRole('button', { name: 'Procurement' });
       expect(button).toHaveClass('Mui-selected');
     });
 
@@ -166,7 +149,7 @@ describe('Sidebar Component - Unit Tests', () => {
   // State & Rendering Check
   describe('State & Rendering - Active State', () => {
     it('should only highlight one menu item at a time', () => {
-      renderWithRouter('/inventory');
+      renderWithRouter('/warehouse');
 
       const buttons = screen.getAllByRole('button');
       const selectedButtons = buttons.filter(btn => btn.classList.contains('Mui-selected'));
@@ -176,24 +159,24 @@ describe('Sidebar Component - Unit Tests', () => {
     it('should change highlight when route changes', () => {
       // Test with initial route
       const { rerender } = render(
-        <MemoryRouter initialEntries={['/inventory']}>
-          <Sidebar />
-        </MemoryRouter>
-      );
-
-      const inventoryButton = screen.getByRole('button', { name: 'Inventory' });
-      expect(inventoryButton).toHaveClass('Mui-selected');
-
-      // Rerender with new route
-      rerender(
         <MemoryRouter initialEntries={['/warehouse']}>
           <Sidebar />
         </MemoryRouter>
       );
 
-      // Verify warehouse is now selected
       const warehouseButton = screen.getByRole('button', { name: 'Warehouse' });
-      expect(warehouseButton).toBeInTheDocument();
+      expect(warehouseButton).toHaveClass('Mui-selected');
+
+      // Rerender with new route
+      rerender(
+        <MemoryRouter initialEntries={['/procurement']}>
+          <Sidebar />
+        </MemoryRouter>
+      );
+
+      // Verify procurement is now selected
+      const procurementButton = screen.getByRole('button', { name: 'Procurement' });
+      expect(procurementButton).toBeInTheDocument();
     });
 
     it('should render with custom width prop', () => {
@@ -225,27 +208,16 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter();
 
       const buttons = screen.getAllByRole('button');
-      expect(buttons.length).toBe(7); // 7 menu items
+      expect(buttons.length).toBe(4); // 4 menu items
     });
 
     it('should have text labels for all menu items', () => {
       renderWithRouter();
 
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
-      expect(screen.getByText('Purchase Order')).toBeInTheDocument();
-      expect(screen.getByText('Inventory')).toBeInTheDocument();
       expect(screen.getByText('Warehouse')).toBeInTheDocument();
-      expect(screen.getByText('Supplier')).toBeInTheDocument();
+      expect(screen.getByText('Procurement')).toBeInTheDocument();
       expect(screen.getByText('Shipment')).toBeInTheDocument();
-      expect(screen.getByText('Logistics')).toBeInTheDocument();
-    });
-
-    it('should have proper disabled state for accessibility', () => {
-      renderWithRouter();
-
-      const logisticsButton = screen.getByRole('button', { name: 'Logistics' });
-      expect(logisticsButton).toHaveAttribute('aria-disabled', 'true');
-      expect(logisticsButton).toHaveClass('Mui-disabled');
     });
 
     it('should be keyboard navigable', () => {
@@ -268,9 +240,9 @@ describe('Sidebar Component - Unit Tests', () => {
       const dashboardButton = screen.getByRole('button', { name: 'Dashboard' });
       expect(dashboardButton).toHaveClass('Mui-selected');
 
-      await user.click(screen.getByText('Inventory'));
+      await user.click(screen.getByText('Warehouse'));
       
-      expect(mockNavigate).toHaveBeenCalledWith('/inventory');
+      expect(mockNavigate).toHaveBeenCalledWith('/warehouse');
     });
 
     it('should handle navigation between multiple pages', async () => {
@@ -280,8 +252,8 @@ describe('Sidebar Component - Unit Tests', () => {
       await user.click(screen.getByText('Warehouse'));
       expect(mockNavigate).toHaveBeenCalledWith('/warehouse');
 
-      await user.click(screen.getByText('Supplier'));
-      expect(mockNavigate).toHaveBeenCalledWith('/supplier');
+      await user.click(screen.getByText('Procurement'));
+      expect(mockNavigate).toHaveBeenCalledWith('/procurement');
 
       await user.click(screen.getByText('Shipment'));
       expect(mockNavigate).toHaveBeenCalledWith('/shipment');
@@ -293,15 +265,15 @@ describe('Sidebar Component - Unit Tests', () => {
       const user = userEvent.setup();
       renderWithRouter();
 
-      await user.click(screen.getByText('Inventory'));
       await user.click(screen.getByText('Warehouse'));
-      await user.click(screen.getByText('Supplier'));
+      await user.click(screen.getByText('Procurement'));
+      await user.click(screen.getByText('Shipment'));
       
       expect(mockNavigate).toHaveBeenCalledTimes(3);
     });
 
     it('should show active state for nested routes', () => {
-      renderWithRouter('/inventory/details/123');
+      renderWithRouter('/warehouse/details/123');
 
       // Should not highlight anything since path doesn't match exactly
       const buttons = screen.getAllByRole('button');
@@ -310,26 +282,26 @@ describe('Sidebar Component - Unit Tests', () => {
     });
 
     it('should handle navigation with query parameters', () => {
-      renderWithRouter('/inventory?page=2');
+      renderWithRouter('/warehouse?page=2');
 
       // Verify menu renders with query params in route
-      const inventoryButton = screen.getByRole('button', { name: 'Inventory' });
-      expect(inventoryButton).toBeInTheDocument();
+      const warehouseButton = screen.getByRole('button', { name: 'Warehouse' });
+      expect(warehouseButton).toBeInTheDocument();
     });
 
     it('should attempt navigation on double-click', async () => {
       const user = userEvent.setup();
       renderWithRouter();
 
-      await user.dblClick(screen.getByText('Purchase Order'));
+      await user.dblClick(screen.getByText('Procurement'));
       
-      expect(mockNavigate).toHaveBeenCalledWith('/purchase-order');
+      expect(mockNavigate).toHaveBeenCalledWith('/procurement');
     });
 
     it('should maintain sidebar structure with all menu items visible', () => {
       renderWithRouter();
 
-      const menuItems = ['Dashboard', 'Purchase Order', 'Inventory', 'Warehouse', 'Supplier', 'Shipment', 'Logistics'];
+      const menuItems = ['Dashboard', 'Warehouse', 'Procurement', 'Shipment'];
       
       menuItems.forEach(item => {
         expect(screen.getByText(item)).toBeVisible();
@@ -358,11 +330,11 @@ describe('Sidebar Component - Unit Tests', () => {
     });
 
     it('should handle paths with trailing slash', () => {
-      renderWithRouter('/inventory/');
+      renderWithRouter('/warehouse/');
 
       // Should not match since exact path comparison
-      const inventoryButton = screen.getByRole('button', { name: 'Inventory' });
-      expect(inventoryButton).not.toHaveClass('Mui-selected');
+      const warehouseButton = screen.getByRole('button', { name: 'Warehouse' });
+      expect(warehouseButton).not.toHaveClass('Mui-selected');
     });
   });
 });

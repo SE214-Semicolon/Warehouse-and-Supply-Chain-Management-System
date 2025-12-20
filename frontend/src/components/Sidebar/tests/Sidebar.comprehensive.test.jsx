@@ -43,12 +43,9 @@ describe("Sidebar Component - Comprehensive Tests", () => {
       renderSidebar();
 
       expect(screen.getByText("Dashboard")).toBeInTheDocument();
-      expect(screen.getByText("Purchase Order")).toBeInTheDocument();
-      expect(screen.getByText("Inventory")).toBeInTheDocument();
       expect(screen.getByText("Warehouse")).toBeInTheDocument();
-      expect(screen.getByText("Supplier")).toBeInTheDocument();
+      expect(screen.getByText("Procurement")).toBeInTheDocument();
       expect(screen.getByText("Shipment")).toBeInTheDocument();
-      expect(screen.getByText("Logistics")).toBeInTheDocument();
     });
 
     it("renders with default width", () => {
@@ -109,26 +106,6 @@ describe("Sidebar Component - Comprehensive Tests", () => {
       expect(mockNavigate).toHaveBeenCalledWith("/");
     });
 
-    it("navigates to purchase order page", async () => {
-      const user = userEvent.setup();
-      renderSidebar();
-
-      const poItem = screen.getByText("Purchase Order");
-      await user.click(poItem);
-
-      expect(mockNavigate).toHaveBeenCalledWith("/purchase-order");
-    });
-
-    it("navigates to inventory page", async () => {
-      const user = userEvent.setup();
-      renderSidebar();
-
-      const inventoryItem = screen.getByText("Inventory");
-      await user.click(inventoryItem);
-
-      expect(mockNavigate).toHaveBeenCalledWith("/inventory");
-    });
-
     it("navigates to warehouse page", async () => {
       const user = userEvent.setup();
       renderSidebar();
@@ -137,16 +114,6 @@ describe("Sidebar Component - Comprehensive Tests", () => {
       await user.click(warehouseItem);
 
       expect(mockNavigate).toHaveBeenCalledWith("/warehouse");
-    });
-
-    it("navigates to supplier page", async () => {
-      const user = userEvent.setup();
-      renderSidebar();
-
-      const supplierItem = screen.getByText("Supplier");
-      await user.click(supplierItem);
-
-      expect(mockNavigate).toHaveBeenCalledWith("/supplier");
     });
 
     it("navigates to shipment page", async () => {
@@ -159,15 +126,6 @@ describe("Sidebar Component - Comprehensive Tests", () => {
       expect(mockNavigate).toHaveBeenCalledWith("/shipment");
     });
 
-    it("does not navigate when disabled item is clicked", async () => {
-      userEvent.setup();
-      renderSidebar();
-
-      // Logistics item has pointer-events: none, skip click test
-      const logisticsItem = screen.getByText("Logistics");
-      expect(logisticsItem).toBeInTheDocument();
-      // Don't click disabled items
-    });
   });
 
   // ==================== ACTIVE STATE ====================
@@ -182,24 +140,6 @@ describe("Sidebar Component - Comprehensive Tests", () => {
       expect(dashboardButton).toHaveClass("Mui-selected");
     });
 
-    it("highlights Purchase Order when on /purchase-order", () => {
-      mockLocation.pathname = "/purchase-order";
-      renderSidebar();
-
-      const poButton = screen.getByRole("button", { name: /purchase order/i });
-      expect(poButton).toHaveClass("Mui-selected");
-    });
-
-    it("highlights Inventory when on /inventory", () => {
-      mockLocation.pathname = "/inventory";
-      renderSidebar();
-
-      const inventoryButton = screen.getByRole("button", {
-        name: /inventory/i,
-      });
-      expect(inventoryButton).toHaveClass("Mui-selected");
-    });
-
     it("highlights Warehouse when on /warehouse", () => {
       mockLocation.pathname = "/warehouse";
       renderSidebar();
@@ -208,14 +148,6 @@ describe("Sidebar Component - Comprehensive Tests", () => {
         name: /warehouse/i,
       });
       expect(warehouseButton).toHaveClass("Mui-selected");
-    });
-
-    it("highlights Supplier when on /supplier", () => {
-      mockLocation.pathname = "/supplier";
-      renderSidebar();
-
-      const supplierButton = screen.getByRole("button", { name: /supplier/i });
-      expect(supplierButton).toHaveClass("Mui-selected");
     });
 
     it("highlights Shipment when on /shipment", () => {
@@ -239,7 +171,7 @@ describe("Sidebar Component - Comprehensive Tests", () => {
     });
 
     it("only one item is highlighted at a time", () => {
-      mockLocation.pathname = "/inventory";
+      mockLocation.pathname = "/warehouse";
       renderSidebar();
 
       const buttons = screen.getAllByRole("button");
@@ -248,50 +180,6 @@ describe("Sidebar Component - Comprehensive Tests", () => {
       );
 
       expect(selectedButtons.length).toBe(1);
-    });
-  });
-
-  // ==================== DISABLED STATE ====================
-  describe("Disabled Menu Items", () => {
-    it("disables Logistics menu item", () => {
-      renderSidebar();
-
-      const logisticsButton = screen.getByRole("button", {
-        name: /logistics/i,
-      });
-      expect(logisticsButton).toHaveAttribute("aria-disabled", "true");
-    });
-
-    it("applies disabled styling to Logistics", () => {
-      renderSidebar();
-
-      const logisticsButton = screen.getByRole("button", {
-        name: /logistics/i,
-      });
-      expect(logisticsButton).toHaveAttribute("aria-disabled", "true");
-    });
-
-    it("all other items are enabled", () => {
-      renderSidebar();
-
-      expect(
-        screen.getByRole("button", { name: /dashboard/i })
-      ).not.toBeDisabled();
-      expect(
-        screen.getByRole("button", { name: /purchase order/i })
-      ).not.toBeDisabled();
-      expect(
-        screen.getByRole("button", { name: /inventory/i })
-      ).not.toBeDisabled();
-      expect(
-        screen.getByRole("button", { name: /warehouse/i })
-      ).not.toBeDisabled();
-      expect(
-        screen.getByRole("button", { name: /supplier/i })
-      ).not.toBeDisabled();
-      expect(
-        screen.getByRole("button", { name: /shipment/i })
-      ).not.toBeDisabled();
     });
   });
 
@@ -364,27 +252,14 @@ describe("Sidebar Component - Comprehensive Tests", () => {
 
       const menuItems = [
         "Dashboard",
-        "Purchase Order",
-        "Inventory",
         "Warehouse",
-        "Supplier",
+        "Procurement",
         "Shipment",
-        "Logistics",
       ];
 
       menuItems.forEach((item) => {
         expect(screen.getByText(item)).toBeInTheDocument();
       });
-    });
-
-    it("disabled item is properly marked", () => {
-      renderSidebar();
-
-      const logisticsButton = screen.getByRole("button", {
-        name: /logistics/i,
-      });
-      expect(logisticsButton).toHaveAttribute("aria-disabled", "true");
-      expect(logisticsButton).toHaveAttribute("tabindex", "-1");
     });
   });
 
@@ -394,10 +269,10 @@ describe("Sidebar Component - Comprehensive Tests", () => {
       const user = userEvent.setup();
       renderSidebar();
 
-      const inventoryItem = screen.getByText("Inventory");
+      const inventoryItem = screen.getByText("Warehouse");
       await user.click(inventoryItem);
 
-      expect(mockNavigate).toHaveBeenCalledWith("/inventory");
+      expect(mockNavigate).toHaveBeenCalledWith("/warehouse");
 
       // Component should still be rendered
       expect(screen.getByText("Dashboard")).toBeInTheDocument();
@@ -465,11 +340,11 @@ describe("Sidebar Component - Comprehensive Tests", () => {
 
   // ==================== MENU STRUCTURE ====================
   describe("Menu Structure", () => {
-    it("renders exactly 7 menu items", () => {
+    it("renders exactly 4 menu items", () => {
       renderSidebar();
 
       const buttons = screen.getAllByRole("button");
-      expect(buttons.length).toBe(7);
+      expect(buttons.length).toBe(4);
     });
 
     it("maintains correct menu order", () => {
@@ -480,12 +355,9 @@ describe("Sidebar Component - Comprehensive Tests", () => {
 
       expect(labels).toEqual([
         "Dashboard",
-        "Purchase Order",
-        "Inventory",
         "Warehouse",
-        "Supplier",
+        "Procurement",
         "Shipment",
-        "Logistics",
       ]);
     });
 
@@ -494,12 +366,9 @@ describe("Sidebar Component - Comprehensive Tests", () => {
 
       const pathMappings = {
         Dashboard: "/",
-        "Purchase Order": "/purchase-order",
-        Inventory: "/inventory",
         Warehouse: "/warehouse",
-        Supplier: "/supplier",
+        Procurement: "/procurement",
         Shipment: "/shipment",
-        Logistics: "/logistics",
       };
 
       Object.keys(pathMappings).forEach((text) => {
@@ -539,8 +408,8 @@ describe("Sidebar Component - Comprehensive Tests", () => {
       const user = userEvent.setup();
       renderSidebar();
 
-      await user.click(screen.getByText("Inventory"));
-      expect(mockNavigate).toHaveBeenCalledWith("/inventory");
+      await user.click(screen.getByText("Shipment"));
+      expect(mockNavigate).toHaveBeenCalledWith("/shipment");
 
       await user.click(screen.getByText("Warehouse"));
       expect(mockNavigate).toHaveBeenCalledWith("/warehouse");
@@ -553,17 +422,17 @@ describe("Sidebar Component - Comprehensive Tests", () => {
       let dashboardButton = screen.getByRole("button", { name: /dashboard/i });
       expect(dashboardButton).toHaveClass("Mui-selected");
 
-      mockLocation.pathname = "/inventory";
+      mockLocation.pathname = "/warehouse";
       rerender(
         <BrowserRouter>
           <Sidebar />
         </BrowserRouter>
       );
 
-      const inventoryButton = screen.getByRole("button", {
-        name: /inventory/i,
+      const warehouseButton = screen.getByRole("button", {
+        name: /warehouse/i,
       });
-      expect(inventoryButton).toHaveClass("Mui-selected");
+      expect(warehouseButton).toHaveClass("Mui-selected");
     });
   });
 });
