@@ -5,23 +5,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import FormDialog from '../FormDialog';
 
 // Mock services and hooks
-vi.mock('../../services/po.service', () => ({
+vi.mock('@/services/supplier.service', () => ({
+  default: {
+    getAll: vi.fn(() => Promise.resolve({ data: [] })),
+  },
+}));
+
+vi.mock('@/services/product.service', () => ({
+  default: {
+    getAll: vi.fn(() => Promise.resolve({ data: [] })),
+  },
+}));
+
+vi.mock('../../../services/po.service', () => ({
   default: {
     createDraft: vi.fn(),
     update: vi.fn(),
     submitOrder: vi.fn(),
-  },
-}));
-
-vi.mock('../../services/supplier.service', () => ({
-  default: {
-    getAll: vi.fn(() => Promise.resolve({ data: [] })),
-  },
-}));
-
-vi.mock('../../services/product.service', () => ({
-  default: {
-    getAll: vi.fn(() => Promise.resolve({ data: [] })),
   },
 }));
 
