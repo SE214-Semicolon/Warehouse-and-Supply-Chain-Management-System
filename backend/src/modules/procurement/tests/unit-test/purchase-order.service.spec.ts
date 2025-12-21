@@ -332,13 +332,15 @@ describe('Purchase Order Service', () => {
   describe('submitPurchaseOrder', () => {
     // PO-TC11: Submit draft PO successfully
     it('should submit a draft PO successfully', async () => {
-      const submitDto = {};
+      const submitDto = {
+        userId: 'user-uuid-1',
+      };
 
       const orderedPo = { ...mockPurchaseOrder, status: PoStatus.ordered };
       poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(orderedPo);
       poRepo.submit.mockResolvedValue(orderedPo);
 
-      const result = await service.submitPurchaseOrder('po-uuid-1', submitDto, 'user-uuid-1');
+      const result = await service.submitPurchaseOrder('po-uuid-1', submitDto);
 
       expect(result.success).toBe(true);
       expect(result.data.status).toBe(PoStatus.ordered);
@@ -348,39 +350,43 @@ describe('Purchase Order Service', () => {
 
     // PO-TC12: Missing userId (tested by DTO)
     it('should throw BadRequestException if userId is missing', async () => {
-      await expect(service.submitPurchaseOrder('po-uuid-1', {} as any, '')).rejects.toThrow(
+      await expect(service.submitPurchaseOrder('po-uuid-1', {} as any)).rejects.toThrow(
         BadRequestException,
       );
-      await expect(service.submitPurchaseOrder('po-uuid-1', {} as any, '')).rejects.toThrow(
+      await expect(service.submitPurchaseOrder('po-uuid-1', {} as any)).rejects.toThrow(
         'userId is required',
       );
     });
 
     // PO-TC13: Submit PO not in draft status
     it('should throw BadRequestException if PO is not in draft status', async () => {
-      const submitDto = {};
+      const submitDto = {
+        userId: 'user-uuid-1',
+      };
 
       const orderedPo = { ...mockPurchaseOrder, status: PoStatus.ordered };
       poRepo.findById.mockResolvedValue(orderedPo);
 
-      await expect(service.submitPurchaseOrder('po-uuid-1', submitDto, 'user-uuid-1')).rejects.toThrow(
+      await expect(service.submitPurchaseOrder('po-uuid-1', submitDto)).rejects.toThrow(
         BadRequestException,
       );
-      await expect(service.submitPurchaseOrder('po-uuid-1', submitDto, 'user-uuid-1')).rejects.toThrow(
+      await expect(service.submitPurchaseOrder('po-uuid-1', submitDto)).rejects.toThrow(
         'Only draft can be submitted',
       );
     });
 
     // PO-TC14: Submit non-existent PO
     it('should throw NotFoundException if PO not found', async () => {
-      const submitDto = {};
+      const submitDto = {
+        userId: 'user-uuid-1',
+      };
 
       poRepo.findById.mockResolvedValue(null);
 
-      await expect(service.submitPurchaseOrder('invalid-id', submitDto, 'user-uuid-1')).rejects.toThrow(
+      await expect(service.submitPurchaseOrder('invalid-id', submitDto)).rejects.toThrow(
         NotFoundException,
       );
-      await expect(service.submitPurchaseOrder('invalid-id', submitDto, 'user-uuid-1')).rejects.toThrow(
+      await expect(service.submitPurchaseOrder('invalid-id', submitDto)).rejects.toThrow(
         'PO not found',
       );
     });
@@ -1212,6 +1218,7 @@ describe('Purchase Order Service', () => {
     it('should cancel purchase order successfully', async () => {
       const id = 'po-uuid-1';
       const cancelDto = {
+        userId: 'user-uuid-1',
         reason: 'Supplier delay',
       };
 
@@ -1223,7 +1230,7 @@ describe('Purchase Order Service', () => {
       poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(cancelledPo);
       poRepo.cancel.mockResolvedValue(mockPurchaseOrder as any);
 
-      const result = await service.cancelPurchaseOrder(id, cancelDto, 'user-uuid-1');
+      const result = await service.cancelPurchaseOrder(id, cancelDto);
 
       expect(result).toEqual(cancelledPo);
       expect(poRepo.cancel).toHaveBeenCalledWith(id);
@@ -1233,14 +1240,14 @@ describe('Purchase Order Service', () => {
       poRepo.findById.mockResolvedValue(null);
 
       await expect(
-        service.cancelPurchaseOrder('non-existent-id', {}, 'user-1'),
+        service.cancelPurchaseOrder('non-existent-id', { userId: 'user-1' }),
       ).rejects.toThrow('PO not found');
     });
 
     it('should throw BadRequestException if userId is missing', async () => {
       poRepo.findById.mockResolvedValue(mockPurchaseOrder);
 
-      await expect(service.cancelPurchaseOrder('po-uuid-1', {}, '')).rejects.toThrow(
+      await expect(service.cancelPurchaseOrder('po-uuid-1', { userId: '' })).rejects.toThrow(
         'userId is required',
       );
     });
@@ -1251,7 +1258,7 @@ describe('Purchase Order Service', () => {
         status: PoStatus.received,
       });
 
-      await expect(service.cancelPurchaseOrder('po-uuid-1', {}, 'user-1')).rejects.toThrow(
+      await expect(service.cancelPurchaseOrder('po-uuid-1', { userId: 'user-1' })).rejects.toThrow(
         'Cannot cancel PO with status: received',
       );
     });
@@ -1262,14 +1269,16 @@ describe('Purchase Order Service', () => {
         status: PoStatus.cancelled,
       });
 
-      await expect(service.cancelPurchaseOrder('po-uuid-1', {}, 'user-1')).rejects.toThrow(
+      await expect(service.cancelPurchaseOrder('po-uuid-1', { userId: 'user-1' })).rejects.toThrow(
         'Cannot cancel PO with status: cancelled',
       );
     });
 
     it('should allow cancellation with optional reason', async () => {
       const id = 'po-uuid-1';
-      const cancelDto = {};
+      const cancelDto = {
+        userId: 'user-uuid-1',
+      };
 
       const cancelledPo = {
         ...mockPurchaseOrder,
@@ -1279,7 +1288,7 @@ describe('Purchase Order Service', () => {
       poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(cancelledPo);
       poRepo.cancel.mockResolvedValue(mockPurchaseOrder as any);
 
-      const result = await service.cancelPurchaseOrder(id, cancelDto, 'user-uuid-1');
+      const result = await service.cancelPurchaseOrder(id, cancelDto);
 
       expect(result).toEqual(cancelledPo);
       expect(poRepo.cancel).toHaveBeenCalledWith(id);

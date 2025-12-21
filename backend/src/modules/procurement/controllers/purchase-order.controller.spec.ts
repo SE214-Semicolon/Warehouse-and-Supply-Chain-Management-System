@@ -73,13 +73,12 @@ describe('PurchaseOrderController', () => {
 
   it('should submit purchase order', async () => {
     const dto = { expectedDate: new Date() } as any;
-    const mockReq = { user: { userId: 'user1' } } as any;
     const serviceResult = { success: true, message: 'PO submitted' };
     mockService.submitPurchaseOrder.mockResolvedValue(serviceResult);
 
-    const res = await controller.submit('po1', dto, mockReq);
+    const res = await controller.submit('po1', dto);
 
-    expect(mockService.submitPurchaseOrder).toHaveBeenCalledWith('po1', dto, 'user1');
+    expect(mockService.submitPurchaseOrder).toHaveBeenCalledWith('po1', dto);
     expect(res).toEqual(serviceResult);
   });
 });
