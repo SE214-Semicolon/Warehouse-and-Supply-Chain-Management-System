@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProductCategoryService } from '../../services/product-category.service';
 import { ProductCategoryRepository } from '../../repositories/product-category.repository';
+import { AuditMiddleware } from '../../../../database/middleware/audit.middleware';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('ProductCategoryService', () => {
@@ -26,12 +27,23 @@ describe('ProductCategoryService', () => {
       delete: jest.fn(),
     };
 
+    const mockAuditMiddleware = {
+      logCreate: jest.fn().mockResolvedValue(undefined),
+      logUpdate: jest.fn().mockResolvedValue(undefined),
+      logDelete: jest.fn().mockResolvedValue(undefined),
+      logOperation: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductCategoryService,
         {
           provide: ProductCategoryRepository,
           useValue: mockCategoryRepository,
+        },
+        {
+          provide: AuditMiddleware,
+          useValue: mockAuditMiddleware,
         },
       ],
     }).compile();

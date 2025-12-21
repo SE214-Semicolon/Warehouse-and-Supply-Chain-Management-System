@@ -10,6 +10,7 @@ import { WarehouseRepository } from '../../warehouse/repositories/warehouse.repo
 import { SalesOrderRepository } from '../../sales/repositories/sales-order.repository';
 import { InventoryRepository } from '../../inventory/repositories/inventory.repository';
 import { randomUUID } from 'crypto';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
 
 @Injectable()
 export class ShipmentService {
@@ -20,6 +21,7 @@ export class ShipmentService {
     private readonly warehouseRepo: WarehouseRepository,
     private readonly salesOrderRepo: SalesOrderRepository,
     private readonly inventoryRepo: InventoryRepository,
+    private readonly auditMiddleware: AuditMiddleware,
   ) {}
 
   private generateShipmentNo(): string {
@@ -112,7 +114,18 @@ export class ShipmentService {
     };
 
     const shipment = await this.shipmentRepo.create(shipmentData, items);
-    return this.shipmentRepo.findById(shipment.id);
+    const created = await this.shipmentRepo.findById(shipment.id);
+
+    // Audit logging for Shipment creation
+    if (created) {
+      this.auditMiddleware
+        .logCreate('Shipment', created as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for Shipment creation', err);
+        });
+    }
+
+    return created;
   }
 
   async findById(id: string) {
@@ -188,7 +201,23 @@ export class ShipmentService {
     if (dto.notes !== undefined) updateData.notes = dto.notes;
 
     await this.shipmentRepo.update(id, updateData);
-    return this.shipmentRepo.findById(id);
+    const updated = await this.shipmentRepo.findById(id);
+
+    // Audit logging for Shipment update
+    if (updated) {
+      this.auditMiddleware
+        .logUpdate(
+          'Shipment',
+          id,
+          shipment as Record<string, unknown>,
+          updated as Record<string, unknown>,
+        )
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for Shipment update', err);
+        });
+    }
+
+    return updated;
   }
 
   async updateShipmentStatus(id: string, dto: UpdateShipmentStatusDto) {
@@ -252,7 +281,23 @@ export class ShipmentService {
     }
 
     await this.shipmentRepo.updateStatus(id, newStatus, shippedAt, deliveredAt);
-    return this.shipmentRepo.findById(id);
+    const updated = await this.shipmentRepo.findById(id);
+
+    // Audit logging for Shipment status update
+    if (updated) {
+      this.auditMiddleware
+        .logUpdate(
+          'Shipment',
+          id,
+          shipment as Record<string, unknown>,
+          updated as Record<string, unknown>,
+        )
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for Shipment status update', err);
+        });
+    }
+
+    return updated;
   }
 
   async addTrackingEvent(shipmentId: string, dto: AddTrackingEventDto) {

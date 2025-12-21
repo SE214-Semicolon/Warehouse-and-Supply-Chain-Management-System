@@ -4,6 +4,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PurchaseOrderService } from '../../services/purchase-order.service';
 import { PurchaseOrderRepository } from '../../repositories/purchase-order.repository';
 import { InventoryService } from '../../../inventory/services/inventory.service';
+import { AuditMiddleware } from '../../../../database/middleware/audit.middleware';
 import { PoStatus } from '@prisma/client';
 
 describe('Purchase Order Service', () => {
@@ -56,10 +57,24 @@ describe('Purchase Order Service', () => {
       findItemsByIds: jest.fn(),
       receiveItems: jest.fn(),
       list: jest.fn(),
+      update: jest.fn(),
+      updateItem: jest.fn(),
+      cancel: jest.fn(),
+      addItems: jest.fn(),
+      removeItems: jest.fn(),
+      getItemById: jest.fn(),
+      removeItem: jest.fn(),
     };
 
     const mockInventorySvc = {
       receiveInventory: jest.fn(),
+    };
+
+    const mockAuditMiddleware = {
+      logCreate: jest.fn().mockResolvedValue(undefined),
+      logUpdate: jest.fn().mockResolvedValue(undefined),
+      logDelete: jest.fn().mockResolvedValue(undefined),
+      logOperation: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -72,6 +87,10 @@ describe('Purchase Order Service', () => {
         {
           provide: InventoryService,
           useValue: mockInventorySvc,
+        },
+        {
+          provide: AuditMiddleware,
+          useValue: mockAuditMiddleware,
         },
       ],
     }).compile();
@@ -1118,6 +1137,364 @@ describe('Purchase Order Service', () => {
             }),
           }),
         }),
+      );
+    });
+  });
+
+  describe('updatePurchaseOrder', () => {
+    it('should update purchase order successfully', async () => {
+      const id = 'po-uuid-1';
+      const updateDto = {
+        supplierId: 'new-supplier-uuid',
+        expectedArrival: '2024-02-15',
+        notes: 'Updated notes',
+      };
+
+      const updatedPo = {
+        ...mockPurchaseOrder,
+        ...updateDto,
+      };
+
+      poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(updatedPo);
+      poRepo.update.mockResolvedValue(mockPurchaseOrder as any);
+
+      const result = await service.updatePurchaseOrder(id, updateDto);
+
+      expect(result).toEqual(updatedPo);
+      expect(poRepo.update).toHaveBeenCalledWith(id, expect.any(Object));
+    });
+
+    it('should throw NotFoundException if PO does not exist', async () => {
+      poRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.updatePurchaseOrder('non-existent-id', { notes: 'test' }),
+      ).rejects.toThrow('PO not found');
+    });
+
+    it('should update PO with items', async () => {
+      const id = 'po-uuid-1';
+      const updateDto = {
+        items: [
+          {
+            id: 'item-1',
+            productId: 'prod-1',
+            qtyOrdered: 150,
+            unitPrice: 55,
+          },
+        ],
+      };
+
+      const updatedPo = {
+        ...mockPurchaseOrder,
+        items: [
+          { id: 'item-1', productId: 'prod-1', qtyOrdered: 150, unitPrice: 55, lineTotal: 8250 },
+        ],
+      };
+
+      poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(updatedPo);
+      poRepo.getItemById.mockResolvedValue({
+        id: 'item-1',
+        purchaseOrderId: id,
+        productId: 'prod-1',
+        productBatchId: null,
+        qtyOrdered: 100,
+        qtyReceived: 0,
+        unitPrice: 50,
+        lineTotal: 5000,
+        remark: null,
+      } as any);
+      poRepo.update.mockResolvedValue(mockPurchaseOrder as any);
+      poRepo.updateItem.mockResolvedValue({} as any);
+
+      const result = await service.updatePurchaseOrder(id, updateDto);
+
+      expect(result).toEqual(updatedPo);
+      expect(poRepo.updateItem).toHaveBeenCalledWith('item-1', expect.any(Object));
+    });
+  });
+
+  describe('cancelPurchaseOrder', () => {
+    it('should cancel purchase order successfully', async () => {
+      const id = 'po-uuid-1';
+      const cancelDto = {
+        userId: 'user-uuid-1',
+        reason: 'Supplier delay',
+      };
+
+      const cancelledPo = {
+        ...mockPurchaseOrder,
+        status: PoStatus.cancelled,
+      };
+
+      poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(cancelledPo);
+      poRepo.cancel.mockResolvedValue(mockPurchaseOrder as any);
+
+      const result = await service.cancelPurchaseOrder(id, cancelDto);
+
+      expect(result).toEqual(cancelledPo);
+      expect(poRepo.cancel).toHaveBeenCalledWith(id);
+    });
+
+    it('should throw NotFoundException if PO does not exist', async () => {
+      poRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.cancelPurchaseOrder('non-existent-id', { userId: 'user-1' }),
+      ).rejects.toThrow('PO not found');
+    });
+
+    it('should throw BadRequestException if userId is missing', async () => {
+      poRepo.findById.mockResolvedValue(mockPurchaseOrder);
+
+      await expect(service.cancelPurchaseOrder('po-uuid-1', { userId: '' })).rejects.toThrow(
+        'userId is required',
+      );
+    });
+
+    it('should throw BadRequestException if PO is already received', async () => {
+      poRepo.findById.mockResolvedValue({
+        ...mockPurchaseOrder,
+        status: PoStatus.received,
+      });
+
+      await expect(service.cancelPurchaseOrder('po-uuid-1', { userId: 'user-1' })).rejects.toThrow(
+        'Cannot cancel PO with status: received',
+      );
+    });
+
+    it('should throw BadRequestException if PO is already cancelled', async () => {
+      poRepo.findById.mockResolvedValue({
+        ...mockPurchaseOrder,
+        status: PoStatus.cancelled,
+      });
+
+      await expect(service.cancelPurchaseOrder('po-uuid-1', { userId: 'user-1' })).rejects.toThrow(
+        'Cannot cancel PO with status: cancelled',
+      );
+    });
+
+    it('should allow cancellation with optional reason', async () => {
+      const id = 'po-uuid-1';
+      const cancelDto = {
+        userId: 'user-uuid-1',
+      };
+
+      const cancelledPo = {
+        ...mockPurchaseOrder,
+        status: PoStatus.cancelled,
+      };
+
+      poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(cancelledPo);
+      poRepo.cancel.mockResolvedValue(mockPurchaseOrder as any);
+
+      const result = await service.cancelPurchaseOrder(id, cancelDto);
+
+      expect(result).toEqual(cancelledPo);
+      expect(poRepo.cancel).toHaveBeenCalledWith(id);
+    });
+  });
+
+  describe('addPurchaseOrderItems', () => {
+    it('should add items to draft PO successfully', async () => {
+      const id = 'po-uuid-1';
+      const items = [
+        {
+          productId: 'prod-1',
+          qtyOrdered: 100,
+          unitPrice: 50,
+          remark: 'New item',
+        },
+        {
+          productId: 'prod-2',
+          qtyOrdered: 50,
+        },
+      ];
+
+      const updatedPo = {
+        ...mockPurchaseOrder,
+        items: [
+          { id: 'item-1', productId: 'prod-1', qtyOrdered: 100, unitPrice: 50, lineTotal: 5000 },
+          { id: 'item-2', productId: 'prod-2', qtyOrdered: 50, unitPrice: null, lineTotal: null },
+        ],
+      };
+
+      poRepo.findById
+        .mockResolvedValueOnce({ ...mockPurchaseOrder, status: PoStatus.draft })
+        .mockResolvedValueOnce(updatedPo);
+      poRepo.addItems.mockResolvedValue(undefined);
+      poRepo.updateTotals.mockResolvedValue(mockPurchaseOrder as any);
+
+      const result = await service.addPurchaseOrderItems(id, items);
+
+      expect(result).toEqual(updatedPo);
+      expect(poRepo.addItems).toHaveBeenCalledWith(id, expect.any(Array));
+    });
+
+    it('should throw NotFoundException if PO does not exist', async () => {
+      poRepo.findById.mockResolvedValue(null);
+
+      await expect(service.addPurchaseOrderItems('non-existent-id', [])).rejects.toThrow(
+        'PO not found',
+      );
+    });
+
+    it('should throw BadRequestException if PO is not draft', async () => {
+      poRepo.findById.mockResolvedValue({
+        ...mockPurchaseOrder,
+        status: PoStatus.ordered,
+      });
+
+      await expect(
+        service.addPurchaseOrderItems('po-uuid-1', [{ productId: 'prod-1', qtyOrdered: 10 }]),
+      ).rejects.toThrow('Can only add items to draft PO');
+    });
+
+    it('should calculate lineTotal when unitPrice is provided', async () => {
+      const id = 'po-uuid-1';
+      const items = [
+        {
+          productId: 'prod-1',
+          qtyOrdered: 100,
+          unitPrice: 50,
+        },
+      ];
+
+      poRepo.findById.mockResolvedValue({
+        ...mockPurchaseOrder,
+        status: PoStatus.draft,
+      });
+      poRepo.addItems.mockResolvedValue(mockPurchaseOrder);
+
+      await service.addPurchaseOrderItems(id, items);
+
+      const addItemsCall = (poRepo.addItems as jest.Mock).mock.calls[0][1];
+      expect(addItemsCall[0].lineTotal).toBe(5000); // 100 * 50
+    });
+
+    it('should set lineTotal to null when unitPrice is not provided', async () => {
+      const id = 'po-uuid-1';
+      const items = [
+        {
+          productId: 'prod-1',
+          qtyOrdered: 100,
+        },
+      ];
+
+      poRepo.findById.mockResolvedValue({
+        ...mockPurchaseOrder,
+        status: PoStatus.draft,
+      });
+      poRepo.addItems.mockResolvedValue(mockPurchaseOrder);
+
+      await service.addPurchaseOrderItems(id, items);
+
+      const addItemsCall = (poRepo.addItems as jest.Mock).mock.calls[0][1];
+      expect(addItemsCall[0].lineTotal).toBeNull();
+    });
+  });
+
+  describe('removePurchaseOrderItems', () => {
+    it('should remove items from draft PO successfully', async () => {
+      const id = 'po-uuid-1';
+      const itemIds = ['item-uuid-1', 'item-uuid-2'];
+
+      const updatedPo = {
+        ...mockPurchaseOrder,
+        items: [],
+      };
+
+      poRepo.findById
+        .mockResolvedValueOnce({ ...mockPurchaseOrder, status: PoStatus.draft })
+        .mockResolvedValueOnce(updatedPo);
+      poRepo.getItemById
+        .mockResolvedValueOnce({
+          id: 'item-uuid-1',
+          purchaseOrderId: id,
+          productId: 'prod-1',
+          productBatchId: null,
+          qtyOrdered: 100,
+          qtyReceived: 0,
+          unitPrice: null,
+          lineTotal: null,
+          remark: null,
+        } as any)
+        .mockResolvedValueOnce({
+          id: 'item-uuid-2',
+          purchaseOrderId: id,
+          productId: 'prod-2',
+          productBatchId: null,
+          qtyOrdered: 50,
+          qtyReceived: 0,
+          unitPrice: null,
+          lineTotal: null,
+          remark: null,
+        } as any);
+      poRepo.removeItems.mockResolvedValue(undefined);
+      poRepo.updateTotals.mockResolvedValue(mockPurchaseOrder as any);
+
+      const result = await service.removePurchaseOrderItems(id, itemIds);
+
+      expect(result).toEqual(updatedPo);
+      expect(poRepo.removeItems).toHaveBeenCalledWith(itemIds);
+    });
+
+    it('should throw NotFoundException if PO does not exist', async () => {
+      poRepo.findById.mockResolvedValue(null);
+
+      await expect(service.removePurchaseOrderItems('non-existent-id', [])).rejects.toThrow(
+        'PO not found',
+      );
+    });
+
+    it('should throw BadRequestException if PO is not draft', async () => {
+      poRepo.findById.mockResolvedValue({
+        ...mockPurchaseOrder,
+        status: PoStatus.received,
+      });
+
+      await expect(service.removePurchaseOrderItems('po-uuid-1', ['item-1'])).rejects.toThrow(
+        'Can only remove items from draft PO',
+      );
+    });
+
+    it('should throw NotFoundException if item does not exist', async () => {
+      const id = 'po-uuid-1';
+      const itemIds = ['non-existent-item'];
+
+      poRepo.findById.mockResolvedValue({
+        ...mockPurchaseOrder,
+        status: PoStatus.draft,
+      });
+      poRepo.getItemById.mockResolvedValue(null);
+
+      await expect(service.removePurchaseOrderItems(id, itemIds)).rejects.toThrow(
+        'Item non-existent-item not found in this PO',
+      );
+    });
+
+    it('should throw BadRequestException if item belongs to different PO', async () => {
+      const id = 'po-uuid-1';
+      const itemIds = ['item-uuid-1'];
+
+      poRepo.findById.mockResolvedValue({
+        ...mockPurchaseOrder,
+        status: PoStatus.draft,
+      });
+      poRepo.getItemById.mockResolvedValue({
+        id: 'item-uuid-1',
+        purchaseOrderId: 'different-po-id',
+        productId: 'prod-1',
+        productBatchId: null,
+        qtyOrdered: 100,
+        qtyReceived: 0,
+        unitPrice: null,
+        lineTotal: null,
+        remark: null,
+      } as any);
+
+      await expect(service.removePurchaseOrderItems(id, itemIds)).rejects.toThrow(
+        'Item item-uuid-1 not found in this PO',
       );
     });
   });

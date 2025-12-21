@@ -15,7 +15,7 @@ describe('ShipmentController', () => {
     trackByCode: jest.fn(),
     findById: jest.fn(),
     updateShipment: jest.fn(),
-    updateStatus: jest.fn(),
+    updateShipmentStatus: jest.fn(),
     addTrackingEvent: jest.fn(),
   } as Record<string, jest.Mock>;
 
@@ -79,11 +79,11 @@ describe('ShipmentController', () => {
   it('should update shipment status', async () => {
     const dto: UpdateShipmentStatusDto = { status: 'delivered' as any, notes: 'Delivered' };
     const serviceResult = { success: true, message: 'Status updated' };
-    mockService.updateStatus.mockResolvedValue(serviceResult);
+    mockService.updateShipmentStatus.mockResolvedValue(serviceResult);
 
     const res = await controller.updateStatus('sh1', dto);
 
-    expect(mockService.updateStatus).toHaveBeenCalledWith('sh1', dto);
+    expect(mockService.updateShipmentStatus).toHaveBeenCalledWith('sh1', dto);
     expect(res).toEqual(serviceResult);
   });
 

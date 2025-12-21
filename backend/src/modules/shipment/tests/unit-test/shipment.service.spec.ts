@@ -5,6 +5,7 @@ import { ShipmentRepository } from '../../repositories/shipment.repository';
 import { WarehouseRepository } from '../../../warehouse/repositories/warehouse.repository';
 import { SalesOrderRepository } from '../../../sales/repositories/sales-order.repository';
 import { InventoryRepository } from '../../../inventory/repositories/inventory.repository';
+import { AuditMiddleware } from '../../../../database/middleware/audit.middleware';
 import { ShipmentStatus } from '@prisma/client';
 
 describe('ShipmentService', () => {
@@ -103,6 +104,15 @@ describe('ShipmentService', () => {
           provide: InventoryRepository,
           useValue: {
             findInventoryByProductAndLocations: jest.fn(),
+          },
+        },
+        {
+          provide: AuditMiddleware,
+          useValue: {
+            logCreate: jest.fn().mockResolvedValue(undefined),
+            logUpdate: jest.fn().mockResolvedValue(undefined),
+            logDelete: jest.fn().mockResolvedValue(undefined),
+            logOperation: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

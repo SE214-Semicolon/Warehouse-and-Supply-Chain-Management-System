@@ -811,7 +811,7 @@ export class InventoryRepository implements IInventoryRepository {
     productId?: string,
     page: number = 1,
     limit: number = 20,
-    sortBy: string = 'productBatch',
+    sortBy: string = 'updatedAt',
     sortOrder: 'asc' | 'desc' = 'asc',
   ) {
     const skip = (page - 1) * limit;

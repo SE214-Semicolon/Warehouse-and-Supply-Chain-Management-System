@@ -3,6 +3,7 @@ import { InventoryRepository } from 'src/modules/inventory/repositories/inventor
 import { BadRequestException } from '@nestjs/common';
 import { DispatchInventoryDto } from 'src/modules/inventory/dto/dispatch-inventory.dto';
 import { CacheService } from 'src/cache/cache.service';
+import { AuditMiddleware } from 'src/database/middleware/audit.middleware';
 
 // A simple in-memory mock repository to simulate atomic updateMany behavior
 class InMemoryRepoMock {
@@ -66,7 +67,19 @@ describe('concurrent dispatch', () => {
     const mockAlertGen = {
       checkLowStockAlert: jest.fn(async () => undefined),
     } as any;
-    const service = new InventoryService(repo as any, mockCache as CacheService, mockAlertGen);
+    // minimal AuditMiddleware mock (non-blocking, no-op)
+    const mockAuditMiddleware = {
+      logCreate: jest.fn(async () => undefined),
+      logUpdate: jest.fn(async () => undefined),
+      logDelete: jest.fn(async () => undefined),
+      logOperation: jest.fn(async () => undefined),
+    } as unknown as AuditMiddleware;
+    const service = new InventoryService(
+      repo as any,
+      mockCache as CacheService,
+      mockAlertGen,
+      mockAuditMiddleware,
+    );
 
     const dto = {
       productBatchId: 'pb1',

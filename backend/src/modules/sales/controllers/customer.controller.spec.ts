@@ -11,9 +11,9 @@ describe('CustomerController', () => {
   const mockService = {
     create: jest.fn(),
     findAll: jest.fn(),
-    findById: jest.fn(),
+    findOne: jest.fn(),
     update: jest.fn(),
-    softDelete: jest.fn(),
+    remove: jest.fn(),
   } as Record<string, jest.Mock>;
 
   beforeEach(async () => {
@@ -62,11 +62,11 @@ describe('CustomerController', () => {
 
   it('should get customer by id', async () => {
     const serviceResult = { success: true, data: { id: 'c1', code: 'CUST-001' } };
-    mockService.findById.mockResolvedValue(serviceResult);
+    mockService.findOne.mockResolvedValue(serviceResult);
 
     const res = await controller.findOne('c1');
 
-    expect(mockService.findById).toHaveBeenCalledWith('c1');
+    expect(mockService.findOne).toHaveBeenCalledWith('c1');
     expect(res).toEqual(serviceResult);
   });
 
@@ -82,12 +82,11 @@ describe('CustomerController', () => {
   });
 
   it('should delete customer', async () => {
-    const serviceResult = { success: true, message: 'Customer deleted' };
-    mockService.softDelete.mockResolvedValue(serviceResult);
+    mockService.remove.mockResolvedValue(undefined);
 
     const res = await controller.remove('c1');
 
-    expect(mockService.softDelete).toHaveBeenCalledWith('c1');
-    expect(res).toEqual(serviceResult);
+    expect(mockService.remove).toHaveBeenCalledWith('c1');
+    expect(res).toEqual({ success: true, message: 'Customer deleted successfully' });
   });
 });

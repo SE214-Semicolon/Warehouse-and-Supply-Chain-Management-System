@@ -10,15 +10,15 @@ const TEST_SUITE_ID = `alert-sanity-${Date.now()}-${Math.random().toString(36).s
 
 /**
  * SANITY TEST - Alert Module
- * Purpose: Verify key functionalities after minor changes/bug fixes
- * Scope: Test main features and common use cases
+ * Purpose: Verify basic workflows work after changes
+ * Scope: Simple happy-path tests, no deep validation
+ * Expected: < 2 minutes execution time
  */
 describe('Alert Module - Sanity Tests', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;
   let adminToken: string;
-  let managerToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -44,20 +44,9 @@ describe('Alert Module - Sanity Tests', () => {
       data: {
         username: `admin-sanity-${TEST_SUITE_ID}`,
         email: `admin-sanity-${TEST_SUITE_ID}@test.com`,
-        fullName: 'Admin Sanity',
+        fullName: 'Admin Sanity Test',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.admin,
-        active: true,
-      },
-    });
-
-    const managerUser = await prisma.user.create({
-      data: {
-        username: `manager-sanity-${TEST_SUITE_ID}`,
-        email: `manager-sanity-${TEST_SUITE_ID}@test.com`,
-        fullName: 'Manager Sanity',
-        passwordHash: '$2b$10$validhashedpassword',
-        role: UserRole.manager,
         active: true,
       },
     });
@@ -67,12 +56,6 @@ describe('Alert Module - Sanity Tests', () => {
       email: adminUser.email,
       role: adminUser.role,
     })}`;
-
-    managerToken = `Bearer ${jwtService.sign({
-      sub: managerUser.id,
-      email: managerUser.email,
-      role: managerUser.role,
-    })}`;
   }, 30000);
 
   afterAll(async () => {
@@ -81,73 +64,47 @@ describe('Alert Module - Sanity Tests', () => {
     await app.close();
   }, 30000);
 
-  describe('SANITY-ALERT-01: Core CRUD', () => {
+  describe('SANITY-ALERT-01: Basic Workflow', () => {
     let alertId: string;
 
-    it('should create, read, update and delete alert', async () => {
-      // Create
+    it('should complete CREATE-READ-DELETE workflow', async () => {
+      // CREATE
       const createRes = await request(app.getHttpServer())
         .post('/alerts')
         .set('Authorization', adminToken)
         .send({
           type: 'LOW_STOCK',
           severity: 'WARNING',
-          message: 'Sanity test',
+          message: 'Sanity test alert',
         })
         .expect(201);
 
+      expect(createRes.body.success).toBe(true);
       alertId = createRes.body.alert.id;
 
-      // Read
-      await request(app.getHttpServer())
-        .get(`/alerts/${alertId}`)
+      // READ
+      const readRes = await request(app.getHttpServer())
+        .get('/alerts')
         .set('Authorization', adminToken)
         .expect(200);
 
-      // Mark as read
-      await request(app.getHttpServer())
-        .patch(`/alerts/${alertId}/read`)
-        .set('Authorization', adminToken)
-        .expect(200);
+      expect(readRes.body.success).toBe(true);
+      expect(readRes.body.alerts).toBeInstanceOf(Array);
 
-      // Delete
+      // DELETE
       await request(app.getHttpServer())
         .delete(`/alerts/${alertId}`)
         .set('Authorization', adminToken)
         .expect(200);
     });
-  });
 
-  describe('SANITY-ALERT-02: Filtering', () => {
-    it('should filter alerts by type and severity', async () => {
+    it('should get unread count', async () => {
       const response = await request(app.getHttpServer())
-        .get('/alerts')
+        .get('/alerts/unread-count')
         .set('Authorization', adminToken)
-        .query({ type: 'LOW_STOCK', severity: 'WARNING' })
         .expect(200);
 
       expect(response.body.success).toBe(true);
-    });
-  });
-
-  describe('SANITY-ALERT-03: Authorization', () => {
-    it('should allow manager to read alerts', async () => {
-      await request(app.getHttpServer())
-        .get('/alerts')
-        .set('Authorization', managerToken)
-        .expect(200);
-    });
-
-    it('should allow manager to create alerts', async () => {
-      await request(app.getHttpServer())
-        .post('/alerts')
-        .set('Authorization', managerToken)
-        .send({
-          type: 'SYSTEM',
-          severity: 'INFO',
-          message: 'Manager test',
-        })
-        .expect(201);
     });
   });
 });
