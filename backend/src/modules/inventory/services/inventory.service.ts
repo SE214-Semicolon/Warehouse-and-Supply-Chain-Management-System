@@ -835,7 +835,7 @@ export class InventoryService {
       dto.productId,
       dto.page || 1,
       dto.limit || 20,
-      dto.sortBy || 'productBatch',
+      dto.sortBy || 'updatedAt',
       dto.sortOrder || 'asc',
     );
 

@@ -150,12 +150,12 @@ describe('Supplier Module (e2e)', () => {
         .send(createDto)
         .expect(201);
 
-      expect(response.body.code).toBe(createDto.code);
-      expect(response.body.name).toBe(createDto.name);
-      expect(response.body.contactInfo).toEqual(createDto.contactInfo);
-      expect(response.body.address).toBe(createDto.address);
-      expect(response.body.id).toBeDefined();
-      expect(response.body.createdAt).toBeDefined();
+      expect(response.body.data.code).toBe(createDto.code);
+      expect(response.body.data.name).toBe(createDto.name);
+      expect(response.body.data.contactInfo).toEqual(createDto.contactInfo);
+      expect(response.body.data.address).toBe(createDto.address);
+      expect(response.body.data.id).toBeDefined();
+      expect(response.body.data.createdAt).toBeDefined();
     });
 
     // SUP-INT-02: Duplicate code
@@ -199,8 +199,8 @@ describe('Supplier Module (e2e)', () => {
         .send(createDto)
         .expect(201);
 
-      expect(response.body.code).toBeNull();
-      expect(response.body.name).toBe(createDto.name);
+      expect(response.body.data.code).toBeNull();
+      expect(response.body.data.name).toBe(createDto.name);
     });
 
     // SUP-INT-04: Missing required field name (tested by DTO)
@@ -231,8 +231,8 @@ describe('Supplier Module (e2e)', () => {
         .send(createDto)
         .expect(201);
 
-      expect(response.body.contactInfo).toBeNull();
-      expect(response.body.name).toBe(createDto.name);
+      expect(response.body.data.contactInfo).toBeNull();
+      expect(response.body.data.name).toBe(createDto.name);
     });
 
     // SUP-INT-06: Missing optional field address
@@ -251,28 +251,8 @@ describe('Supplier Module (e2e)', () => {
         .send(createDto)
         .expect(201);
 
-      expect(response.body.address).toBeNull();
-      expect(response.body.name).toBe(createDto.name);
-    });
-
-    // SUP-INT-07: Invalid email format in contactInfo
-    // This test depends on DTO validation - if not implemented, will pass with invalid email
-    it.skip('SUP-INT-07: Should handle invalid email format in contactInfo', async () => {
-      const createDto = {
-        code: `SUP-TEST-${Date.now()}`,
-        name: 'Test Supplier Invalid Email',
-        contactInfo: {
-          email: 'invalid-email',
-        },
-      };
-
-      // If DTO validation exists, expect 400; otherwise expect 201
-      const response = await request(app.getHttpServer())
-        .post('/suppliers')
-        .set('Authorization', adminToken)
-        .send(createDto);
-
-      expect(response.status).toBe(400);
+      expect(response.body.data.address).toBeNull();
+      expect(response.body.data.name).toBe(createDto.name);
     });
 
     // SUP-INT-08: Permission denied for warehouse_staff
@@ -540,8 +520,8 @@ describe('Supplier Module (e2e)', () => {
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response.body.id).toBe(testSupplierId);
-      expect(response.body.name).toBe('Test Supplier for GET');
+      expect(response.body.data.id).toBe(testSupplierId);
+      expect(response.body.data.name).toBe('Test Supplier for GET');
     });
 
     // SUP-INT-26: Supplier not found
@@ -594,8 +574,8 @@ describe('Supplier Module (e2e)', () => {
         .send(updateDto)
         .expect(200);
 
-      expect(response.body.name).toBe(updateDto.name);
-      expect(response.body.id).toBe(updateSupplierId);
+      expect(response.body.data.name).toBe(updateDto.name);
+      expect(response.body.data.id).toBe(updateSupplierId);
     });
 
     // SUP-INT-30: Update code successfully
@@ -610,7 +590,7 @@ describe('Supplier Module (e2e)', () => {
         .send(updateDto)
         .expect(200);
 
-      expect(response.body.code).toBe(updateDto.code);
+      expect(response.body.data.code).toBe(updateDto.code);
     });
 
     // SUP-INT-31: Update code with duplicate value
@@ -652,7 +632,7 @@ describe('Supplier Module (e2e)', () => {
         .send(updateDto)
         .expect(200);
 
-      expect(response.body.contactInfo).toEqual(updateDto.contactInfo);
+      expect(response.body.data.contactInfo).toEqual(updateDto.contactInfo);
     });
 
     // SUP-INT-33: Update address
@@ -667,7 +647,7 @@ describe('Supplier Module (e2e)', () => {
         .send(updateDto)
         .expect(200);
 
-      expect(response.body.address).toBe(updateDto.address);
+      expect(response.body.data.address).toBe(updateDto.address);
     });
 
     // SUP-INT-34: Update multiple fields at once
@@ -686,9 +666,9 @@ describe('Supplier Module (e2e)', () => {
         .send(updateDto)
         .expect(200);
 
-      expect(response.body.name).toBe(updateDto.name);
-      expect(response.body.address).toBe(updateDto.address);
-      expect(response.body.contactInfo).toEqual(updateDto.contactInfo);
+      expect(response.body.data.name).toBe(updateDto.name);
+      expect(response.body.data.address).toBe(updateDto.address);
+      expect(response.body.data.contactInfo).toEqual(updateDto.contactInfo);
     });
 
     // SUP-INT-35: Update non-existent supplier
@@ -712,7 +692,7 @@ describe('Supplier Module (e2e)', () => {
         .send({})
         .expect(200);
 
-      expect(response.body.id).toBe(updateSupplierId);
+      expect(response.body.data.id).toBe(updateSupplierId);
     });
 
     // SUP-INT-37: Permission denied for warehouse_staff
@@ -837,173 +817,178 @@ describe('Supplier Module (e2e)', () => {
       // Clean up the purchase order first
       await prisma.purchaseOrder.deleteMany({
         where: { supplierId: supplierWithPO.id },
+      });
+      // Clean up supplier
+      await prisma.supplier.delete({ where: { id: supplierWithPO.id } });
+    });
+  });
 
-    describe('INTEGRATION-SUP-01: Core CRUD Operations', () => {
-      let supplierId: string;
-  
-      it('should create supplier with all fields', async () => {
-        const response = await request(app.getHttpServer())
-          .post('/suppliers')
-          .set('Authorization', adminToken)
-          .send({
-            code: `INTEGRATION-SUP-${Date.now()}`,
-            name: 'Sanity Test Supplier',
-            contactInfo: {
-              phone: '1234567890',
-              email: 'sanity@supplier.com',
-              address: '123 Supplier Street',
-            },
-          })
-          .expect(201);
-  
-        expect(response.body).toHaveProperty('id');
-        expect(response.body.name).toBe('Sanity Test Supplier');
-        supplierId = response.body.id;
-      });
-  
-      it('should retrieve supplier by ID', async () => {
-        const response = await request(app.getHttpServer())
-          .get(`/suppliers/${supplierId}`)
-          .set('Authorization', adminToken)
-          .expect(200);
-  
-        expect(response.body).toHaveProperty('id', supplierId);
-        expect(response.body.name).toBe('Sanity Test Supplier');
-      });
-  
-      //Uncomment when be fix this API
-      // it('should list all suppliers with pagination', async () => {
-      //   const response = await request(app.getHttpServer())
-      //     .get('/suppliers')
-      //     .query({ page: 1, pageSize: 10 })
-      //     .set('Authorization', adminToken)
-      //     .expect(200);
-  
-      //   expect(Array.isArray(response.body.data)).toBe(true);
-      //   expect(response.body.total).toBeGreaterThanOrEqual(1);
-      //   expect(response.body.page).toBe(1);
-      //   expect(response.body.pageSize).toBe(10);
-      // });
-  
-      it('should update supplier successfully', async () => {
-        const response = await request(app.getHttpServer())
-          .patch(`/suppliers/${supplierId}`)
-          .set('Authorization', adminToken)
-          .send({
-            name: 'Updated Sanity Supplier',
-          })
-          .expect(200);
-  
-        expect(response.body.name).toBe('Updated Sanity Supplier');
-      });
+  describe('INTEGRATION-SUP-01: Core CRUD Operations', () => {
+    let supplierId: string;
+
+    it('should create supplier with all fields', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/suppliers')
+        .set('Authorization', adminToken)
+        .send({
+          code: `INTEGRATION-SUP-${Date.now()}`,
+          name: 'Sanity Test Supplier',
+          contactInfo: {
+            phone: '1234567890',
+            email: 'sanity@supplier.com',
+            address: '123 Supplier Street',
+          },
+        })
+        .expect(201);
+
+      expect(response.body.data).toHaveProperty('id');
+      expect(response.body.data.name).toBe('Sanity Test Supplier');
+      supplierId = response.body.data.id;
     });
 
-    describe('INTEGRATION-SUP-02: Validation Rules', () => {
-      it('should reject duplicate supplier code', async () => {
-        const duplicateCode = `INTEGRATION-DUP-${Date.now()}`;
-        await request(app.getHttpServer())
-          .post('/suppliers')
-          .set('Authorization', adminToken)
-          .send({
-            code: duplicateCode,
-            name: 'First Supplier',
-            contactInfo: { email: 'first@supplier.com' },
-          })
-          .expect(201);
-  
-        await request(app.getHttpServer())
-          .post('/suppliers')
-          .set('Authorization', adminToken)
-          .send({
-            code: duplicateCode,
-            name: 'Second Supplier',
-            contactInfo: { email: 'second@supplier.com' },
-          })
-          .expect(400);
-      });
-  
-      it('should reject missing required fields', async () => {
-        await request(app.getHttpServer())
-          .post('/suppliers')
-          .set('Authorization', adminToken)
-          .send({
-            code: `INTEGRATION-MISSING-${Date.now()}`,
-            // missing name which is required
-          })
-          .expect(400);
-      });
-  
-      it('should reject missing name', async () => {
-        await request(app.getHttpServer())
-          .post('/suppliers')
-          .set('Authorization', adminToken)
-          .send({
-            code: `INTEGRATION-MISSING-${Date.now()}`,
-            // name is missing - should fail
-          })
-          .expect(400);
-      });
+    it('should retrieve supplier by ID', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/suppliers/${supplierId}`)
+        .set('Authorization', adminToken)
+        .expect(200);
+
+      expect(response.body.data).toHaveProperty('id', supplierId);
+      expect(response.body.data.name).toBe('Sanity Test Supplier');
     });
 
-    describe('INTEGRATION-SUP-03: Authorization', () => {
-      it('should allow procurement to view suppliers', async () => {
-        const response = await request(app.getHttpServer())
-          .get('/suppliers')
-          .set('Authorization', procurementToken)
-          .expect(200);
-  
-        expect(Array.isArray(response.body.data)).toBe(true);
-      });
-  
-      it('should allow procurement to create supplier', async () => {
-        await request(app.getHttpServer())
-          .post('/suppliers')
-          .set('Authorization', procurementToken)
-          .send({
-            code: `INTEGRATION-PROC-${Date.now()}`,
-            name: 'Procurement Created Supplier',
-            contactInfo: { email: 'procurement@supplier.com' },
-          })
-          .expect(201);
-      });
+    //Uncomment when be fix this API
+    // it('should list all suppliers with pagination', async () => {
+    //   const response = await request(app.getHttpServer())
+    //     .get('/suppliers')
+    //     .query({ page: 1, pageSize: 10 })
+    //     .set('Authorization', adminToken)
+    //     .expect(200);
+
+    //   expect(Array.isArray(response.body.data)).toBe(true);
+    //   expect(response.body.total).toBeGreaterThanOrEqual(1);
+    //   expect(response.body.page).toBe(1);
+    //   expect(response.body.pageSize).toBe(10);
+    // });
+
+    it('should update supplier successfully', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/suppliers/${supplierId}`)
+        .set('Authorization', adminToken)
+        .send({
+          name: 'Updated Sanity Supplier',
+        })
+        .expect(200);
+
+      expect(response.body.data.name).toBe('Updated Sanity Supplier');
+    });
+  });
+
+  describe('INTEGRATION-SUP-02: Validation Rules', () => {
+    it('should reject duplicate supplier code', async () => {
+      const duplicateCode = `INTEGRATION-DUP-${Date.now()}`;
+      await request(app.getHttpServer())
+        .post('/suppliers')
+        .set('Authorization', adminToken)
+        .send({
+          code: duplicateCode,
+          name: 'First Supplier',
+          contactInfo: { email: 'first@supplier.com' },
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post('/suppliers')
+        .set('Authorization', adminToken)
+        .send({
+          code: duplicateCode,
+          name: 'Second Supplier',
+          contactInfo: { email: 'second@supplier.com' },
+        })
+        .expect(400);
     });
 
-    describe('INTEGRATION-SUP-04: Error Handling', () => {
-      it('should return 404 for non-existent supplier', async () => {
-        await request(app.getHttpServer())
-          .get('/suppliers/00000000-0000-0000-0000-000000000000')
-          .set('Authorization', adminToken)
-          .expect(404);
-      });
-  
-      it('should handle update of non-existent supplier', async () => {
-        await request(app.getHttpServer())
-          .patch('/suppliers/00000000-0000-0000-0000-000000000000')
-          .set('Authorization', adminToken)
-          .send({
-            name: 'Non-existent Supplier',
-          })
-          .expect(404);
-      });
+    it('should reject missing required fields', async () => {
+      await request(app.getHttpServer())
+        .post('/suppliers')
+        .set('Authorization', adminToken)
+        .send({
+          code: `INTEGRATION-MISSING-${Date.now()}`,
+          // missing name which is required
+        })
+        .expect(400);
     });
 
-    describe('INTEGRATION-SUP-05: Search Functionality', () => {
-      it('should search suppliers by name', async () => {
-        const response = await request(app.getHttpServer())
-          .get('/suppliers?q=Sanity')
-          .set('Authorization', adminToken)
-          .expect(200);
-  
-        expect(Array.isArray(response.body.data)).toBe(true);
-      });
-  
-      it('should search suppliers by code', async () => {
-        const response = await request(app.getHttpServer())
-          .get('/suppliers?q=SANITY')
-          .set('Authorization', adminToken)
-          .expect(200);
-  
-        expect(Array.isArray(response.body.data)).toBe(true);
-      });
+    it('should reject missing name', async () => {
+      await request(app.getHttpServer())
+        .post('/suppliers')
+        .set('Authorization', adminToken)
+        .send({
+          code: `INTEGRATION-MISSING-${Date.now()}`,
+          // name is missing - should fail
+        })
+        .expect(400);
     });
+  });
+
+  describe('INTEGRATION-SUP-03: Authorization', () => {
+    it('should allow procurement to view suppliers', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/suppliers')
+        .set('Authorization', procurementToken)
+        .expect(200);
+
+      expect(Array.isArray(response.body.data)).toBe(true);
+    });
+
+    it('should allow procurement to create supplier', async () => {
+      await request(app.getHttpServer())
+        .post('/suppliers')
+        .set('Authorization', procurementToken)
+        .send({
+          code: `INTEGRATION-PROC-${Date.now()}`,
+          name: 'Procurement Created Supplier',
+          contactInfo: { email: 'procurement@supplier.com' },
+        })
+        .expect(201);
+    });
+  });
+
+  describe('INTEGRATION-SUP-04: Error Handling', () => {
+    it('should return 404 for non-existent supplier', async () => {
+      await request(app.getHttpServer())
+        .get('/suppliers/00000000-0000-0000-0000-000000000000')
+        .set('Authorization', adminToken)
+        .expect(404);
+    });
+
+    it('should handle update of non-existent supplier', async () => {
+      await request(app.getHttpServer())
+        .patch('/suppliers/00000000-0000-0000-0000-000000000000')
+        .set('Authorization', adminToken)
+        .send({
+          name: 'Non-existent Supplier',
+        })
+        .expect(404);
+    });
+  });
+
+  describe('INTEGRATION-SUP-05: Search Functionality', () => {
+    it('should search suppliers by name', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/suppliers?q=Sanity')
+        .set('Authorization', adminToken)
+        .expect(200);
+
+      expect(Array.isArray(response.body.data)).toBe(true);
+    });
+
+    it('should search suppliers by code', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/suppliers?q=SANITY')
+        .set('Authorization', adminToken)
+        .expect(200);
+
+      expect(Array.isArray(response.body.data)).toBe(true);
+    });
+  });
 });

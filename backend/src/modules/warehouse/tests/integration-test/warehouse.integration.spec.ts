@@ -136,15 +136,15 @@ describe('Warehouse Integration Tests', () => {
         .expect(201);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.warehouse).toBeDefined();
-      expect(response.body.warehouse.code).toBe(createDto.code);
-      expect(response.body.warehouse.name).toBe(createDto.name);
-      expect(response.body.warehouse.address).toBe(createDto.address);
-      expect(response.body.warehouse.id).toBeDefined();
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.code).toBe(createDto.code);
+      expect(response.body.data.name).toBe(createDto.name);
+      expect(response.body.data.address).toBe(createDto.address);
+      expect(response.body.data.id).toBeDefined();
 
       // Save for later tests
-      createdWarehouseId = response.body.warehouse.id;
-      createdWarehouseCode = response.body.warehouse.code;
+      createdWarehouseId = response.body.data.id;
+      createdWarehouseCode = response.body.data.code;
     });
 
     it('WH-INT-02: Should create warehouse with valid data (manager)', async () => {
@@ -161,7 +161,7 @@ describe('Warehouse Integration Tests', () => {
         .expect(201);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.warehouse.code).toBe(createDto.code);
+      expect(response.body.data.code).toBe(createDto.code);
     });
 
     it('WH-INT-03: Should fail with duplicate code', async () => {
@@ -223,8 +223,8 @@ describe('Warehouse Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.warehouses).toBeDefined();
-      expect(Array.isArray(response.body.warehouses)).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(Array.isArray(response.body.data)).toBe(true);
       expect(response.body.total).toBeGreaterThanOrEqual(2);
       expect(response.body.page).toBe(1);
       expect(response.body.limit).toBeDefined();
@@ -239,8 +239,8 @@ describe('Warehouse Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.warehouses).toHaveLength(1);
-      expect(response.body.warehouses[0].code).toBe(createdWarehouseCode);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].code).toBe(createdWarehouseCode);
     });
 
     it('WH-INT-09: Should filter by search query', async () => {
@@ -251,8 +251,8 @@ describe('Warehouse Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.warehouses.length).toBeGreaterThanOrEqual(1);
-      expect(response.body.warehouses[0].name).toContain('Integration');
+      expect(response.body.data.length).toBeGreaterThanOrEqual(1);
+      expect(response.body.data[0].name).toContain('Integration');
     });
 
     it('WH-INT-10: Should handle pagination', async () => {
@@ -263,7 +263,7 @@ describe('Warehouse Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.warehouses).toHaveLength(1);
+      expect(response.body.data).toHaveLength(1);
       expect(response.body.page).toBe(1);
       expect(response.body.limit).toBe(1);
       expect(response.body.totalPages).toBeGreaterThanOrEqual(2);
@@ -276,7 +276,7 @@ describe('Warehouse Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.warehouses).toBeDefined();
+      expect(response.body.data).toBeDefined();
     });
 
     it('WH-INT-12: Should fail without authentication', async () => {
@@ -292,9 +292,9 @@ describe('Warehouse Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.warehouse).toBeDefined();
-      expect(response.body.warehouse.id).toBe(createdWarehouseId);
-      expect(response.body.warehouse.code).toBe(createdWarehouseCode);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.id).toBe(createdWarehouseId);
+      expect(response.body.data.code).toBe(createdWarehouseCode);
       expect(response.body.stats).toBeDefined();
     });
 
@@ -322,8 +322,8 @@ describe('Warehouse Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.warehouse).toBeDefined();
-      expect(response.body.warehouse.code).toBe(createdWarehouseCode);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.code).toBe(createdWarehouseCode);
       expect(response.body.stats).toBeDefined();
     });
 
@@ -349,7 +349,7 @@ describe('Warehouse Integration Tests', () => {
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response1.body.warehouse.id).toBe(response2.body.warehouse.id);
+      expect(response1.body.data.id).toBe(response2.body.data.id);
     });
   });
 
@@ -403,9 +403,9 @@ describe('Warehouse Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.warehouse.name).toBe(updateDto.name);
-      expect(response.body.warehouse.address).toBe(updateDto.address);
-      expect(response.body.warehouse.code).toBe(createdWarehouseCode); // Code unchanged
+      expect(response.body.data.name).toBe(updateDto.name);
+      expect(response.body.data.address).toBe(updateDto.address);
+      expect(response.body.data.code).toBe(createdWarehouseCode); // Code unchanged
     });
 
     it('WH-INT-23: Should update warehouse metadata', async () => {
@@ -423,7 +423,7 @@ describe('Warehouse Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.warehouse.metadata.type).toBe('Ambient Storage');
+      expect(response.body.data.metadata.type).toBe('Ambient Storage');
     });
 
     it('WH-INT-24: Should fail when updating to duplicate code', async () => {
@@ -568,7 +568,7 @@ describe('Warehouse Integration Tests', () => {
         .send(createDto)
         .expect(201);
 
-      const warehouseId = createResponse.body.warehouse.id;
+      const warehouseId = createResponse.body.data.id;
 
       // 2. Retrieve by ID
       const getResponse = await request(app.getHttpServer())
@@ -576,7 +576,7 @@ describe('Warehouse Integration Tests', () => {
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(getResponse.body.warehouse.code).toBe(createDto.code);
+      expect(getResponse.body.data.code).toBe(createDto.code);
 
       // 3. Retrieve by code
       const getByCodeResponse = await request(app.getHttpServer())
@@ -584,7 +584,7 @@ describe('Warehouse Integration Tests', () => {
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(getByCodeResponse.body.warehouse.id).toBe(warehouseId);
+      expect(getByCodeResponse.body.data.id).toBe(warehouseId);
 
       // 4. Get stats
       const statsResponse = await request(app.getHttpServer())
@@ -601,7 +601,7 @@ describe('Warehouse Integration Tests', () => {
         .send({ name: 'Updated Lifecycle Warehouse' })
         .expect(200);
 
-      expect(updateResponse.body.warehouse.name).toBe('Updated Lifecycle Warehouse');
+      expect(updateResponse.body.data.name).toBe('Updated Lifecycle Warehouse');
 
       // 6. Verify in list
       const listResponse = await request(app.getHttpServer())
@@ -610,7 +610,7 @@ describe('Warehouse Integration Tests', () => {
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(listResponse.body.warehouses[0].name).toBe('Updated Lifecycle Warehouse');
+      expect(listResponse.body.data[0].name).toBe('Updated Lifecycle Warehouse');
 
       // 7. Delete
       await request(app.getHttpServer())
@@ -744,7 +744,7 @@ describe('Warehouse Integration Tests', () => {
         .send(createDto)
         .expect(201);
 
-      expect(response.body.warehouse.metadata).toEqual({});
+      expect(response.body.data.metadata).toEqual({});
     });
 
     // WH-TC14: Create with complex nested metadata
@@ -772,7 +772,7 @@ describe('Warehouse Integration Tests', () => {
         .send(createDto)
         .expect(201);
 
-      expect(response.body.warehouse.metadata).toEqual(complexMetadata);
+      expect(response.body.data.metadata).toEqual(complexMetadata);
     });
   });
 
@@ -802,7 +802,7 @@ describe('Warehouse Integration Tests', () => {
         .expect(400);
 
       // expect(response.body.page).toBeGreaterThanOrEqual(1);
-      // expect(response.body.warehouses).toBeDefined();
+      // expect(response.body.data).toBeDefined();
     });
 
     // WH-TC23: Negative page
@@ -869,7 +869,7 @@ describe('Warehouse Integration Tests', () => {
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(verifyResponse.body.warehouses).toBeDefined();
+      expect(verifyResponse.body.data).toBeDefined();
     });
 
     // WH-TC31: Combined filters (code + search)
@@ -881,8 +881,8 @@ describe('Warehouse Integration Tests', () => {
 
       expect(response.body.success).toBe(true);
       // Results should match both filters
-      if (response.body.warehouses.length > 0) {
-        response.body.warehouses.forEach((wh) => {
+      if (response.body.data.length > 0) {
+        response.body.data.forEach((wh) => {
           expect(wh.code.toLowerCase()).toContain('wh-edge');
         });
       }
@@ -895,7 +895,7 @@ describe('Warehouse Integration Tests', () => {
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response.body.warehouses).toEqual([]);
+      expect(response.body.data).toEqual([]);
       expect(response.body.page).toBe(9999);
     });
 
@@ -921,149 +921,152 @@ describe('Warehouse Integration Tests', () => {
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response.body.warehouses.length).toBeGreaterThan(0);
-      response.body.warehouses.forEach((wh) => {
+      expect(response.body.data.length).toBeGreaterThan(0);
+      response.body.data.forEach((wh) => {
         expect(wh.code.toUpperCase()).toContain('EDGE-00');
-
-    describe('INTEGRATION-WH-01: Core CRUD Operations', () => {
-      let warehouseId: string;
-  
-      it('should create warehouse with all valid fields', async () => {
-        const response = await request(app.getHttpServer())
-          .post('/warehouses')
-          .set('Authorization', adminToken)
-          .send({
-            code: `INTEGRATION-WH-${Date.now()}`,
-            name: 'Sanity Test Warehouse',
-            address: '456 Sanity Street',
-            metadata: { phone: '1234567890', email: 'sanity@test.com' },
-          })
-          .expect(201);
-  
-        expect(response.body.success).toBe(true);
-        expect(response.body.warehouse).toHaveProperty('id');
-        warehouseId = response.body.warehouse.id;
-      });
-  
-      it('should retrieve warehouse by ID', async () => {
-        const response = await request(app.getHttpServer())
-          .get(`/warehouses/${warehouseId}`)
-          .set('Authorization', adminToken)
-          .expect(200);
-  
-        expect(response.body.success).toBe(true);
-        expect(response.body.warehouse).toHaveProperty('id', warehouseId);
-      });
-  
-      it('should list all warehouses with pagination', async () => {
-        const response = await request(app.getHttpServer())
-          .get('/warehouses?page=1&limit=10')
-          .set('Authorization', adminToken)
-          .expect(200);
-  
-        expect(response.body.success).toBe(true);
-        expect(Array.isArray(response.body.warehouses)).toBe(true);
-        expect(response.body.total).toBeGreaterThanOrEqual(1);
-      });
-  
-      it('should update warehouse successfully', async () => {
-        const response = await request(app.getHttpServer())
-          .patch(`/warehouses/${warehouseId}`)
-          .set('Authorization', adminToken)
-          .send({
-            name: 'Updated Sanity Warehouse',
-            address: '789 Updated Street',
-          })
-          .expect(200);
-  
-        expect(response.body.success).toBe(true);
-        expect(response.body.warehouse.name).toBe('Updated Sanity Warehouse');
-        expect(response.body.warehouse.address).toBe('789 Updated Street');
       });
     });
+  });
 
-    describe('INTEGRATION-WH-02: Validation Rules', () => {
-      it('should reject duplicate warehouse code', async () => {
-        const duplicateCode = `INTEGRATION-DUP-${Date.now()}`;
-        await request(app.getHttpServer())
-          .post('/warehouses')
-          .set('Authorization', adminToken)
-          .send({
-            code: duplicateCode,
-            name: 'First Warehouse',
-          })
-          .expect(201);
-  
-        await request(app.getHttpServer())
-          .post('/warehouses')
-          .set('Authorization', adminToken)
-          .send({
-            code: duplicateCode,
-            name: 'Second Warehouse',
-          })
-          .expect(409);
-      });
-  
-      it('should reject missing required fields', async () => {
-        await request(app.getHttpServer())
-          .post('/warehouses')
-          .set('Authorization', adminToken)
-          .send({
-            name: 'Missing Code Warehouse',
-          })
-          .expect(400);
-      });
-  
-      it('should handle empty name gracefully', async () => {
-        await request(app.getHttpServer())
-          .post('/warehouses')
-          .set('Authorization', adminToken)
-          .send({
-            code: `INTEGRATION-EMPTY-${Date.now()}`,
-            name: '',
-          })
-          .expect(400);
-      });
+  describe('INTEGRATION-WH-01: Core CRUD Operations', () => {
+    let warehouseId: string;
+
+    it('should create warehouse with all valid fields', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/warehouses')
+        .set('Authorization', adminToken)
+        .send({
+          code: `INTEGRATION-WH-${Date.now()}`,
+          name: 'Sanity Test Warehouse',
+          address: '456 Sanity Street',
+          metadata: { phone: '1234567890', email: 'sanity@test.com' },
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty('id');
+      warehouseId = response.body.data.id;
     });
 
-    describe('INTEGRATION-WH-03: Authorization', () => {
-      it('should allow manager to view warehouses', async () => {
-        const response = await request(app.getHttpServer())
-          .get('/warehouses')
-          .set('Authorization', managerToken)
-          .expect(200);
-  
-        expect(response.body.success).toBe(true);
-      });
-  
-      it('should allow admin to create warehouse', async () => {
-        await request(app.getHttpServer())
-          .post('/warehouses')
-          .set('Authorization', adminToken)
-          .send({
-            code: `INTEGRATION-ADMIN-${Date.now()}`,
-            name: 'Auth Test Warehouse',
-          })
-          .expect(201);
-      });
+    it('should retrieve warehouse by ID', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/warehouses/${warehouseId}`)
+        .set('Authorization', adminToken)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty('id', warehouseId);
     });
 
-    describe('INTEGRATION-WH-04: Error Handling', () => {
-      it('should return 404 for non-existent warehouse', async () => {
-        await request(app.getHttpServer())
-          .get('/warehouses/00000000-0000-0000-0000-000000000000')
-          .set('Authorization', adminToken)
-          .expect(404);
-      });
-  
-      it('should handle update of non-existent warehouse', async () => {
-        await request(app.getHttpServer())
-          .patch('/warehouses/00000000-0000-0000-0000-000000000000')
-          .set('Authorization', adminToken)
-          .send({
-            name: 'Non-existent Warehouse',
-          })
-          .expect(404);
-      });
+    it('should list all warehouses with pagination', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/warehouses?page=1&limit=10')
+        .set('Authorization', adminToken)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.total).toBeGreaterThanOrEqual(1);
     });
+
+    it('should update warehouse successfully', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/warehouses/${warehouseId}`)
+        .set('Authorization', adminToken)
+        .send({
+          name: 'Updated Sanity Warehouse',
+          address: '789 Updated Street',
+        })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.name).toBe('Updated Sanity Warehouse');
+      expect(response.body.data.address).toBe('789 Updated Street');
+    });
+  });
+
+  describe('INTEGRATION-WH-02: Validation Rules', () => {
+    it('should reject duplicate warehouse code', async () => {
+      const duplicateCode = `INTEGRATION-DUP-${Date.now()}`;
+      await request(app.getHttpServer())
+        .post('/warehouses')
+        .set('Authorization', adminToken)
+        .send({
+          code: duplicateCode,
+          name: 'First Warehouse',
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post('/warehouses')
+        .set('Authorization', adminToken)
+        .send({
+          code: duplicateCode,
+          name: 'Second Warehouse',
+        })
+        .expect(409);
+    });
+
+    it('should reject missing required fields', async () => {
+      await request(app.getHttpServer())
+        .post('/warehouses')
+        .set('Authorization', adminToken)
+        .send({
+          name: 'Missing Code Warehouse',
+        })
+        .expect(400);
+    });
+
+    it('should handle empty name gracefully', async () => {
+      await request(app.getHttpServer())
+        .post('/warehouses')
+        .set('Authorization', adminToken)
+        .send({
+          code: `INTEGRATION-EMPTY-${Date.now()}`,
+          name: '',
+        })
+        .expect(400);
+    });
+  });
+
+  describe('INTEGRATION-WH-03: Authorization', () => {
+    it('should allow manager to view warehouses', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/warehouses')
+        .set('Authorization', managerToken)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should allow admin to create warehouse', async () => {
+      await request(app.getHttpServer())
+        .post('/warehouses')
+        .set('Authorization', adminToken)
+        .send({
+          code: `INTEGRATION-ADMIN-${Date.now()}`,
+          name: 'Auth Test Warehouse',
+        })
+        .expect(201);
+    });
+  });
+
+  describe('INTEGRATION-WH-04: Error Handling', () => {
+    it('should return 404 for non-existent warehouse', async () => {
+      await request(app.getHttpServer())
+        .get('/warehouses/00000000-0000-0000-0000-000000000000')
+        .set('Authorization', adminToken)
+        .expect(404);
+    });
+
+    it('should handle update of non-existent warehouse', async () => {
+      await request(app.getHttpServer())
+        .patch('/warehouses/00000000-0000-0000-0000-000000000000')
+        .set('Authorization', adminToken)
+        .send({
+          name: 'Non-existent Warehouse',
+        })
+        .expect(404);
+    });
+  });
 });

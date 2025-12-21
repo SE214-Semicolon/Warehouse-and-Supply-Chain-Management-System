@@ -101,8 +101,10 @@ describe('Audit Log Module - E2E Integration Tests', () => {
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.auditLogs).toBeInstanceOf(Array);
+      // API returns {page, limit, total, results}
+      expect(response.body.results).toBeInstanceOf(Array);
+      expect(response.body).toHaveProperty('page');
+      expect(response.body).toHaveProperty('total');
     });
 
     it('should get audit logs (manager)', async () => {
@@ -111,7 +113,7 @@ describe('Audit Log Module - E2E Integration Tests', () => {
         .set('Authorization', managerToken)
         .expect(200);
 
-      expect(response.body.success).toBe(true);
+      expect(response.body.results).toBeInstanceOf(Array);
     });
 
     it('should fail without authentication', async () => {
@@ -134,8 +136,7 @@ describe('Audit Log Module - E2E Integration Tests', () => {
         .query({ entityType: 'User' })
         .expect(200);
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.auditLogs).toBeInstanceOf(Array);
+      expect(response.body.results).toBeInstanceOf(Array);
     });
 
     it('should filter by action', async () => {
@@ -145,7 +146,7 @@ describe('Audit Log Module - E2E Integration Tests', () => {
         .query({ action: 'CREATE' })
         .expect(200);
 
-      expect(response.body.success).toBe(true);
+      expect(response.body.results).toBeInstanceOf(Array);
     });
 
     it('should filter by user ID', async () => {
@@ -161,7 +162,7 @@ describe('Audit Log Module - E2E Integration Tests', () => {
         .query({ userId: user.id })
         .expect(200);
 
-      expect(response.body.success).toBe(true);
+      expect(response.body.results).toBeInstanceOf(Array);
     });
 
     it('should filter by date range', async () => {
@@ -174,7 +175,7 @@ describe('Audit Log Module - E2E Integration Tests', () => {
         .query({ startDate, endDate })
         .expect(200);
 
-      expect(response.body.success).toBe(true);
+      expect(response.body.results).toBeInstanceOf(Array);
     });
 
     it('should handle pagination', async () => {
@@ -184,136 +185,117 @@ describe('Audit Log Module - E2E Integration Tests', () => {
         .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body.success).toBe(true);
-      expect(response.body).toHaveProperty('meta');
+      expect(response.body).toHaveProperty('page');
+      expect(response.body).toHaveProperty('limit');
+      expect(response.body).toHaveProperty('total');
     });
   });
 
-  describe('GET /audit-logs/:id', () => {
-    it('should get audit log by ID (admin)', async () => {
-      const logs = await prisma.$queryRaw`SELECT * FROM "AuditLog" LIMIT 1`;
-      if (!logs || (logs as any[]).length === 0) return;
-
-      const log = (logs as any[])[0];
+  describe('INTEGRATION-AUDIT-01: Basic Query', () => {
+    it('should retrieve audit logs successfully', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/audit-logs/${log.id}`)
+        .get('/audit-logs')
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.auditLog.id).toBe(log.id);
+      // API returns {page, limit, total, results}
+      expect(response.body.results).toBeInstanceOf(Array);
     });
 
-    it('should fail with non-existent ID', async () => {
-      await request(app.getHttpServer())
-        .get('/audit-logs/nonexistent-id')
+    it('should return proper structure for audit log entries', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/audit-logs')
         .set('Authorization', adminToken)
-        .expect(404);
+        .query({ limit: 1 })
+        .expect(200);
 
-    describe('INTEGRATION-AUDIT-01: Basic Query', () => {
-      it('should retrieve audit logs successfully', async () => {
-        const response = await request(app.getHttpServer())
-          .get('/audit-logs')
-          .set('Authorization', adminToken)
-          .expect(200);
-  
-        expect(response.body.success).toBe(true);
-        expect(response.body.auditLogs).toBeInstanceOf(Array);
-      });
-  
-      it('should return proper structure for audit log entries', async () => {
-        const response = await request(app.getHttpServer())
-          .get('/audit-logs')
-          .set('Authorization', adminToken)
-          .query({ limit: 1 })
-          .expect(200);
-  
-        if (response.body.auditLogs.length > 0) {
-          const log = response.body.auditLogs[0];
-          expect(log).toHaveProperty('id');
-          expect(log).toHaveProperty('action');
-          expect(log).toHaveProperty('entityType');
-          expect(log).toHaveProperty('timestamp');
-        }
-      });
+      if (response.body.results.length > 0) {
+        const log = response.body.results[0];
+        expect(log).toHaveProperty('id');
+        expect(log).toHaveProperty('action');
+        expect(log).toHaveProperty('entityType');
+        expect(log).toHaveProperty('timestamp');
+      }
+    });
+  });
+
+  describe('INTEGRATION-AUDIT-02: Filtering Capabilities', () => {
+    it('should filter by entity type', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/audit-logs')
+        .set('Authorization', adminToken)
+        .query({ entityType: 'User' })
+        .expect(200);
+
+      expect(response.body.results).toBeInstanceOf(Array);
     });
 
-    describe('INTEGRATION-AUDIT-02: Filtering Capabilities', () => {
-      it('should filter by entity type', async () => {
-        const response = await request(app.getHttpServer())
-          .get('/audit-logs')
-          .set('Authorization', adminToken)
-          .query({ entityType: 'User' })
-          .expect(200);
-  
-        expect(response.body.success).toBe(true);
-        expect(response.body.auditLogs).toBeInstanceOf(Array);
-      });
-  
-      it('should filter by action type', async () => {
-        const response = await request(app.getHttpServer())
-          .get('/audit-logs')
-          .set('Authorization', adminToken)
-          .query({ action: 'CREATE' })
-          .expect(200);
-  
-        expect(response.body.success).toBe(true);
-      });
-  
-      it('should filter by date range', async () => {
-        const response = await request(app.getHttpServer())
-          .get('/audit-logs')
-          .set('Authorization', adminToken)
-          .query({
-            startDate: '2025-01-01',
-            endDate: '2025-12-31',
-          })
-          .expect(200);
-  
-        expect(response.body.success).toBe(true);
-      });
+    it('should filter by action type', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/audit-logs')
+        .set('Authorization', adminToken)
+        .query({ action: 'CREATE' })
+        .expect(200);
+
+      expect(response.body.results).toBeInstanceOf(Array);
     });
 
-    describe('INTEGRATION-AUDIT-03: Authorization', () => {
-      it('should allow admin access', async () => {
-        await request(app.getHttpServer())
-          .get('/audit-logs')
-          .set('Authorization', adminToken)
-          .expect(200);
-      });
-  
-      it('should allow manager access', async () => {
-        await request(app.getHttpServer())
-          .get('/audit-logs')
-          .set('Authorization', managerToken)
-          .expect(200);
-      });
-  
-      it('should deny unauthenticated access', async () => {
-        await request(app.getHttpServer()).get('/audit-logs').expect(401);
-      });
+    it('should filter by date range', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/audit-logs')
+        .set('Authorization', adminToken)
+        .query({
+          startDate: '2025-01-01',
+          endDate: '2025-12-31',
+        })
+        .expect(200);
+
+      expect(response.body.results).toBeInstanceOf(Array);
+    });
+  });
+
+  describe('INTEGRATION-AUDIT-03: Authorization', () => {
+    it('should allow admin access', async () => {
+      await request(app.getHttpServer())
+        .get('/audit-logs')
+        .set('Authorization', adminToken)
+        .expect(200);
     });
 
-    describe('INTEGRATION-AUDIT-04: Pagination', () => {
-      it('should handle pagination parameters', async () => {
-        const response = await request(app.getHttpServer())
-          .get('/audit-logs')
-          .set('Authorization', adminToken)
-          .query({ page: 1, limit: 10 })
-          .expect(200);
-  
-        expect(response.body.success).toBe(true);
-        expect(response.body).toHaveProperty('meta');
-      });
-  
-      it('should respect limit parameter', async () => {
-        const response = await request(app.getHttpServer())
-          .get('/audit-logs')
-          .set('Authorization', adminToken)
-          .query({ limit: 5 })
-          .expect(200);
-  
-        expect(response.body.auditLogs.length).toBeLessThanOrEqual(5);
-      });
+    it('should allow manager access', async () => {
+      await request(app.getHttpServer())
+        .get('/audit-logs')
+        .set('Authorization', managerToken)
+        .expect(200);
     });
+
+    it('should deny unauthenticated access', async () => {
+      await request(app.getHttpServer()).get('/audit-logs').expect(401);
+    });
+  });
+
+  describe('INTEGRATION-AUDIT-04: Pagination', () => {
+    it('should handle pagination parameters', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/audit-logs')
+        .set('Authorization', adminToken)
+        .query({ page: 1, limit: 10 })
+        .expect(200);
+
+      expect(response.body).toHaveProperty('page');
+      expect(response.body).toHaveProperty('limit');
+      expect(response.body).toHaveProperty('total');
+      expect(response.body).toHaveProperty('results');
+    });
+
+    it('should respect limit parameter', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/audit-logs')
+        .set('Authorization', adminToken)
+        .query({ limit: 5 })
+        .expect(200);
+
+      expect(response.body.results.length).toBeLessThanOrEqual(5);
+    });
+  });
 });

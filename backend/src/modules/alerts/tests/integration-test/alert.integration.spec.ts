@@ -91,8 +91,6 @@ describe('Alert Module - Integration Tests', () => {
           type: 'LOW_STOCK',
           severity: 'WARNING',
           message: 'Test low stock alert',
-          entityId: 'test-product-id',
-          entityType: 'Product',
         })
         .expect(201);
 
@@ -210,7 +208,7 @@ describe('Alert Module - Integration Tests', () => {
         .query({ type: 'LOW_STOCK' })
         .expect(200);
 
-      expect(response.body).toHaveProperty('count');
+      expect(response.body).toHaveProperty('unreadCount');
     });
   });
 
@@ -227,8 +225,8 @@ describe('Alert Module - Integration Tests', () => {
         .post('/alerts')
         .set('Authorization', managerToken)
         .send({
-          type: 'SYSTEM',
-          severity: 'INFO',
+          type: 'LOW_STOCK',
+          severity: 'WARNING',
           message: 'Manager test',
         })
         .expect(201);
@@ -244,7 +242,6 @@ describe('Alert Module - Integration Tests', () => {
           type: 'LOW_STOCK',
           severity: 'WARNING',
           message: 'Product XYZ stock below threshold',
-          metadata: { productId: 'test-product-123', currentStock: 5, threshold: 10 },
         })
         .expect(201);
 
@@ -252,35 +249,33 @@ describe('Alert Module - Integration Tests', () => {
       expect(response.body.alert.severity).toBe('WARNING');
     });
 
-    it('should create EXPIRY alert with ERROR severity', async () => {
+    it('should create EXPIRING_SOON alert with CRITICAL severity', async () => {
       const response = await request(app.getHttpServer())
         .post('/alerts')
         .set('Authorization', adminToken)
         .send({
-          type: 'EXPIRY',
-          severity: 'ERROR',
+          type: 'EXPIRING_SOON',
+          severity: 'CRITICAL',
           message: 'Batch ABC expiring soon',
-          metadata: { batchId: 'batch-123', expiryDate: '2025-12-25' },
         })
         .expect(201);
 
-      expect(response.body.alert.type).toBe('EXPIRY');
-      expect(response.body.alert.severity).toBe('ERROR');
+      expect(response.body.alert.type).toBe('EXPIRING_SOON');
+      expect(response.body.alert.severity).toBe('CRITICAL');
     });
 
-    it('should create PO_LATE alert', async () => {
+    it('should create PO_LATE_DELIVERY alert', async () => {
       const response = await request(app.getHttpServer())
         .post('/alerts')
         .set('Authorization', adminToken)
         .send({
-          type: 'PO_LATE',
+          type: 'PO_LATE_DELIVERY',
           severity: 'WARNING',
           message: 'Purchase Order PO-001 overdue',
-          metadata: { poId: 'po-123', expectedDate: '2025-12-20', daysLate: 3 },
         })
         .expect(201);
 
-      expect(response.body.alert.type).toBe('PO_LATE');
+      expect(response.body.alert.type).toBe('PO_LATE_DELIVERY');
     });
   });
 
@@ -294,8 +289,8 @@ describe('Alert Module - Integration Tests', () => {
           .post('/alerts')
           .set('Authorization', adminToken)
           .send({
-            type: 'SYSTEM',
-            severity: 'INFO',
+            type: 'LOW_STOCK',
+            severity: 'WARNING',
             message: `Batch test alert ${i}`,
           })
           .expect(201);
@@ -324,18 +319,30 @@ describe('Alert Module - Integration Tests', () => {
     });
 
     it('should query only unread alerts', async () => {
+      // Create a fresh unread alert for this test
+      await request(app.getHttpServer())
+        .post('/alerts')
+        .set('Authorization', adminToken)
+        .send({
+          type: 'LOW_STOCK',
+          severity: 'WARNING',
+          message: 'Fresh unread alert for query test',
+        })
+        .expect(201);
+
       const response = await request(app.getHttpServer())
         .get('/alerts')
         .set('Authorization', adminToken)
-        .query({ isRead: false })
+        .query({ isRead: 'false' })
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      if (response.body.data) {
-        response.body.data.forEach((alert: any) => {
-          expect(alert.isRead).toBe(false);
-        });
-      }
+      // At least some alerts should exist
+      expect(response.body.alerts.length).toBeGreaterThan(0);
+      // All returned alerts should be unread
+      response.body.alerts.forEach((alert: any) => {
+        expect(alert.isRead).toBe(false);
+      });
     });
   });
 });
