@@ -37,7 +37,7 @@ const ReportHeader = ({
             justifyContent: 'center',
           }}
         >
-          <IconComponent size={28} />
+          {IconComponent && <IconComponent size={28} />}
         </Box>
         <Box>
           <Typography variant="h4" fontWeight="900" color="#1e293b">
