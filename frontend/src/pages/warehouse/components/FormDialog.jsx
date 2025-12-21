@@ -3,7 +3,15 @@ import { Dialog, DialogTitle, DialogContent, Box, Alert } from "@mui/material";
 import { menuItems } from "./MenuConfig";
 import FormFieldsRenderer from "./FormFieldsRenderer";
 
-const FormDialog = ({ open, onClose, onAction, mode, selectedMenu, selectedRow }) => {
+const FormDialog = ({
+  open,
+  onClose,
+  onAction,
+  mode,
+  selectedMenu,
+  selectedRow,
+  hiddenFields = [],
+}) => {
   const currentMenu = menuItems.find((item) => item.id === selectedMenu);
 
   const [apiError, setApiError] = useState("");
@@ -25,6 +33,8 @@ const FormDialog = ({ open, onClose, onAction, mode, selectedMenu, selectedRow }
     if (lowerMsg.includes("code")) return "code";
     if (lowerMsg.includes("name")) return "name";
     if (lowerMsg.includes("email")) return "email";
+    if (lowerMsg.includes("quantity")) return "quantity";
+    if (lowerMsg.includes("capacity")) return "capacity";
 
     return null;
   };
@@ -69,6 +79,7 @@ const FormDialog = ({ open, onClose, onAction, mode, selectedMenu, selectedRow }
             onSubmit={handleSubmit}
             onCancel={onClose}
             serverErrorField={serverErrorField}
+            hiddenFields={hiddenFields}
           />
         </Box>
       </DialogContent>

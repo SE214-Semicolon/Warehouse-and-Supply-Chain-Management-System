@@ -240,7 +240,7 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={handleChangeRowsPerPage}
           labelRowsPerPage="Number of lines per page:"
-          labelDisplayedRows={({ from, to, count }) => `${from}-${to} in ${count}`}
+          labelDisplayedRows={({ from, to, count }) => `${from}-${to} of ${count}`}
         />
       </TableContainer>
 

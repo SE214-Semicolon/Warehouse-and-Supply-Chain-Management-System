@@ -26,6 +26,7 @@ export default function FormFieldsRenderer({
   onSubmit,
   onCancel,
   serverErrorField,
+  hiddenFields = [],
 }) {
   const isEdit = mode === "edit";
 
@@ -84,7 +85,8 @@ export default function FormFieldsRenderer({
 
       if (LIMIT_FIELDS.includes(id)) {
         const num = Number(value);
-        if (num > MAX_VALUE) next.add(id);
+
+        if (num < 0 || num > MAX_VALUE) next.add(id);
         else next.delete(id);
       }
 
@@ -121,7 +123,7 @@ export default function FormFieldsRenderer({
 
     LIMIT_FIELDS.forEach((key) => {
       const val = Number(formData[key]);
-      if (!isNaN(val) && val > MAX_VALUE) {
+      if (!isNaN(val) && (val < 0 || val > MAX_VALUE)) {
         next.add(key);
       }
     });
@@ -212,6 +214,8 @@ export default function FormFieldsRenderer({
 
     if (LIMIT_FIELDS.includes(fieldId)) {
       const val = Number(formData[fieldId]);
+
+      if (val < 0) return `${label} must be greater than or equal to 0`;
       if (val > MAX_VALUE)
         return `${label} must not exceed ${MAX_VALUE.toLocaleString()}`;
     }
@@ -225,34 +229,36 @@ export default function FormFieldsRenderer({
   return (
     <>
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, py: 1 }}>
-        {baseFields.map((field) => {
-          let options = field.options || [];
+        {baseFields
+          .filter((field) => !hiddenFields.includes(field.id))
+          .map((field) => {
+            let options = field.options || [];
 
-          if (field.id === "categoryId" && selectedMenu === "products")
-            options = dynamicOptions;
-          if (field.id === "warehouseId" && selectedMenu === "locations")
-            options = dynamicOptions;
-          if (field.id === "productId" && selectedMenu === "batches")
-            options = dynamicOptions;
+            if (field.id === "categoryId" && selectedMenu === "products")
+              options = dynamicOptions;
+            if (field.id === "warehouseId" && selectedMenu === "locations")
+              options = dynamicOptions;
+            if (field.id === "productId" && selectedMenu === "batches")
+              options = dynamicOptions;
 
-          const isServerError = serverErrorField === field.id;
+            const isServerError = serverErrorField === field.id;
 
-          return (
-            <FormInput
-              key={field.id}
-              label={field.label}
-              type={field.type || "text"}
-              value={formData[field.id] ?? ""}
-              onChange={(val) => handleChange(field.id, val)}
-              onKeyDown={(e) => handleKeyDown(field, e)}
-              options={options}
-              required={field.required}
-              error={errors.has(field.id) || isServerError}
-              helperText={getHelperText(field.id)}
-              disabled={isFieldDisabled(field.id)}
-            />
-          );
-        })}
+            return (
+              <FormInput
+                key={field.id}
+                label={field.label}
+                type={field.type || "text"}
+                value={formData[field.id] ?? ""}
+                onChange={(val) => handleChange(field.id, val)}
+                onKeyDown={(e) => handleKeyDown(field, e)}
+                options={options}
+                required={field.required}
+                error={errors.has(field.id) || isServerError}
+                helperText={getHelperText(field.id)}
+                disabled={isFieldDisabled(field.id)}
+              />
+            );
+          })}
       </Box>
 
       <DialogButtons onClose={onCancel} onAction={handleSubmit} />
