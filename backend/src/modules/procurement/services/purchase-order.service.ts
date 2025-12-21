@@ -12,6 +12,7 @@ import { ReceiveInventoryDto } from '../../inventory/dto/receive-inventory.dto';
 import { QueryPurchaseOrderDto } from '../dto/purchase-order/query-po.dto';
 import { PoStatus, PurchaseOrder, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
 
 @Injectable()
 export class PurchaseOrderService {
@@ -20,6 +21,7 @@ export class PurchaseOrderService {
   constructor(
     private readonly poRepo: PurchaseOrderRepository,
     private readonly inventorySvc: InventoryService,
+    private readonly auditMiddleware: AuditMiddleware,
   ) {}
 
   /**
@@ -84,6 +86,14 @@ export class PurchaseOrderService {
     const created = await this.poRepo.findById(po.id);
     if (!created) throw new NotFoundException('PO not found after creation');
     this.logger.log(`Purchase order created successfully: ${created.id} (${poNo})`);
+
+    // Audit logging for PO creation
+    this.auditMiddleware
+      .logCreate('PurchaseOrder', created as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for PO creation', err);
+      });
+
     return {
       success: true,
       data: created,
@@ -122,6 +132,19 @@ export class PurchaseOrderService {
     const updated = await this.poRepo.findById(id);
     if (!updated) throw new NotFoundException('PO not found after submit');
     this.logger.log(`Purchase order submitted successfully: ${id}`);
+
+    // Audit logging for PO submission (status update)
+    this.auditMiddleware
+      .logUpdate(
+        'PurchaseOrder',
+        id,
+        po as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for PO submission', err);
+      });
+
     return {
       success: true,
       data: updated,
@@ -371,6 +394,19 @@ export class PurchaseOrderService {
     await this.poRepo.updateTotals(id);
     const updated = await this.poRepo.findById(id);
     if (!updated) throw new NotFoundException('PO not found after update');
+
+    // Audit logging for PO update
+    this.auditMiddleware
+      .logUpdate(
+        'PurchaseOrder',
+        id,
+        po as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for PO update', err);
+      });
+
     return updated;
   }
 
@@ -392,6 +428,19 @@ export class PurchaseOrderService {
     await this.poRepo.cancel(id);
     const updated = await this.poRepo.findById(id);
     if (!updated) throw new NotFoundException('PO not found after cancel');
+
+    // Audit logging for PO cancellation
+    this.auditMiddleware
+      .logUpdate(
+        'PurchaseOrder',
+        id,
+        po as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for PO cancellation', err);
+      });
+
     return updated;
   }
 
@@ -419,6 +468,19 @@ export class PurchaseOrderService {
 
     const updated = await this.poRepo.findById(id);
     if (!updated) throw new NotFoundException('PO not found after adding items');
+
+    // Audit logging for PO items addition
+    this.auditMiddleware
+      .logUpdate(
+        'PurchaseOrder',
+        id,
+        po as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for PO items addition', err);
+      });
+
     return updated;
   }
 
@@ -441,6 +503,19 @@ export class PurchaseOrderService {
 
     const updated = await this.poRepo.findById(id);
     if (!updated) throw new NotFoundException('PO not found after removing items');
+
+    // Audit logging for PO items removal
+    this.auditMiddleware
+      .logUpdate(
+        'PurchaseOrder',
+        id,
+        po as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for PO items removal', err);
+      });
+
     return updated;
   }
 }

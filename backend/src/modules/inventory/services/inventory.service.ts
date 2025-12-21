@@ -19,6 +19,7 @@ import {
 import { CacheService } from 'src/cache/cache.service';
 import { CACHE_PREFIX, CACHE_TTL } from 'src/cache/cache.constants';
 import { AlertGenerationService } from '../../alerts/services/alert-generation.service';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
 
 @Injectable()
 export class InventoryService {
@@ -28,6 +29,7 @@ export class InventoryService {
     private readonly inventoryRepo: InventoryRepository,
     private readonly cacheService: CacheService,
     private readonly alertGenService: AlertGenerationService,
+    private readonly auditMiddleware: AuditMiddleware,
   ) {}
 
   /**
@@ -110,6 +112,18 @@ export class InventoryService {
 
       // Invalidate inventory caches after receive
       await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
+      // Audit logs for inventory and movement
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for stock movement', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
 
       return { success: true, inventory, movement };
     } catch (err) {
@@ -194,6 +208,18 @@ export class InventoryService {
           availableQty: inventory.availableQty,
         })
         .catch((err) => this.logger.warn('Failed to check low stock alert:', err));
+
+      // Audit logging for dispatch operation
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for stock movement creation', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
 
       return { success: true, inventory, movement };
     } catch (err) {
@@ -289,6 +315,18 @@ export class InventoryService {
           .catch((err) => this.logger.warn('Failed to check low stock alert:', err));
       }
 
+      // Audit logging for adjustment operation
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for stock movement creation', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
+
       return { success: true, inventory, movement };
     } catch (err) {
       // If unique constraint on idempotencyKey occurred concurrently, return existing movement
@@ -372,6 +410,28 @@ export class InventoryService {
           dto.idempotencyKey,
           dto.note,
         );
+
+      // Audit logging for transfer operation
+      this.auditMiddleware
+        .logCreate('StockMovement', transferOutMovement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for transfer out movement', err);
+        });
+      this.auditMiddleware
+        .logCreate('StockMovement', transferInMovement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for transfer in movement', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', fromInventory.id, null, fromInventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for from inventory update', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', toInventory.id, null, toInventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for to inventory update', err);
+        });
 
       return {
         success: true,
@@ -467,6 +527,18 @@ export class InventoryService {
         dto.note,
       );
 
+      // Audit logging for reserve operation
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for reserve movement', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
+
       return { success: true, inventory, movement };
     } catch (err) {
       if (err instanceof Error && err.message === 'NotEnoughStock') {
@@ -542,6 +614,18 @@ export class InventoryService {
         dto.idempotencyKey,
         dto.note,
       );
+
+      // Audit logging for release reservation operation
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for release movement', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
 
       return { success: true, inventory, movement };
     } catch (err) {

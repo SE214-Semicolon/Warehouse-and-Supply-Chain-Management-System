@@ -14,6 +14,7 @@ import { DispatchInventoryDto } from '../../inventory/dto/dispatch-inventory.dto
 import { OrderStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../database/prisma/prisma.service';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
 
 @Injectable()
 export class SalesOrderService {
@@ -23,6 +24,7 @@ export class SalesOrderService {
     private readonly soRepo: SalesOrderRepository,
     private readonly inventorySvc: InventoryService,
     private readonly prisma: PrismaService,
+    private readonly auditMiddleware: AuditMiddleware,
   ) {}
 
   /**
@@ -86,6 +88,14 @@ export class SalesOrderService {
     const created = await this.soRepo.findById(so.id);
     if (!created) throw new NotFoundException('SO not found after creation');
     this.logger.log(`Sales order created successfully: ${created.id} (${soNo})`);
+
+    // Audit logging for SO creation
+    this.auditMiddleware
+      .logCreate('SalesOrder', created as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for SO creation', err);
+      });
+
     return {
       success: true,
       data: created,
@@ -155,6 +165,19 @@ export class SalesOrderService {
     const updated = await this.soRepo.findById(id);
     if (!updated) throw new NotFoundException('SO not found after submit');
     this.logger.log(`Sales order submitted successfully: ${id}`);
+
+    // Audit logging for SO submission (status update)
+    this.auditMiddleware
+      .logUpdate(
+        'SalesOrder',
+        id,
+        so as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for SO submission', err);
+      });
+
     return updated;
   }
 
@@ -285,6 +308,19 @@ export class SalesOrderService {
     await this.soRepo.updateTotals(id);
     const updated = await this.soRepo.findById(id);
     if (!updated) throw new NotFoundException('SO not found after update');
+
+    // Audit logging for SO update
+    this.auditMiddleware
+      .logUpdate(
+        'SalesOrder',
+        id,
+        so as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for SO update', err);
+      });
+
     return updated;
   }
 
@@ -433,6 +469,19 @@ export class SalesOrderService {
 
     const updated = await this.soRepo.findById(soId);
     if (!updated) throw new NotFoundException('SO not found after fulfillment');
+
+    // Audit logging for SO fulfillment (status update)
+    this.auditMiddleware
+      .logUpdate(
+        'SalesOrder',
+        soId,
+        so as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for SO fulfillment', err);
+      });
+
     return updated;
   }
 
@@ -494,6 +543,19 @@ export class SalesOrderService {
     const updated = await this.soRepo.findById(id);
     if (!updated) throw new NotFoundException('SO not found after cancel');
     this.logger.log(`Sales order cancelled successfully: ${id}`);
+
+    // Audit logging for SO cancellation
+    this.auditMiddleware
+      .logUpdate(
+        'SalesOrder',
+        id,
+        so as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for SO cancellation', err);
+      });
+
     return updated;
   }
 }
