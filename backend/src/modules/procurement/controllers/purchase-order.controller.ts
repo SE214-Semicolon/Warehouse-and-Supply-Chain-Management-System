@@ -10,7 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt.guard';
 import { RolesGuard } from 'src/modules/auth/guards/roles.guard';
 import { Roles } from 'src/modules/auth/decorators/roles.decorator';
@@ -40,10 +40,22 @@ export class PurchaseOrderController {
   }
 
   @Post(':id/submit')
-  @ApiOperation({ summary: 'Submit PO (draft -> ordered)' })
+  @ApiOperation({
+    summary: 'Submit PO (draft -> ordered)',
+    description: 'User ID được tự động lấy từ JWT token, không cần gửi trong body',
+  })
+  @ApiBody({
+    type: SubmitPurchaseOrderDto,
+    description: 'Optional notes for submission',
+    required: false,
+  })
   @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
-  submit(@Param('id') id: string, @Body() dto: SubmitPurchaseOrderDto) {
-    return this.svc.submitPurchaseOrder(id, dto);
+  submit(
+    @Param('id') id: string,
+    @Body() dto: SubmitPurchaseOrderDto,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.svc.submitPurchaseOrder(id, dto, req.user.userId);
   }
 
   @Get(':id')
@@ -75,10 +87,22 @@ export class PurchaseOrderController {
   }
 
   @Post(':id/cancel')
-  @ApiOperation({ summary: 'Hủy PO' })
+  @ApiOperation({
+    summary: 'Hủy PO',
+    description: 'User ID được tự động lấy từ JWT token, không cần gửi trong body',
+  })
+  @ApiBody({
+    type: CancelPurchaseOrderDto,
+    description: 'Optional cancellation reason',
+    required: false,
+  })
   @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
-  cancel(@Param('id') id: string, @Body() dto: CancelPurchaseOrderDto) {
-    return this.svc.cancelPurchaseOrder(id, dto);
+  cancel(
+    @Param('id') id: string,
+    @Body() dto: CancelPurchaseOrderDto,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.svc.cancelPurchaseOrder(id, dto, req.user.userId);
   }
 
   @Post(':id/items')

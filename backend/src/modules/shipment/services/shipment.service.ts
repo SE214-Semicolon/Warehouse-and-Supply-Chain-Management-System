@@ -321,4 +321,46 @@ export class ShipmentService {
     if (!shipment) throw new NotFoundException('Shipment not found with this tracking code');
     return shipment;
   }
+
+  async deleteShipment(id: string) {
+    this.logger.log(`Attempting to delete shipment: ${id}`);
+    const shipment = await this.shipmentRepo.findById(id);
+    if (!shipment) {
+      this.logger.warn(`Shipment not found: ${id}`);
+      throw new NotFoundException('Không tìm thấy vận đơn');
+    }
+
+    // Validation: Không cho xóa nếu đang in_transit hoặc delivered
+    if (shipment.status === ShipmentStatus.in_transit) {
+      this.logger.warn(`Cannot delete shipment ${id}: status is ${shipment.status}`);
+      throw new BadRequestException('Không thể xóa vận đơn đang trong quá trình vận chuyển.');
+    }
+
+    if (shipment.status === ShipmentStatus.delivered) {
+      this.logger.warn(`Cannot delete shipment ${id}: status is ${shipment.status}`);
+      throw new BadRequestException('Không thể xóa vận đơn đã giao hàng thành công.');
+    }
+
+    // Soft delete: chuyển status thành cancelled
+    await this.shipmentRepo.update(id, { status: ShipmentStatus.cancelled });
+
+    const updated = await this.shipmentRepo.findById(id);
+
+    // Audit logging for Shipment deletion (soft delete)
+    if (updated) {
+      this.auditMiddleware
+        .logUpdate(
+          'Shipment',
+          id,
+          shipment as Record<string, unknown>,
+          updated as Record<string, unknown>,
+        )
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for Shipment deletion', err);
+        });
+    }
+
+    this.logger.log(`Shipment ${id} soft deleted (cancelled) successfully`);
+    return updated;
+  }
 }

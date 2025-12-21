@@ -105,7 +105,7 @@ export class PurchaseOrderService {
    * Submit Purchase Order API
    * Minimum test cases: 6
    * - PO-TC11: Submit draft PO successfully (200)
-   * - PO-TC12: Missing userId (400, tested by DTO)
+   * - PO-TC12: Missing userId (400, now extracted from JWT)
    * - PO-TC13: Submit PO not in draft status (400)
    * - PO-TC14: Submit non-existent PO (404)
    * - PO-TC15: Permission denied role warehouse_staff (403, tested by guard)
@@ -114,11 +114,9 @@ export class PurchaseOrderService {
   async submitPurchaseOrder(
     id: string,
     dto: SubmitPurchaseOrderDto,
+    submittedById: string,
   ): Promise<PurchaseOrderResponseDto> {
-    this.logger.log(`Submitting purchase order: ${id}`);
-    if (!dto?.userId) {
-      throw new BadRequestException('userId is required');
-    }
+    this.logger.log(`Submitting purchase order: ${id} by user: ${submittedById}`);
     const po = await this.poRepo.findById(id);
     if (!po) {
       this.logger.warn(`Purchase order not found: ${id}`);
@@ -232,10 +230,13 @@ export class PurchaseOrderService {
         createdById: r.createdById,
         idempotencyKey: r.idempotencyKey,
       };
-      const invResult: any = await this.inventorySvc.receiveInventory(payload);
+      const invResult = (await this.inventorySvc.receiveInventory(payload)) as {
+        success: boolean;
+        idempotent?: boolean;
+      };
 
       // Track increments only when this call is not idempotently ignored
-      if (!invResult?.idempotent) {
+      if (!invResult.idempotent) {
         increments.push({ poItemId: r.poItemId, qtyInc: r.qtyToReceive });
       }
     }
@@ -410,11 +411,8 @@ export class PurchaseOrderService {
     return updated;
   }
 
-  async cancelPurchaseOrder(id: string, dto: { userId: string; reason?: string }) {
-    // Validate userId is provided (required by DTO)
-    if (!dto.userId) {
-      throw new BadRequestException('userId is required');
-    }
+  async cancelPurchaseOrder(id: string, dto: { reason?: string }, cancelledById: string) {
+    this.logger.log(`Cancelling purchase order: ${id} by user: ${cancelledById}`);
 
     const po = await this.poRepo.findById(id);
     if (!po) throw new NotFoundException('PO not found');
