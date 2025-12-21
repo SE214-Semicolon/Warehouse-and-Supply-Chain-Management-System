@@ -2634,7 +2634,7 @@ describe('InventoryService', () => {
     it('should get expiry alerts with default parameters', async () => {
       const dto = {};
       const mockResult = {
-        inventory: [
+        inventories: [
           {
             id: 'inv-1',
             productBatchId: 'batch-1',
@@ -2650,14 +2650,14 @@ describe('InventoryService', () => {
         page: 1,
         limit: 20,
         totalPages: 1,
-      };
+      } as any;
 
       inventoryRepo.findExpiringInventory.mockResolvedValue(mockResult);
 
       const result = await service.getExpiryAlerts(dto);
 
       expect(result.success).toBe(true);
-      expect(result.inventory).toHaveLength(1);
+      expect(result.inventories).toHaveLength(1);
       expect(inventoryRepo.findExpiringInventory).toHaveBeenCalledWith(
         30, // default threshold
         undefined,
@@ -2697,12 +2697,12 @@ describe('InventoryService', () => {
       };
 
       inventoryRepo.findExpiringInventory.mockResolvedValue({
-        inventory: [],
+        inventories: [],
         total: 0,
         page: 1,
         limit: 10,
         totalPages: 0,
-      });
+      } as any);
 
       await service.getExpiryAlerts(dto);
 
@@ -2722,7 +2722,7 @@ describe('InventoryService', () => {
     it('should generate stock level report with default groupBy', async () => {
       const dto = {};
       const mockResult = {
-        data: [
+        groupedData: [
           {
             locationId: 'loc-1',
             locationName: 'Warehouse A',
@@ -2735,14 +2735,14 @@ describe('InventoryService', () => {
         page: 1,
         limit: 20,
         totalPages: 1,
-      };
+      } as any;
 
       inventoryRepo.generateStockLevelReport.mockResolvedValue(mockResult);
 
       const result = await service.getStockLevelReport(dto);
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(1);
+      expect(result.groupedData).toHaveLength(1);
       expect(inventoryRepo.generateStockLevelReport).toHaveBeenCalledWith(
         undefined,
         undefined,
@@ -2776,12 +2776,12 @@ describe('InventoryService', () => {
       };
 
       inventoryRepo.generateStockLevelReport.mockResolvedValue({
-        data: [],
+        groupedData: [],
         total: 0,
         page: 2,
         limit: 15,
         totalPages: 0,
-      });
+      } as any);
 
       await service.getStockLevelReport(dto);
 
@@ -2813,7 +2813,7 @@ describe('InventoryService', () => {
         page: 1,
         limit: 20,
         totalPages: 1,
-      };
+      } as any;
 
       inventoryRepo.generateMovementReport.mockResolvedValue(mockResult);
 
@@ -2849,8 +2849,8 @@ describe('InventoryService', () => {
     });
 
     it('should filter by date range, location, product and movement type', async () => {
-      const startDate = new Date('2024-01-01');
-      const endDate = new Date('2024-01-31');
+      const startDate = '2024-01-01';
+      const endDate = '2024-01-31';
       const dto = {
         startDate,
         endDate,
@@ -2869,7 +2869,7 @@ describe('InventoryService', () => {
         page: 1,
         limit: 50,
         totalPages: 0,
-      });
+      } as any);
 
       await service.getMovementReport(dto);
 
@@ -2891,7 +2891,7 @@ describe('InventoryService', () => {
     it('should generate valuation report with default method', async () => {
       const dto = {};
       const mockResult = {
-        data: [
+        valuationData: [
           {
             productId: 'prod-1',
             productSku: 'PROD-001',
@@ -2901,18 +2901,20 @@ describe('InventoryService', () => {
             avgUnitPrice: 50,
           },
         ],
+        grandTotal: 25000,
+        method: 'AVERAGE',
         total: 1,
         page: 1,
         limit: 20,
         totalPages: 1,
-      };
+      } as any;
 
       inventoryRepo.generateValuationReport.mockResolvedValue(mockResult);
 
       const result = await service.getValuationReport(dto);
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(1);
+      expect(result.valuationData).toHaveLength(1);
       expect(inventoryRepo.generateValuationReport).toHaveBeenCalledWith(
         undefined,
         undefined,
@@ -2946,12 +2948,14 @@ describe('InventoryService', () => {
       };
 
       inventoryRepo.generateValuationReport.mockResolvedValue({
-        data: [],
+        valuationData: [],
+        grandTotal: 0,
+        method: 'FIFO',
         total: 0,
         page: 1,
         limit: 10,
         totalPages: 0,
-      });
+      } as any);
 
       await service.getValuationReport(dto);
 
@@ -2970,12 +2974,14 @@ describe('InventoryService', () => {
       };
 
       inventoryRepo.generateValuationReport.mockResolvedValue({
-        data: [],
+        valuationData: [],
+        grandTotal: 0,
+        method: 'LIFO',
         total: 0,
         page: 1,
         limit: 20,
         totalPages: 0,
-      });
+      } as any);
 
       await service.getValuationReport(dto);
 

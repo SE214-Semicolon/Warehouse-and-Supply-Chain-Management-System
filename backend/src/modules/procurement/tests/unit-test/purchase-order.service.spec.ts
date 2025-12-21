@@ -1156,7 +1156,7 @@ describe('Purchase Order Service', () => {
       };
 
       poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(updatedPo);
-      poRepo.update.mockResolvedValue(undefined);
+      poRepo.update.mockResolvedValue(mockPurchaseOrder as any);
 
       const result = await service.updatePurchaseOrder(id, updateDto);
 
@@ -1197,12 +1197,15 @@ describe('Purchase Order Service', () => {
         id: 'item-1',
         purchaseOrderId: id,
         productId: 'prod-1',
+        productBatchId: null,
         qtyOrdered: 100,
+        qtyReceived: 0,
         unitPrice: 50,
         lineTotal: 5000,
-      });
-      poRepo.update.mockResolvedValue(undefined);
-      poRepo.updateItem.mockResolvedValue(undefined);
+        remark: null,
+      } as any);
+      poRepo.update.mockResolvedValue(mockPurchaseOrder as any);
+      poRepo.updateItem.mockResolvedValue({} as any);
 
       const result = await service.updatePurchaseOrder(id, updateDto);
 
@@ -1225,7 +1228,7 @@ describe('Purchase Order Service', () => {
       };
 
       poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(cancelledPo);
-      poRepo.cancel.mockResolvedValue(undefined);
+      poRepo.cancel.mockResolvedValue(mockPurchaseOrder as any);
 
       const result = await service.cancelPurchaseOrder(id, cancelDto);
 
@@ -1283,7 +1286,7 @@ describe('Purchase Order Service', () => {
       };
 
       poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(cancelledPo);
-      poRepo.cancel.mockResolvedValue(undefined);
+      poRepo.cancel.mockResolvedValue(mockPurchaseOrder as any);
 
       const result = await service.cancelPurchaseOrder(id, cancelDto);
 
@@ -1320,7 +1323,7 @@ describe('Purchase Order Service', () => {
         .mockResolvedValueOnce({ ...mockPurchaseOrder, status: PoStatus.draft })
         .mockResolvedValueOnce(updatedPo);
       poRepo.addItems.mockResolvedValue(undefined);
-      poRepo.updateTotals.mockResolvedValue(undefined);
+      poRepo.updateTotals.mockResolvedValue(mockPurchaseOrder as any);
 
       const result = await service.addPurchaseOrderItems(id, items);
 
@@ -1409,18 +1412,26 @@ describe('Purchase Order Service', () => {
           id: 'item-uuid-1',
           purchaseOrderId: id,
           productId: 'prod-1',
+          productBatchId: null,
           qtyOrdered: 100,
           qtyReceived: 0,
-        })
+          unitPrice: null,
+          lineTotal: null,
+          remark: null,
+        } as any)
         .mockResolvedValueOnce({
           id: 'item-uuid-2',
           purchaseOrderId: id,
           productId: 'prod-2',
+          productBatchId: null,
           qtyOrdered: 50,
           qtyReceived: 0,
-        });
+          unitPrice: null,
+          lineTotal: null,
+          remark: null,
+        } as any);
       poRepo.removeItems.mockResolvedValue(undefined);
-      poRepo.updateTotals.mockResolvedValue(undefined);
+      poRepo.updateTotals.mockResolvedValue(mockPurchaseOrder as any);
 
       const result = await service.removePurchaseOrderItems(id, itemIds);
 
@@ -1474,9 +1485,13 @@ describe('Purchase Order Service', () => {
         id: 'item-uuid-1',
         purchaseOrderId: 'different-po-id',
         productId: 'prod-1',
+        productBatchId: null,
         qtyOrdered: 100,
         qtyReceived: 0,
-      });
+        unitPrice: null,
+        lineTotal: null,
+        remark: null,
+      } as any);
 
       await expect(service.removePurchaseOrderItems(id, itemIds)).rejects.toThrow(
         'Item item-uuid-1 not found in this PO',
