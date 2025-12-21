@@ -3,6 +3,7 @@ import { InventoryService } from '../../services/inventory.service';
 import { InventoryRepository } from '../../repositories/inventory.repository';
 import { CacheService } from '../../../../cache/cache.service';
 import { AlertGenerationService } from '../../../alerts/services/alert-generation.service';
+import { AuditMiddleware } from '../../../../database/middleware/audit.middleware';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AdjustmentReason } from '../../dto/adjust-inventory.dto';
@@ -120,12 +121,20 @@ describe('InventoryService', () => {
       checkDemandAlert: jest.fn().mockResolvedValue(undefined),
     };
 
+    const mockAuditMiddleware = {
+      logCreate: jest.fn().mockResolvedValue(undefined),
+      logUpdate: jest.fn().mockResolvedValue(undefined),
+      logDelete: jest.fn().mockResolvedValue(undefined),
+      logOperation: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InventoryService,
         { provide: InventoryRepository, useValue: mockInventoryRepo },
         { provide: CacheService, useValue: mockCacheService },
         { provide: AlertGenerationService, useValue: mockAlertGenerationService },
+        { provide: AuditMiddleware, useValue: mockAuditMiddleware },
       ],
     }).compile();
 
@@ -2655,7 +2664,7 @@ describe('InventoryService', () => {
         undefined,
         1,
         20,
-        'productBatch',
+        'updatedAt',
         'asc',
       );
     });
@@ -2703,7 +2712,7 @@ describe('InventoryService', () => {
         'prod-1',
         1,
         10,
-        'productBatch',
+        'updatedAt',
         'asc',
       );
     });

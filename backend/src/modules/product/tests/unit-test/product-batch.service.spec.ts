@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductBatchService } from '../../services/product-batch.service';
 import { ProductBatchRepository } from '../../repositories/product-batch.repository';
 import { ProductRepository } from '../../repositories/product.repository';
+import { AuditMiddleware } from '../../../../database/middleware/audit.middleware';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
 describe('ProductBatchService', () => {
@@ -56,6 +57,13 @@ describe('ProductBatchService', () => {
       findOne: jest.fn(),
     };
 
+    const mockAuditMiddleware = {
+      logCreate: jest.fn().mockResolvedValue(undefined),
+      logUpdate: jest.fn().mockResolvedValue(undefined),
+      logDelete: jest.fn().mockResolvedValue(undefined),
+      logOperation: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductBatchService,
@@ -66,6 +74,10 @@ describe('ProductBatchService', () => {
         {
           provide: ProductRepository,
           useValue: mockProductRepo,
+        },
+        {
+          provide: AuditMiddleware,
+          useValue: mockAuditMiddleware,
         },
       ],
     }).compile();

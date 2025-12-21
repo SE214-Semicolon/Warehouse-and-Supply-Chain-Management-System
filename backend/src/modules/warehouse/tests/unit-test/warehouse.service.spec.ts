@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { WarehouseService } from '../../services/warehouse.service';
 import { WarehouseRepository } from '../../repositories/warehouse.repository';
 import { CacheService } from '../../../../cache/cache.service';
+import { AuditMiddleware } from '../../../../database/middleware/audit.middleware';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
 describe('WarehouseService', () => {
@@ -41,6 +42,13 @@ describe('WarehouseService', () => {
       reset: jest.fn(),
     };
 
+    const mockAuditMiddleware = {
+      logCreate: jest.fn().mockResolvedValue(undefined),
+      logUpdate: jest.fn().mockResolvedValue(undefined),
+      logDelete: jest.fn().mockResolvedValue(undefined),
+      logOperation: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WarehouseService,
@@ -51,6 +59,10 @@ describe('WarehouseService', () => {
         {
           provide: CacheService,
           useValue: mockCacheService,
+        },
+        {
+          provide: AuditMiddleware,
+          useValue: mockAuditMiddleware,
         },
       ],
     }).compile();

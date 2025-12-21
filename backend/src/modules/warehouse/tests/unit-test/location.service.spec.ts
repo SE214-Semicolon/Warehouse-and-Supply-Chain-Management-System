@@ -3,6 +3,7 @@ import { LocationService } from '../../services/location.service';
 import { LocationRepository } from '../../repositories/location.repository';
 import { WarehouseRepository } from '../../repositories/warehouse.repository';
 import { CacheService } from '../../../../cache/cache.service';
+import { AuditMiddleware } from '../../../../database/middleware/audit.middleware';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
 describe('LocationService', () => {
@@ -63,6 +64,13 @@ describe('LocationService', () => {
       reset: jest.fn(),
     };
 
+    const mockAuditMiddleware = {
+      logCreate: jest.fn().mockResolvedValue(undefined),
+      logUpdate: jest.fn().mockResolvedValue(undefined),
+      logDelete: jest.fn().mockResolvedValue(undefined),
+      logOperation: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LocationService,
@@ -77,6 +85,10 @@ describe('LocationService', () => {
         {
           provide: CacheService,
           useValue: mockCacheService,
+        },
+        {
+          provide: AuditMiddleware,
+          useValue: mockAuditMiddleware,
         },
       ],
     }).compile();

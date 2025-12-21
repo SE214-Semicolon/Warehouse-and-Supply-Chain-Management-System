@@ -4,6 +4,7 @@ import { SalesOrderService } from '../../services/sales-order.service';
 import { SalesOrderRepository } from '../../repositories/sales-order.repository';
 import { InventoryService } from '../../../inventory/services/inventory.service';
 import { PrismaService } from '../../../../database/prisma/prisma.service';
+import { AuditMiddleware } from '../../../../database/middleware/audit.middleware';
 import { OrderStatus } from '@prisma/client';
 
 describe('SalesOrderService', () => {
@@ -73,6 +74,13 @@ describe('SalesOrderService', () => {
       },
     };
 
+    const mockAuditMiddleware = {
+      logCreate: jest.fn().mockResolvedValue(undefined),
+      logUpdate: jest.fn().mockResolvedValue(undefined),
+      logDelete: jest.fn().mockResolvedValue(undefined),
+      logOperation: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SalesOrderService,
@@ -87,6 +95,10 @@ describe('SalesOrderService', () => {
         {
           provide: PrismaService,
           useValue: mockPrisma,
+        },
+        {
+          provide: AuditMiddleware,
+          useValue: mockAuditMiddleware,
         },
       ],
     }).compile();

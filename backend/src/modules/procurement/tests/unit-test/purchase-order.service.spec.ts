@@ -4,6 +4,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PurchaseOrderService } from '../../services/purchase-order.service';
 import { PurchaseOrderRepository } from '../../repositories/purchase-order.repository';
 import { InventoryService } from '../../../inventory/services/inventory.service';
+import { AuditMiddleware } from '../../../../database/middleware/audit.middleware';
 import { PoStatus } from '@prisma/client';
 
 describe('Purchase Order Service', () => {
@@ -69,6 +70,13 @@ describe('Purchase Order Service', () => {
       receiveInventory: jest.fn(),
     };
 
+    const mockAuditMiddleware = {
+      logCreate: jest.fn().mockResolvedValue(undefined),
+      logUpdate: jest.fn().mockResolvedValue(undefined),
+      logDelete: jest.fn().mockResolvedValue(undefined),
+      logOperation: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PurchaseOrderService,
@@ -79,6 +87,10 @@ describe('Purchase Order Service', () => {
         {
           provide: InventoryService,
           useValue: mockInventorySvc,
+        },
+        {
+          provide: AuditMiddleware,
+          useValue: mockAuditMiddleware,
         },
       ],
     }).compile();
