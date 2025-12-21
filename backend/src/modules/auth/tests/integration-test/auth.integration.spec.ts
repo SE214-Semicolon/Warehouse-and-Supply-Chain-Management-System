@@ -264,6 +264,7 @@ describe('Auth Module - E2E Integration Tests', () => {
 
   describe('GET /auth/me', () => {
     let accessToken: string;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let userId: string;
 
     beforeAll(async () => {

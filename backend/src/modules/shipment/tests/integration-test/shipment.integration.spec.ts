@@ -13,12 +13,16 @@ describe('Shipment Module - E2E Integration Tests', () => {
   let prisma: PrismaService;
   let jwtService: JwtService;
   let logisticsToken: string;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let adminToken: string;
   let warehouseId: string;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let locationId: string;
   let productId: string;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let productBatchId: string;
   let testCustomerId: string;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let salesOrderId: string;
   let shipmentId: string;
 

@@ -280,7 +280,7 @@ describe('Alert Module - Integration Tests', () => {
   });
 
   describe('Batch Operations', () => {
-    let alertIds: string[] = [];
+    const alertIds: string[] = [];
 
     beforeAll(async () => {
       // Create multiple alerts for batch testing

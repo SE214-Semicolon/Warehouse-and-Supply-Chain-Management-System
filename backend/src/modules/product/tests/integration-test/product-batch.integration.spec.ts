@@ -907,6 +907,7 @@ describe('Product Batch Module (e2e)', () => {
             unit: 'pcs',
           },
         });
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         productId = newProduct.id;
       }
 

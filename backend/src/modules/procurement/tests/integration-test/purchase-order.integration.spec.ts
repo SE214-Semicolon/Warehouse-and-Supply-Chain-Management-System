@@ -1019,7 +1019,7 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-35: Receive multiple items simultaneously
     it('PO-INT-35: Should receive multiple items simultaneously', async () => {
-      const { poId, itemId, productId, batchId } = await createOrderedPoWithItem();
+      const { poId, itemId, productId: _productId, batchId } = await createOrderedPoWithItem();
 
       // Add another item to the PO
       const item2 = await prisma.purchaseOrderItem.create({
@@ -1463,7 +1463,7 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-50: Receive multiple times with multiple items
     it('PO-INT-50: Should receive multiple times with multiple items', async () => {
-      const { poId, itemId, productId, batchId } = await createOrderedPoWithItem();
+      const { poId, itemId, productId: _productId, batchId } = await createOrderedPoWithItem();
 
       // Add another item
       const item2 = await prisma.purchaseOrderItem.create({

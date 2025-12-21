@@ -288,6 +288,7 @@ describe('Demand Planning Module - E2E Integration Tests', () => {
 
   describe('INTEGRATION-DEMAND-01: CRUD Operations', () => {
     let forecastId: string;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const integrationSuffix = `int-${Date.now()}`;
 
     beforeAll(async () => {
