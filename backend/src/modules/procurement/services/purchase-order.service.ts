@@ -13,6 +13,7 @@ import { QueryPurchaseOrderDto } from '../dto/purchase-order/query-po.dto';
 import { PoStatus, PurchaseOrder, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
+import { PrismaService } from '../../../database/prisma/prisma.service';
 
 @Injectable()
 export class PurchaseOrderService {
@@ -22,6 +23,7 @@ export class PurchaseOrderService {
     private readonly poRepo: PurchaseOrderRepository,
     private readonly inventorySvc: InventoryService,
     private readonly auditMiddleware: AuditMiddleware,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -219,10 +221,50 @@ export class PurchaseOrderService {
       }
     }
 
-    // 3) Gọi Inventory receive cho từng dòng (Inventory hỗ trợ idempotencyKey)
-    //    -> Nếu Inventory trả về idempotent=true, KHÔNG được tăng qtyReceived lần nữa.
+    // 3) REFACTORED: Ensure ProductBatch exists before receiving inventory
+    //    If batch doesn't exist, create it first (critical for data integrity)
+    //    Then call Inventory receive for each line (Inventory supports idempotencyKey)
+    //    -> If Inventory returns idempotent=true, do NOT increment qtyReceived again
     const increments: { poItemId: string; qtyInc: number }[] = [];
     for (const r of dto.items) {
+      // STEP 3A: Ensure ProductBatch exists (create if needed)
+      const poItem = existing.find((e) => e.id === r.poItemId)!;
+      const productId = poItem.productId;
+
+      if (!productId) {
+        this.logger.error(`PO item ${r.poItemId} has no productId`);
+        throw new BadRequestException(`PO item ${r.poItemId} is missing productId`);
+      }
+
+      // Check if batch exists, if not create it
+      let batch = await this.prisma.productBatch.findUnique({
+        where: { id: r.productBatchId },
+      });
+
+      if (!batch) {
+        this.logger.log(
+          `ProductBatch ${r.productBatchId} not found, creating new batch for product ${productId}`,
+        );
+        try {
+          batch = await this.prisma.productBatch.create({
+            data: {
+              id: r.productBatchId, // Use the provided batchId
+              productId: productId,
+              batchNo: `BATCH-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`, // Auto-generate batch number
+              quantity: 0, // Will be updated by inventory receive
+              // manufactureDate and expiryDate can be added later if needed
+            },
+          });
+          this.logger.log(`Created new ProductBatch: ${batch.id} (${batch.batchNo})`);
+        } catch (error) {
+          this.logger.error(`Failed to create ProductBatch ${r.productBatchId}:`, error);
+          throw new BadRequestException(
+            `Failed to create product batch: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+        }
+      }
+
+      // STEP 3B: Receive inventory (batch now guaranteed to exist)
       const payload: ReceiveInventoryDto = {
         productBatchId: r.productBatchId,
         locationId: r.locationId,

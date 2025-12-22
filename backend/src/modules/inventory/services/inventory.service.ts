@@ -157,7 +157,7 @@ export class InventoryService {
    * - Dispatch exact available quantity (all stock)
    * - Dispatch minimal quantity of 1
    */
-  async dispatchInventory(dto: DispatchInventoryDto) {
+  async dispatchInventory(dto: DispatchInventoryDto, options?: { consumeReservation?: boolean }) {
     // Basic existence validation
     const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
     if (!batch) {
@@ -191,6 +191,11 @@ export class InventoryService {
       }
     }
 
+    const consumeReservation = options?.consumeReservation || false;
+    this.logger.log(
+      `Dispatching inventory with consumeReservation=${consumeReservation} for batch ${dto.productBatchId}`,
+    );
+
     try {
       const { inventory, movement } = await this.inventoryRepo.dispatchInventoryTx(
         dto.productBatchId,
@@ -198,6 +203,7 @@ export class InventoryService {
         dto.quantity,
         dto.createdById,
         dto.idempotencyKey,
+        consumeReservation,
       );
 
       // Trigger low stock alert check (non-blocking)
@@ -223,8 +229,23 @@ export class InventoryService {
 
       return { success: true, inventory, movement };
     } catch (err) {
-      if (err instanceof Error && err.message === 'NotEnoughStock') {
-        throw new BadRequestException('Not enough stock available');
+      if (err instanceof Error) {
+        if (err.message === 'NotEnoughStock') {
+          throw new BadRequestException('Not enough stock available');
+        }
+        if (err.message === 'NotEnoughReservedStock') {
+          throw new BadRequestException(
+            'Not enough reserved stock. This may indicate the reservation was already consumed or released.',
+          );
+        }
+        if (err.message === 'ReservedQtyNegative') {
+          throw new BadRequestException(
+            'CRITICAL: Reserved quantity went negative. Data inconsistency detected.',
+          );
+        }
+        if (err.message === 'InventoryNotFound') {
+          throw new NotFoundException('Inventory record not found');
+        }
       }
 
       // If unique constraint on idempotencyKey occurred concurrently, return existing movement
@@ -1063,6 +1084,73 @@ export class InventoryService {
     return {
       success: true,
       ...result,
+    };
+  }
+
+  /**
+   * Get inventory for specific batch and location
+   * Used for batch-specific validation in Sales Order submission
+   */
+  async getInventoryByBatchAndLocation(
+    productBatchId: string,
+    locationId: string,
+  ): Promise<{ availableQty: number; reservedQty: number } | null> {
+    const inventory = await this.inventoryRepo.findInventory(productBatchId, locationId);
+    if (!inventory) return null;
+    return {
+      availableQty: inventory.availableQty,
+      reservedQty: inventory.reservedQty,
+    };
+  }
+
+  /**
+   * Get GLOBAL inventory summary for a product (all batches/locations)
+   * Used for flexible validation when SO items don't have specific batch/location
+   *
+   * Formula: TotalAvailable = SUM(availableQty) across ALL inventory records
+   * Note: This does NOT consider reservedQty from other orders
+   */
+  async getGlobalInventoryByProduct(productId: string): Promise<{
+    productId: string;
+    productName: string | null;
+    totalAvailableQty: number;
+    totalReservedQty: number;
+    batchCount: number;
+  }> {
+    this.logger.log(`Calculating global inventory for product: ${productId}`);
+
+    // Query all inventory records for this product across all batches and locations
+    const inventories = await this.inventoryRepo.findInventoriesByProduct(productId);
+
+    if (!inventories || inventories.length === 0) {
+      // Product exists but has no inventory
+      return {
+        productId,
+        productName: null,
+        totalAvailableQty: 0,
+        totalReservedQty: 0,
+        batchCount: 0,
+      };
+    }
+
+    // Calculate totals
+    const totalAvailableQty = inventories.reduce((sum, inv) => sum + inv.availableQty, 0);
+    const totalReservedQty = inventories.reduce((sum, inv) => sum + inv.reservedQty, 0);
+    const batchCount = new Set(inventories.map((inv) => inv.productBatchId)).size;
+
+    // Get product name from first inventory record
+    const productName = inventories[0]?.productBatch?.product?.name || null;
+
+    this.logger.log(
+      `Global inventory for product ${productId}: Available=${totalAvailableQty}, Reserved=${totalReservedQty}, Batches=${batchCount}`,
+    );
+
+    return {
+      productId,
+      productName,
+      totalAvailableQty,
+      totalReservedQty,
+      batchCount,
     };
   }
 }
