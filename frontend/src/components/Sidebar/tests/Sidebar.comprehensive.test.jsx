@@ -344,7 +344,7 @@ describe("Sidebar Component - Comprehensive Tests", () => {
       renderSidebar();
 
       const buttons = screen.getAllByRole("button");
-      expect(buttons.length).toBe(4);
+      expect(buttons.length).toBe(5);
     });
 
     it("maintains correct menu order", () => {
@@ -358,6 +358,7 @@ describe("Sidebar Component - Comprehensive Tests", () => {
         "Warehouse",
         "Procurement",
         "Shipment",
+        "Reports",
       ]);
     });
 

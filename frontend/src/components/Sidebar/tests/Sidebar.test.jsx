@@ -208,7 +208,7 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter();
 
       const buttons = screen.getAllByRole('button');
-      expect(buttons.length).toBe(4); // 4 menu items
+      expect(buttons.length).toBe(5); // 4 menu items
     });
 
     it('should have text labels for all menu items', () => {
