@@ -19,7 +19,7 @@ describe('Inventory Module (e2e)', () => {
   let prisma: PrismaService;
   let jwtService: JwtService;
   let adminToken: string;
-  let _managerToken: string;
+  let managerToken: string;
   let _staffToken: string;
   let testProductBatchId: string;
   let testLocationId: string;
@@ -94,7 +94,7 @@ describe('Inventory Module (e2e)', () => {
 
     // Generate JWT tokens
     adminToken = `Bearer ${jwtService.sign({ sub: adminUser.id, email: adminUser.email, role: adminUser.role })}`;
-    _managerToken = `Bearer ${jwtService.sign({ sub: managerUser.id, email: managerUser.email, role: managerUser.role })}`;
+    managerToken = `Bearer ${jwtService.sign({ sub: managerUser.id, email: managerUser.email, role: managerUser.role })}`;
     _staffToken = `Bearer ${jwtService.sign({ sub: staffUser.id, email: staffUser.email, role: staffUser.role })}`;
 
     testUserId = adminUser.id;
@@ -2453,5 +2453,225 @@ describe('Inventory Module (e2e)', () => {
 
       expect(deleteResponse.body.success).toBe(true);
     }, 180000);
+  });
+
+  describe('INTEGRATION-INV-01: Receive Operations', () => {
+    it('should receive inventory with all fields', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/inventory/receive')
+        .set('Authorization', adminToken)
+        .send({
+          productBatchId: testProductBatchId,
+          locationId: testLocationId,
+          quantity: 200,
+          createdById: testUserId,
+          idempotencyKey: `integration-receive-${Date.now()}`,
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.inventory.availableQty).toBeGreaterThanOrEqual(200);
+    });
+
+    it('should handle idempotency correctly', async () => {
+      const idempKey = `integration-idem-${Date.now()}`;
+
+      const response1 = await request(app.getHttpServer())
+        .post('/inventory/receive')
+        .set('Authorization', adminToken)
+        .send({
+          productBatchId: testProductBatchId,
+          locationId: testLocationId,
+          quantity: 100,
+          idempotencyKey: idempKey,
+        })
+        .expect(201);
+
+      expect(response1.body.success).toBe(true);
+
+      const response2 = await request(app.getHttpServer())
+        .post('/inventory/receive')
+        .set('Authorization', adminToken)
+        .send({
+          productBatchId: testProductBatchId,
+          locationId: testLocationId,
+          quantity: 100,
+          idempotencyKey: idempKey,
+        })
+        .expect(201);
+
+      expect(response2.body.idempotent).toBe(true);
+    });
+  });
+
+  describe('INTEGRATION-INV-02: Dispatch Operations', () => {
+    it('should dispatch inventory successfully', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/inventory/dispatch')
+        .set('Authorization', adminToken)
+        .send({
+          productBatchId: testProductBatchId,
+          locationId: testLocationId,
+          quantity: 50,
+          idempotencyKey: `integration-dispatch-${Date.now()}`,
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should reject dispatch when insufficient stock', async () => {
+      await request(app.getHttpServer())
+        .post('/inventory/dispatch')
+        .set('Authorization', adminToken)
+        .send({
+          productBatchId: testProductBatchId,
+          locationId: testLocationId,
+          quantity: 999999,
+          idempotencyKey: `integration-dispatch-insufficient-${Date.now()}`,
+        })
+        .expect(400);
+    });
+  });
+
+  describe('INTEGRATION-INV-03: Transfer Operations', () => {
+    let testLocation2Id: string;
+
+    beforeAll(async () => {
+      // Create second location for transfer tests
+      const location2 = await prisma.location.create({
+        data: {
+          code: `LOC2-${Date.now()}`,
+          name: `Integration Location 2 ${Date.now()}`,
+          warehouseId: testWarehouseId,
+          type: 'RACK',
+        },
+      });
+      testLocation2Id = location2.id;
+    });
+
+    it('should transfer inventory between locations', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/inventory/transfer')
+        .set('Authorization', adminToken)
+        .send({
+          productBatchId: testProductBatchId,
+          fromLocationId: testLocationId,
+          toLocationId: testLocation2Id,
+          quantity: 30,
+          idempotencyKey: `integration-transfer-${Date.now()}`,
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should reject transfer to same location', async () => {
+      await request(app.getHttpServer())
+        .post('/inventory/transfer')
+        .set('Authorization', adminToken)
+        .send({
+          productBatchId: testProductBatchId,
+          fromLocationId: testLocationId,
+          toLocationId: testLocationId,
+          quantity: 10,
+          idempotencyKey: `integration-transfer-same-${Date.now()}`,
+        })
+        .expect(400);
+    });
+  });
+
+  describe('INTEGRATION-INV-04: Reserve and Release', () => {
+    it('should reserve inventory', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/inventory/reserve')
+        .set('Authorization', adminToken)
+        .send({
+          productBatchId: testProductBatchId,
+          locationId: testLocationId,
+          quantity: 20,
+          orderId: 'order-integration-001',
+          idempotencyKey: `integration-reserve-${Date.now()}`,
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.inventory.reservedQty).toBeGreaterThanOrEqual(20);
+    });
+
+    it('should release reservation', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/inventory/release')
+        .set('Authorization', adminToken)
+        .send({
+          productBatchId: testProductBatchId,
+          locationId: testLocationId,
+          quantity: 10,
+          orderId: 'order-integration-001',
+          idempotencyKey: `integration-release-${Date.now()}`,
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+    });
+  });
+
+  describe('INTEGRATION-INV-05: Query Operations', () => {
+    it('should get inventory by location', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/inventory/location?locationId=${testLocationId}`)
+        .set('Authorization', adminToken)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(Array.isArray(response.body.inventories)).toBe(true);
+    });
+
+    it('should get inventory by product batch', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/inventory/product-batch?productBatchId=${testProductBatchId}`)
+        .set('Authorization', adminToken)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(Array.isArray(response.body.inventories)).toBe(true);
+    });
+  });
+
+  describe('INTEGRATION-INV-06: Authorization', () => {
+    it('should allow manager to view inventory', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/inventory/location?locationId=${testLocationId}`)
+        .set('Authorization', managerToken)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+    });
+  });
+
+  describe('INTEGRATION-INV-07: Validation', () => {
+    it('should reject missing required fields', async () => {
+      await request(app.getHttpServer())
+        .post('/inventory/receive')
+        .set('Authorization', adminToken)
+        .send({
+          locationId: testLocationId,
+          quantity: 100,
+        })
+        .expect(400);
+    });
+
+    it('should reject non-existent product batch', async () => {
+      await request(app.getHttpServer())
+        .post('/inventory/receive')
+        .set('Authorization', adminToken)
+        .send({
+          productBatchId: '00000000-0000-0000-0000-000000000000',
+          locationId: testLocationId,
+          quantity: 100,
+          idempotencyKey: `integration-invalid-batch-${Date.now()}`,
+        })
+        .expect(404);
+    });
   });
 });

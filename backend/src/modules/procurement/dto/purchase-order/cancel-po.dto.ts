@@ -1,12 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsUUID } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsOptional } from 'class-validator';
 
 export class CancelPurchaseOrderDto {
-  @ApiProperty({ description: 'User ID who is cancelling the PO' })
-  @IsUUID()
-  userId!: string;
-
-  @ApiProperty({ description: 'Reason for cancellation', required: false })
+  @ApiPropertyOptional({ description: 'Reason for cancellation' })
   @IsOptional()
   @IsString()
   reason?: string;

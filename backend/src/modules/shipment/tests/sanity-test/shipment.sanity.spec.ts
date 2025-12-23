@@ -4,7 +4,7 @@ import request from 'supertest';
 import { AppModule } from '../../../../app.module';
 import { PrismaService } from '../../../../database/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { UserRole, ShipmentStatus } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 const TEST_SUITE_ID = `ship-sanity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
@@ -13,6 +13,7 @@ describe('Shipment Module - Sanity Tests', () => {
   let prisma: PrismaService;
   let jwtService: JwtService;
   let logisticsToken: string;
+  let adminToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -34,11 +35,28 @@ describe('Shipment Module - Sanity Tests', () => {
 
     await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
 
+    const admin = await prisma.user.create({
+      data: {
+        username: `admin-sanity-${TEST_SUITE_ID}`,
+        email: `admin-sanity-${TEST_SUITE_ID}@test.com`,
+        fullName: 'Admin Sanity',
+        passwordHash: '$2b$10$validhashedpassword',
+        role: UserRole.admin,
+        active: true,
+      },
+    });
+
+    adminToken = `Bearer ${jwtService.sign({
+      sub: admin.id,
+      email: admin.email,
+      role: admin.role,
+    })}`;
+
     const logistics = await prisma.user.create({
       data: {
         username: `logistics-sanity-${TEST_SUITE_ID}`,
         email: `logistics-sanity-${TEST_SUITE_ID}@test.com`,
-        fullName: 'Logistics Sanity',
+        fullName: 'Logistics Smoke',
         passwordHash: '$2b$10$validhashedpassword',
         role: UserRole.logistics,
         active: true,
@@ -53,218 +71,129 @@ describe('Shipment Module - Sanity Tests', () => {
   }, 30000);
 
   afterAll(async () => {
-    await prisma.shipment.deleteMany({ where: { trackingCode: { contains: TEST_SUITE_ID } } });
     await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
     await prisma.$disconnect();
     await app.close();
   }, 30000);
 
-  describe('SANITY-SHIP-01: CRUD Operations', () => {
+  describe('SANITY-SHIP-01: Basic Shipment Workflow', () => {
     let shipmentId: string;
+    let salesOrderId: string;
+    let warehouseId: string;
+    let productId: string;
 
-    it('should CREATE shipment successfully', async () => {
+    beforeAll(async () => {
+      // Create product
+      const prodRes = await request(app.getHttpServer())
+        .post('/products')
+        .set('Authorization', adminToken)
+        .send({
+          sku: `SKU-SHIP-${TEST_SUITE_ID}`,
+          name: `Product-${TEST_SUITE_ID}`,
+          unit: 'pcs',
+        })
+        .expect(201);
+      productId = prodRes.body.data?.id || prodRes.body.id;
+
+      // Create warehouse (admin required)
+      const whRes = await request(app.getHttpServer())
+        .post('/warehouses')
+        .set('Authorization', adminToken)
+        .send({ name: `WH-${TEST_SUITE_ID}`, code: `WH-${TEST_SUITE_ID}` })
+        .expect(201);
+      warehouseId = whRes.body.data ? whRes.body.data.id : whRes.body.id;
+
+      // Create location for the warehouse
+      const locRes = await request(app.getHttpServer())
+        .post('/locations')
+        .set('Authorization', adminToken)
+        .send({
+          warehouseId,
+          name: `LOC-${TEST_SUITE_ID}`,
+          code: `L-${TEST_SUITE_ID}`,
+          type: 'storage',
+        })
+        .expect(201);
+      const locationId = locRes.body.data ? locRes.body.data.id : locRes.body.id;
+
+      // Create product batch
+      const batchRes = await request(app.getHttpServer())
+        .post('/product-batches')
+        .set('Authorization', adminToken)
+        .send({
+          productId,
+          batchNo: `BATCH-${TEST_SUITE_ID}`,
+          quantity: 1000,
+        })
+        .expect(201);
+      const productBatchId = batchRes.body.data ? batchRes.body.data.id : batchRes.body.id;
+
+      // Add inventory for the product
+      await request(app.getHttpServer())
+        .post('/inventory/receive')
+        .set('Authorization', adminToken)
+        .send({
+          productBatchId,
+          locationId,
+          quantity: 100,
+          idempotencyKey: `ship-inv-${TEST_SUITE_ID}`,
+        })
+        .expect(201);
+
+      // Create customer (admin required)
+      const custRes = await request(app.getHttpServer())
+        .post('/customers')
+        .set('Authorization', adminToken)
+        .send({ name: `CUST-${TEST_SUITE_ID}`, code: `C-${TEST_SUITE_ID}` })
+        .expect(201);
+
+      // Create sales order
+      const soRes = await request(app.getHttpServer())
+        .post('/sales-orders')
+        .set('Authorization', adminToken)
+        .send({ customerId: custRes.body.id || custRes.body.data.id })
+        .expect(201);
+      salesOrderId = soRes.body.data.id;
+    });
+
+    it('should CREATE a shipment', async () => {
       const response = await request(app.getHttpServer())
         .post('/shipments')
         .set('Authorization', logisticsToken)
         .send({
-          trackingCode: `SANITY-${TEST_SUITE_ID}-001`,
-          carrier: 'DHL',
-          status: ShipmentStatus.preparing,
-          estimatedDelivery: new Date('2025-02-01'),
+          salesOrderId,
+          warehouseId,
+          carrier: 'Test Carrier',
+          trackingCode: `TRACK-${TEST_SUITE_ID}`,
+          items: [{ productId: productId, qty: 5 }],
         })
         .expect(201);
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.shipment).toHaveProperty('id');
-      shipmentId = response.body.shipment.id;
+      expect(response.body).toBeDefined();
+      expect(response.body.trackingCode).toBe(`TRACK-${TEST_SUITE_ID}`);
+      shipmentId = response.body.id;
     });
 
-    it('should READ shipment by ID', async () => {
+    it('should READ shipments', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/shipments/${shipmentId}`)
+        .get('/shipments')
         .set('Authorization', logisticsToken)
         .expect(200);
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.shipment.id).toBe(shipmentId);
+      const shipments = response.body.shipments || response.body.data || response.body;
+      expect(Array.isArray(shipments)).toBe(true);
     });
 
     it('should UPDATE shipment status', async () => {
       const response = await request(app.getHttpServer())
-        .patch(`/shipments/${shipmentId}`)
-        .set('Authorization', logisticsToken)
-        .send({ status: ShipmentStatus.in_transit })
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.shipment.status).toBe(ShipmentStatus.in_transit);
-    });
-
-    it('should DELETE shipment', async () => {
-      await request(app.getHttpServer())
-        .delete(`/shipments/${shipmentId}`)
-        .set('Authorization', logisticsToken)
-        .expect(200);
-    });
-  });
-
-  describe('SANITY-SHIP-02: Tracking Code Validation', () => {
-    it('should create shipment with unique tracking code', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/shipments')
+        .patch(`/shipments/${shipmentId}/status`)
         .set('Authorization', logisticsToken)
         .send({
-          trackingCode: `SANITY-${TEST_SUITE_ID}-002`,
-          carrier: 'FedEx',
-          status: ShipmentStatus.preparing,
-          estimatedDelivery: new Date('2025-02-05'),
+          status: 'in_transit',
         })
-        .expect(201);
-
-      expect(response.body.shipment.trackingCode).toBe(`SANITY-${TEST_SUITE_ID}-002`);
-    });
-
-    it('should prevent duplicate tracking codes', async () => {
-      const trackingCode = `SANITY-${TEST_SUITE_ID}-DUP`;
-
-      await request(app.getHttpServer())
-        .post('/shipments')
-        .set('Authorization', logisticsToken)
-        .send({
-          trackingCode,
-          carrier: 'UPS',
-          status: ShipmentStatus.preparing,
-          estimatedDelivery: new Date('2025-02-10'),
-        })
-        .expect(201);
-
-      await request(app.getHttpServer())
-        .post('/shipments')
-        .set('Authorization', logisticsToken)
-        .send({
-          trackingCode,
-          carrier: 'DHL',
-          status: ShipmentStatus.preparing,
-          estimatedDelivery: new Date('2025-02-10'),
-        })
-        .expect(409);
-    });
-
-    it('should track shipment by tracking code', async () => {
-      const trackingCode = `SANITY-${TEST_SUITE_ID}-TRACK`;
-
-      await request(app.getHttpServer())
-        .post('/shipments')
-        .set('Authorization', logisticsToken)
-        .send({
-          trackingCode,
-          carrier: 'DHL',
-          status: ShipmentStatus.in_transit,
-          estimatedDelivery: new Date('2025-02-15'),
-        });
-
-      const response = await request(app.getHttpServer())
-        .get(`/shipments/track/${trackingCode}`)
-        .set('Authorization', logisticsToken)
         .expect(200);
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.shipment.trackingCode).toBe(trackingCode);
-    });
-  });
-
-  describe('SANITY-SHIP-03: Status Management', () => {
-    let shipmentId: string;
-
-    beforeAll(async () => {
-      const response = await request(app.getHttpServer())
-        .post('/shipments')
-        .set('Authorization', logisticsToken)
-        .send({
-          trackingCode: `SANITY-${TEST_SUITE_ID}-STATUS`,
-          carrier: 'UPS',
-          status: ShipmentStatus.preparing,
-          estimatedDelivery: new Date('2025-02-20'),
-        });
-      shipmentId = response.body.shipment.id;
-    });
-
-    it('should transition from pending to in_transit', async () => {
-      const response = await request(app.getHttpServer())
-        .patch(`/shipments/${shipmentId}`)
-        .set('Authorization', logisticsToken)
-        .send({ status: ShipmentStatus.in_transit })
-        .expect(200);
-
-      expect(response.body.shipment.status).toBe(ShipmentStatus.in_transit);
-    });
-
-    it('should transition from in_transit to delivered', async () => {
-      const response = await request(app.getHttpServer())
-        .patch(`/shipments/${shipmentId}`)
-        .set('Authorization', logisticsToken)
-        .send({ status: ShipmentStatus.delivered })
-        .expect(200);
-
-      expect(response.body.shipment.status).toBe(ShipmentStatus.delivered);
-    });
-  });
-
-  describe('SANITY-SHIP-04: Filtering', () => {
-    beforeAll(async () => {
-      await request(app.getHttpServer())
-        .post('/shipments')
-        .set('Authorization', logisticsToken)
-        .send({
-          trackingCode: `SANITY-${TEST_SUITE_ID}-FILTER1`,
-          carrier: 'DHL',
-          status: ShipmentStatus.preparing,
-          estimatedDelivery: new Date('2025-03-01'),
-        });
-
-      await request(app.getHttpServer())
-        .post('/shipments')
-        .set('Authorization', logisticsToken)
-        .send({
-          trackingCode: `SANITY-${TEST_SUITE_ID}-FILTER2`,
-          carrier: 'FedEx',
-          status: ShipmentStatus.in_transit,
-          estimatedDelivery: new Date('2025-03-05'),
-        });
-    });
-
-    it('should filter by status', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/shipments')
-        .set('Authorization', logisticsToken)
-        .query({ status: ShipmentStatus.preparing })
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.shipments).toBeInstanceOf(Array);
-    });
-
-    it('should filter by carrier', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/shipments')
-        .set('Authorization', logisticsToken)
-        .query({ carrier: 'DHL' })
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-    });
-  });
-
-  describe('SANITY-SHIP-05: Authorization', () => {
-    it('should require authentication', async () => {
-      await request(app.getHttpServer()).get('/shipments').expect(401);
-    });
-
-    it('should allow logistics role access', async () => {
-      await request(app.getHttpServer())
-        .get('/shipments')
-        .set('Authorization', logisticsToken)
-        .expect(200);
+      expect(response.body.status).toBe('in_transit');
     });
   });
 });

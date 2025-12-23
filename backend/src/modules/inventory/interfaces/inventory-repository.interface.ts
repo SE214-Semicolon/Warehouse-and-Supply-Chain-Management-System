@@ -19,6 +19,7 @@ export interface IInventoryRepository {
     quantity: number,
     createdById?: string,
     idempotencyKey?: string,
+    consumeReservation?: boolean,
   ): Promise<{ inventory: Inventory; movement: StockMovement }>;
 
   adjustInventoryTx(

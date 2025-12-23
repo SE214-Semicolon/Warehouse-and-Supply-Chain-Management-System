@@ -8,6 +8,6 @@ import { AuditMiddleware } from '../middleware/audit.middleware';
 @Module({
   imports: [ConfigModule, AuditLogModule],
   providers: [PrismaService, AuditMiddleware],
-  exports: [PrismaService],
+  exports: [PrismaService, AuditMiddleware],
 })
 export class PrismaModule {}

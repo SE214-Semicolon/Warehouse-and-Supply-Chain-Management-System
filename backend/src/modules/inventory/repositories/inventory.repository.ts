@@ -146,7 +146,12 @@ export class InventoryRepository implements IInventoryRepository {
   }
 
   /**
-   * Transactional dispatch: decrement inventory only if enough availableQty, and create movement in same transaction.
+   * Transactional dispatch: decrement inventory and create movement in single transaction.
+   * REFACTORED: Support atomic reservation consumption
+   *
+   * @param consumeReservation - If true, decrements BOTH availableQty AND reservedQty (for orders with reservation)
+   *                            If false, decrements ONLY availableQty (direct dispatch without reservation)
+   *
    * Returns { inventory, movement } on success. Throws if not enough stock.
    */
   async dispatchInventoryTx(
@@ -155,10 +160,11 @@ export class InventoryRepository implements IInventoryRepository {
     quantity: number,
     createdById?: string,
     idempotencyKey?: string,
+    consumeReservation: boolean = false,
   ) {
     try {
       this.logger.log(
-        `Dispatching inventory - Batch: ${productBatchId}, Location: ${locationId}, Qty: ${quantity}`,
+        `Dispatching inventory - Batch: ${productBatchId}, Location: ${locationId}, Qty: ${quantity}, ConsumeReservation: ${consumeReservation}`,
       );
       return this.prisma.$transaction(async (tx) => {
         // First check if inventory exists and has enough stock
@@ -171,14 +177,54 @@ export class InventoryRepository implements IInventoryRepository {
           },
         });
 
-        if (!existingInventory || existingInventory.availableQty < quantity) {
+        if (!existingInventory) {
           this.logger.warn(
-            `Not enough stock - Batch: ${productBatchId}, Location: ${locationId}, Available: ${existingInventory?.availableQty || 0}, Requested: ${quantity}`,
+            `Inventory not found - Batch: ${productBatchId}, Location: ${locationId}`,
           );
-          throw new Error('NotEnoughStock');
+          throw new Error('InventoryNotFound');
         }
 
-        // Update inventory using direct update (more reliable than updateMany for this use case)
+        // Validation logic depends on whether we're consuming reservation
+        if (consumeReservation) {
+          // When consuming reservation: check if we have enough reserved quantity
+          if (existingInventory.reservedQty < quantity) {
+            this.logger.warn(
+              `Not enough reserved stock - Batch: ${productBatchId}, Location: ${locationId}, Reserved: ${existingInventory.reservedQty}, Requested: ${quantity}`,
+            );
+            throw new Error('NotEnoughReservedStock');
+          }
+          // Also ensure total quantity is sufficient (safety check)
+          const totalQty = existingInventory.availableQty + existingInventory.reservedQty;
+          if (totalQty < quantity) {
+            this.logger.error(
+              `Data inconsistency - Total quantity insufficient. This should not happen!`,
+            );
+            throw new Error('NotEnoughStock');
+          }
+        } else {
+          // When NOT consuming reservation: check available quantity only
+          if (existingInventory.availableQty < quantity) {
+            this.logger.warn(
+              `Not enough available stock - Batch: ${productBatchId}, Location: ${locationId}, Available: ${existingInventory.availableQty}, Requested: ${quantity}`,
+            );
+            throw new Error('NotEnoughStock');
+          }
+        }
+
+        // Update inventory based on dispatch mode
+        const updateData: Prisma.InventoryUpdateInput = consumeReservation
+          ? {
+              // ATOMIC: Consume reservation - decrement BOTH availableQty and reservedQty
+              // This prevents double-counting: reservation already moved qty from available to reserved
+              // Now we remove it from both (net effect: total qty decreases by quantity)
+              availableQty: { decrement: quantity },
+              reservedQty: { decrement: quantity },
+            }
+          : {
+              // Direct dispatch without reservation - decrement availableQty only
+              availableQty: { decrement: quantity },
+            };
+
         const updatedInventory = await tx.inventory.update({
           where: {
             productBatchId_locationId: {
@@ -186,10 +232,16 @@ export class InventoryRepository implements IInventoryRepository {
               locationId,
             },
           },
-          data: {
-            availableQty: { decrement: quantity },
-          },
+          data: updateData,
         });
+
+        // Validate that reservedQty didn't go negative (data integrity check)
+        if (updatedInventory.reservedQty < 0) {
+          this.logger.error(
+            `CRITICAL: Reserved quantity went negative after dispatch! This indicates a bug.`,
+          );
+          throw new Error('ReservedQtyNegative');
+        }
 
         const movement = await tx.stockMovement.create({
           data: {
@@ -202,7 +254,9 @@ export class InventoryRepository implements IInventoryRepository {
           },
         });
 
-        this.logger.log(`Inventory dispatched successfully - Movement ID: ${movement.id}`);
+        this.logger.log(
+          `Inventory dispatched successfully - Movement ID: ${movement.id}, Mode: ${consumeReservation ? 'ConsumeReservation' : 'Direct'}`,
+        );
         return { inventory: updatedInventory, movement };
       });
     } catch (error) {
@@ -811,7 +865,7 @@ export class InventoryRepository implements IInventoryRepository {
     productId?: string,
     page: number = 1,
     limit: number = 20,
-    sortBy: string = 'productBatch',
+    sortBy: string = 'updatedAt',
     sortOrder: 'asc' | 'desc' = 'asc',
   ) {
     const skip = (page - 1) * limit;
@@ -1209,6 +1263,39 @@ export class InventoryRepository implements IInventoryRepository {
       });
     } catch (error) {
       this.logger.error(`Error finding inventory for product ${productId} in locations:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Find all inventory records for a product (across all batches and locations)
+   * Used for global inventory calculation in Sales Order validation
+   */
+  async findInventoriesByProduct(productId: string): Promise<InventoryWithRelations[]> {
+    try {
+      this.logger.debug(`Finding all inventory for product: ${productId}`);
+      return this.prisma.inventory.findMany({
+        where: {
+          productBatch: {
+            productId: productId,
+          },
+          deletedAt: null,
+        },
+        include: {
+          productBatch: {
+            include: {
+              product: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
+          location: true,
+        },
+      });
+    } catch (error) {
+      this.logger.error(`Error finding inventory for product ${productId}:`, error);
       throw error;
     }
   }

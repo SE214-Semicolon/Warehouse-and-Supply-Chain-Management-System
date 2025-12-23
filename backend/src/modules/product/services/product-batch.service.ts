@@ -15,6 +15,7 @@ import {
   ProductBatchListResponseDto,
   ProductBatchDeleteResponseDto,
 } from '../dto/product-batch-response.dto';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
 
 @Injectable()
 export class ProductBatchService {
@@ -23,6 +24,7 @@ export class ProductBatchService {
   constructor(
     private readonly batchRepo: ProductBatchRepository,
     private readonly productRepo: ProductRepository,
+    private readonly auditMiddleware: AuditMiddleware,
   ) {}
 
   /**
@@ -98,6 +100,13 @@ export class ProductBatchService {
     });
 
     this.logger.log(`Product batch created successfully: ${batch.id}`);
+
+    // Audit log
+    this.auditMiddleware
+      .logCreate('ProductBatch', batch as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for batch create', err);
+      });
 
     return {
       success: true,
@@ -444,6 +453,13 @@ export class ProductBatchService {
     await this.batchRepo.delete(id);
 
     this.logger.log(`Product batch deleted successfully: ${id}`);
+
+    // Audit log
+    this.auditMiddleware
+      .logDelete('ProductBatch', id, batch as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for batch delete', err);
+      });
 
     return {
       success: true,

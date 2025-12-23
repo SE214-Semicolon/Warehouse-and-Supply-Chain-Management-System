@@ -1,5 +1,5 @@
 import { IsEnum, IsOptional, IsInt, Min, Max, IsBoolean, IsString } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { AlertType, AlertSeverity } from '../schemas/alert.schema';
 
@@ -29,7 +29,11 @@ export class QueryAlertDto {
   })
   @IsOptional()
   @IsBoolean()
-  @Type(() => Boolean)
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return value;
+  })
   isRead?: boolean;
 
   @ApiPropertyOptional({

@@ -1,5 +1,21 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt.guard';
 import { RolesGuard } from 'src/modules/auth/guards/roles.guard';
 import { Roles } from 'src/modules/auth/decorators/roles.decorator';
@@ -84,5 +100,36 @@ export class ShipmentController {
   @Roles(UserRole.admin, UserRole.manager, UserRole.logistics)
   addTrackingEvent(@Param('id') id: string, @Body() dto: AddTrackingEventDto) {
     return this.shipmentService.addTrackingEvent(id, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({
+    summary: 'Xóa vận đơn (soft delete - chuyển thành cancelled)',
+    description:
+      'Chỉ cho phép xóa vận đơn ở trạng thái "preparing" hoặc "delayed". ' +
+      'Không thể xóa vận đơn đang "in_transit" hoặc đã "delivered".',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Xóa thành công - shipment status chuyển thành cancelled',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Không thể xóa:\n' +
+      '- "Không thể xóa vận đơn đang trong quá trình vận chuyển." (status: in_transit)\n' +
+      '- "Không thể xóa vận đơn đã giao hàng thành công." (status: delivered)',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          message: 'Không thể xóa vận đơn đang trong quá trình vận chuyển.',
+          code: 'BAD_REQUEST',
+        },
+      },
+    },
+  })
+  @Roles(UserRole.admin, UserRole.manager, UserRole.logistics)
+  delete(@Param('id') id: string) {
+    return this.shipmentService.deleteShipment(id);
   }
 }

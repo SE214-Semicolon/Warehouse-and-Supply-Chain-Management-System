@@ -3,6 +3,7 @@ import { ProductService } from '../../services/product.service';
 import { ProductRepository } from '../../repositories/product.repository';
 import { ProductCategoryRepository } from '../../repositories/product-category.repository';
 import { CacheService } from '../../../../cache/cache.service';
+import { AuditMiddleware } from '../../../../database/middleware/audit.middleware';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
 describe('ProductService', () => {
@@ -66,6 +67,13 @@ describe('ProductService', () => {
       reset: jest.fn(),
     };
 
+    const mockAuditMiddleware = {
+      logCreate: jest.fn().mockResolvedValue(undefined),
+      logUpdate: jest.fn().mockResolvedValue(undefined),
+      logDelete: jest.fn().mockResolvedValue(undefined),
+      logOperation: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductService,
@@ -80,6 +88,10 @@ describe('ProductService', () => {
         {
           provide: CacheService,
           useValue: mockCacheService,
+        },
+        {
+          provide: AuditMiddleware,
+          useValue: mockAuditMiddleware,
         },
       ],
     }).compile();
