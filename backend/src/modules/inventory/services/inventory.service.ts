@@ -227,6 +227,9 @@ export class InventoryService {
           this.logger.error('Failed to write audit log for inventory update', err);
         });
 
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
       return { success: true, inventory, movement };
     } catch (err) {
       if (err instanceof Error) {
@@ -348,6 +351,9 @@ export class InventoryService {
           this.logger.error('Failed to write audit log for inventory update', err);
         });
 
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
       return { success: true, inventory, movement };
     } catch (err) {
       // If unique constraint on idempotencyKey occurred concurrently, return existing movement
@@ -453,6 +459,9 @@ export class InventoryService {
         .catch((err) => {
           this.logger.error('Failed to write audit log for to inventory update', err);
         });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
       return {
         success: true,
@@ -560,6 +569,9 @@ export class InventoryService {
           this.logger.error('Failed to write audit log for inventory update', err);
         });
 
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
       return { success: true, inventory, movement };
     } catch (err) {
       if (err instanceof Error && err.message === 'NotEnoughStock') {
@@ -647,6 +659,9 @@ export class InventoryService {
         .catch((err) => {
           this.logger.error('Failed to write audit log for inventory update', err);
         });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
       return { success: true, inventory, movement };
     } catch (err) {
@@ -839,6 +854,9 @@ export class InventoryService {
       dto.reservedQty,
     );
 
+    // Invalidate inventory caches
+    await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
     return {
       success: true,
       inventory: updatedInventory,
@@ -872,6 +890,9 @@ export class InventoryService {
       productBatchId,
       locationId,
     );
+
+    // Invalidate inventory caches
+    await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
     return {
       success: true,

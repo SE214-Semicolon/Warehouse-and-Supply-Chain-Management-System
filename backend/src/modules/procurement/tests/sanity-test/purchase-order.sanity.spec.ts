@@ -18,7 +18,7 @@ describe('Purchase Order Module - Sanity Tests', () => {
   let prisma: PrismaService;
   let jwtService: JwtService;
   let adminToken: string;
-  let adminUserId: string;
+  let _adminUserId: string;
   let supplierId: string;
 
   beforeAll(async () => {
@@ -56,7 +56,7 @@ describe('Purchase Order Module - Sanity Tests', () => {
       },
     });
 
-    adminUserId = adminUser.id;
+    _adminUserId = adminUser.id;
 
     adminToken = `Bearer ${jwtService.sign({
       sub: adminUser.id,
@@ -116,9 +116,7 @@ describe('Purchase Order Module - Sanity Tests', () => {
       const response = await request(app.getHttpServer())
         .post(`/purchase-orders/${orderId}/submit`)
         .set('Authorization', adminToken)
-        .send({
-          userId: adminUserId,
-        })
+        .send({ notes: 'Sanity submit' })
         .expect(201);
 
       expect(response.body.data.status).toBe('ordered');

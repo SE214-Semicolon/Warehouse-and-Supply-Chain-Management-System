@@ -66,6 +66,16 @@ describe('SalesOrderService', () => {
       dispatchInventory: jest.fn(),
       reserveInventory: jest.fn(),
       releaseReservation: jest.fn(),
+      getInventoryByBatchAndLocation: jest
+        .fn()
+        .mockResolvedValue({ availableQty: 100, reservedQty: 0 }),
+      getGlobalInventoryByProduct: jest.fn().mockResolvedValue({
+        productId: 'product-uuid-1',
+        productName: 'Product A',
+        totalAvailableQty: 100,
+        totalReservedQty: 0,
+        batchCount: 1,
+      }),
     };
 
     const mockPrisma = {

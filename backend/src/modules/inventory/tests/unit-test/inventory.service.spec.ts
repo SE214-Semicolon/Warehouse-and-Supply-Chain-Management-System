@@ -111,7 +111,7 @@ describe('InventoryService', () => {
       set: jest.fn(),
       getOrSet: jest.fn(),
       delete: jest.fn(),
-      deleteByPrefix: jest.fn(),
+      deleteByPrefix: jest.fn().mockResolvedValue(undefined),
       reset: jest.fn(),
     };
 
@@ -375,6 +375,7 @@ describe('InventoryService', () => {
       expect(result.success).toBe(true);
       expect(result.inventory).toBeDefined();
       expect(result.movement).toBeDefined();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC11: Product batch not found
@@ -571,6 +572,7 @@ describe('InventoryService', () => {
       expect(result.success).toBe(true);
       expect(result.inventory).toBeDefined();
       expect(result.movement).toBeDefined();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC21: Adjust with negative quantity
@@ -844,6 +846,7 @@ describe('InventoryService', () => {
       expect(result.toInventory).toBeDefined();
       expect((result as any).transferOutMovement).toBeDefined();
       expect((result as any).transferInMovement).toBeDefined();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC32: Product batch not found
@@ -1116,6 +1119,7 @@ describe('InventoryService', () => {
       expect(result.success).toBe(true);
       expect(result.inventory).toBeDefined();
       expect(result.movement).toBeDefined();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC44: Product batch not found
@@ -1343,6 +1347,7 @@ describe('InventoryService', () => {
       expect(result.success).toBe(true);
       expect(result.inventory).toBeDefined();
       expect(result.movement).toBeDefined();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC55: Product batch not found
@@ -1898,6 +1903,7 @@ describe('InventoryService', () => {
       expect(result.inventory).toBeDefined();
       expect(result.inventory.availableQty).toBe(150);
       expect(result.inventory.reservedQty).toBe(10);
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC82: Product batch not found
@@ -2096,6 +2102,7 @@ describe('InventoryService', () => {
       expect(result.success).toBe(true);
       expect(result.inventory).toBeDefined();
       expect(result.message).toBe('Inventory soft deleted successfully');
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC91: Product batch not found
