@@ -101,6 +101,28 @@ jobs:
           JWT_REFRESH_TTL: 7d
 
       # ============================================
+      # SMOKE TESTS (run early to fail fast)
+      # ============================================
+      - name: Run Backend Smoke Tests
+        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./backend
+        run: |
+          chmod +x scripts/run-tests-by-type.sh
+          ./scripts/run-tests-by-type.sh smoke
+        env:
+          NODE_ENV:
+            test
+            # Provide dummy values for config validation (smoke tests may mock DB)
+          #    DATABASE_URL: postgresql://test:test@localhost:5432/test
+          #    POSTGRES_URL: postgresql://test:test@localhost:5432/test
+          #    MONGODB_URL: mongodb://localhost:27017/test
+          #    MONGO_URL: mongodb://localhost:27017/test
+          JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
+          JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
+          JWT_ACCESS_TTL: 15m
+          JWT_REFRESH_TTL: 7d
+
+      # ============================================
       # INTEGRATION TESTS (uses Testcontainers for PostgreSQL + MongoDB)
       # ============================================
       - name: Run Backend Integration Tests
@@ -127,28 +149,6 @@ jobs:
             # Testcontainers configuration for GitHub Actions
           TESTCONTAINERS_HOST_OVERRIDE: localhost
           TESTCONTAINERS_RYUK_DISABLED: true
-
-      # ============================================
-      # SMOKE TESTS
-      # ============================================
-      - name: Run Backend Smoke Tests
-        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
-        working-directory: ./backend
-        run: |
-          chmod +x scripts/run-tests-by-type.sh
-          ./scripts/run-tests-by-type.sh smoke
-        env:
-          NODE_ENV:
-            test
-            # Provide dummy values for config validation (smoke tests may mock DB)
-          #    DATABASE_URL: postgresql://test:test@localhost:5432/test
-          #    POSTGRES_URL: postgresql://test:test@localhost:5432/test
-          #    MONGODB_URL: mongodb://localhost:27017/test
-          #    MONGO_URL: mongodb://localhost:27017/test
-          JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
-          JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
-          JWT_ACCESS_TTL: 15m
-          JWT_REFRESH_TTL: 7d
 
       # ============================================
       # FRONTEND TESTS (TODO: Enable when ready)
