@@ -116,9 +116,7 @@ describe('Purchase Order Module - Sanity Tests', () => {
       const response = await request(app.getHttpServer())
         .post(`/purchase-orders/${orderId}/submit`)
         .set('Authorization', adminToken)
-        .send({
-          userId: adminUserId,
-        })
+        .send({ notes: 'Sanity submit' })
         .expect(201);
 
       expect(response.body.data.status).toBe('ordered');
