@@ -18,7 +18,7 @@ describe('Purchase Order Module - Sanity Tests', () => {
   let prisma: PrismaService;
   let jwtService: JwtService;
   let adminToken: string;
-  let adminUserId: string;
+  let _adminUserId: string;
   let supplierId: string;
 
   beforeAll(async () => {
@@ -56,7 +56,7 @@ describe('Purchase Order Module - Sanity Tests', () => {
       },
     });
 
-    adminUserId = adminUser.id;
+    _adminUserId = adminUser.id;
 
     adminToken = `Bearer ${jwtService.sign({
       sub: adminUser.id,
