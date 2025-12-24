@@ -463,7 +463,7 @@ describe('Purchase Order Module (e2e)', () => {
     // PO-INT-11: Submit draft PO successfully
     it('PO-INT-11: Should submit a draft PO successfully', async () => {
       const submitDto = {
-        userId: testUserId,
+        notes: 'Integration submit',
       };
 
       const response = await request(app.getHttpServer())
@@ -475,13 +475,13 @@ describe('Purchase Order Module (e2e)', () => {
       expect(response.body.data.status).toBe(PoStatus.ordered);
     });
 
-    // PO-INT-12: Missing userId
-    it('PO-INT-12: Should return 400 if userId is missing', async () => {
+    // PO-INT-12: Missing userId is acceptable (userId extracted from JWT)
+    it('PO-INT-12: Should submit successfully without body', async () => {
       await request(app.getHttpServer())
         .post(`/purchase-orders/${draftPoId}/submit`)
         .set('Authorization', adminToken)
         .send({})
-        .expect(400);
+        .expect(201);
     });
 
     // PO-INT-13: Submit PO not in draft status
@@ -492,7 +492,7 @@ describe('Purchase Order Module (e2e)', () => {
       });
 
       const submitDto = {
-        userId: testUserId,
+        notes: 'Integration submit',
       };
 
       const response = await request(app.getHttpServer())
@@ -507,7 +507,7 @@ describe('Purchase Order Module (e2e)', () => {
     // PO-INT-14: Submit non-existent PO
     it('PO-INT-14: Should return 404 if PO not found', async () => {
       const submitDto = {
-        userId: testUserId,
+        notes: 'Integration submit',
       };
 
       await request(app.getHttpServer())
@@ -520,7 +520,7 @@ describe('Purchase Order Module (e2e)', () => {
     // PO-INT-15: Permission denied for warehouse_staff
     it('PO-INT-15: Should return 403 for warehouse_staff role', async () => {
       const submitDto = {
-        userId: testUserId,
+        notes: 'Integration submit',
       };
 
       await request(app.getHttpServer())
@@ -532,13 +532,9 @@ describe('Purchase Order Module (e2e)', () => {
 
     // PO-INT-16: No authentication
     it('PO-INT-16: Should return 401 without authentication', async () => {
-      const submitDto = {
-        userId: testUserId,
-      };
-
       await request(app.getHttpServer())
         .post(`/purchase-orders/${draftPoId}/submit`)
-        .send(submitDto)
+        .send({})
         .expect(401);
     });
   });
@@ -1580,9 +1576,7 @@ describe('Purchase Order Module (e2e)', () => {
       const response = await request(app.getHttpServer())
         .post(`/purchase-orders/${orderId}/submit`)
         .set('Authorization', adminToken)
-        .send({
-          userId: testUserId,
-        })
+        .send({ notes: 'Integration submit' })
         .expect(201);
 
       expect(response.body.data.status).toBe('ordered');
@@ -1656,9 +1650,7 @@ describe('Purchase Order Module (e2e)', () => {
       await request(app.getHttpServer())
         .post('/purchase-orders/00000000-0000-0000-0000-000000000000/submit')
         .set('Authorization', adminToken)
-        .send({
-          userId: testUserId,
-        })
+        .send({ notes: 'Integration submit' })
         .expect(404);
     });
   });
@@ -1712,7 +1704,7 @@ describe('Purchase Order Module (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/purchase-orders/${draftPoId}/submit`)
         .set('Authorization', adminToken)
-        .send({ userId: testUserId })
+        .send({ notes: 'Integration submit' })
         .expect(201);
 
       // Try to update
@@ -1742,7 +1734,7 @@ describe('Purchase Order Module (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/purchase-orders/${cancelPoId}/submit`)
         .set('Authorization', adminToken)
-        .send({ userId: testUserId })
+        .send({ notes: 'Integration submit' })
         .expect(201);
     });
 
@@ -1750,27 +1742,26 @@ describe('Purchase Order Module (e2e)', () => {
       const response = await request(app.getHttpServer())
         .post(`/purchase-orders/${cancelPoId}/cancel`)
         .set('Authorization', adminToken)
-        .send({
-          userId: testUserId,
-          reason: 'Supplier delayed',
-        })
+        .send({ reason: 'Supplier delayed' })
         .expect(201);
 
       expect(response.body.status).toBe('cancelled');
     });
 
-    it('should require userId for cancel', async () => {
+    it('should cancel PO even without explicit userId (userId from JWT)', async () => {
       const res = await request(app.getHttpServer())
         .post('/purchase-orders')
         .set('Authorization', adminToken)
         .send({ supplierId: testSupplierId })
         .expect(201);
 
-      await request(app.getHttpServer())
+      const cancelRes = await request(app.getHttpServer())
         .post(`/purchase-orders/${res.body.data.id}/cancel`)
         .set('Authorization', adminToken)
         .send({ reason: 'Test' })
-        .expect(400);
+        .expect(201);
+
+      expect(cancelRes.body.status).toBe('cancelled');
     });
   });
 
@@ -1814,7 +1805,7 @@ describe('Purchase Order Module (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/purchase-orders/${itemsPoId}/submit`)
         .set('Authorization', adminToken)
-        .send({ userId: testUserId })
+        .send({ notes: 'Integration submit' })
         .expect(201);
 
       await request(app.getHttpServer())
