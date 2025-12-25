@@ -78,6 +78,7 @@ describe('InventoryService', () => {
     orderId: null,
     note: null,
     reference: null,
+    transferGroupId: null,
     createdById: null,
     createdAt: new Date(),
   };

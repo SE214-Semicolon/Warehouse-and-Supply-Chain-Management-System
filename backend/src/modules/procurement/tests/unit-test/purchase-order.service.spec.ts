@@ -58,6 +58,7 @@ describe('Purchase Order Service', () => {
     movementType: StockMovementType.purchase_receipt,
     reference: null,
     note: null,
+    transferGroupId: null,
     createdById: 'user-uuid-1',
     idempotencyKey: null,
     createdAt: new Date('2024-01-15T10:00:00Z'),

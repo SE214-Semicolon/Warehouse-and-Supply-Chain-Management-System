@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { PrismaService } from 'src/database/prisma/prisma.service';
 import { StockMovementType, Prisma } from '@prisma/client';
 import { IInventoryRepository } from '../interfaces/inventory-repository.interface';
@@ -521,6 +522,9 @@ export class InventoryRepository implements IInventoryRepository {
         },
       });
 
+      // Create a transfer group id to link the out/in movements
+      const transferGroupId = randomUUID();
+
       // Create transfer out movement
       const transferOutMovement = await tx.stockMovement.create({
         data: {
@@ -531,6 +535,7 @@ export class InventoryRepository implements IInventoryRepository {
           createdById,
           idempotencyKey,
           note,
+          transferGroupId,
         },
       });
 
@@ -543,6 +548,7 @@ export class InventoryRepository implements IInventoryRepository {
           movementType: StockMovementType.transfer_in,
           createdById,
           note,
+          transferGroupId,
         },
       });
 
@@ -1078,37 +1084,93 @@ export class InventoryRepository implements IInventoryRepository {
     }
 
     if (movementType) {
-      whereClause.movementType = movementType as StockMovementType;
+      // Support filtering by logical 'transfer' (grouped) which matches both transfer_in and transfer_out rows
+      if (movementType === 'transfer') {
+        whereClause.movementType = {
+          in: [StockMovementType.transfer_in, StockMovementType.transfer_out],
+        } as any;
+      } else {
+        whereClause.movementType = movementType as StockMovementType;
+      }
     }
 
-    const [movements, total] = await Promise.all([
-      this.prisma.stockMovement.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
-        orderBy: { [sortBy]: sortOrder },
-        include: {
-          productBatch: {
-            include: {
-              product: true,
-            },
+    // Fetch all matching movements and group transfers by transferGroupId
+    const movementsRaw = await this.prisma.stockMovement.findMany({
+      where: whereClause,
+      orderBy: { [sortBy]: sortOrder },
+      include: {
+        productBatch: {
+          include: {
+            product: true,
           },
-          fromLocation: true,
-          toLocation: true,
-          createdBy: true,
         },
-      }),
-      this.prisma.stockMovement.count({
-        where: whereClause,
-      }),
-    ]);
+        fromLocation: true,
+        toLocation: true,
+        createdBy: true,
+      },
+    });
+
+    const transferGroups = new Map<string, any[]>();
+    const standalone: any[] = [];
+
+    for (const m of movementsRaw) {
+      if (m.transferGroupId) {
+        if (!transferGroups.has(m.transferGroupId)) transferGroups.set(m.transferGroupId, []);
+        transferGroups.get(m.transferGroupId)!.push(m);
+      } else {
+        standalone.push(m);
+      }
+    }
+
+    const groupedTransfers: any[] = [];
+    for (const [groupId, items] of transferGroups.entries()) {
+      const out = items.find((i) => i.movementType === 'transfer_out') || items[0];
+      const inp = items.find((i) => i.movementType === 'transfer_in') || items[1] || items[0];
+
+      const combined = {
+        id: groupId,
+        movementType: 'transfer',
+        productBatchId: out.productBatchId || inp.productBatchId,
+        productId: out.productId || inp.productId,
+        quantity: out.quantity || inp.quantity,
+        reference: out.reference || inp.reference,
+        note: out.note || inp.note,
+        transferGroupId: groupId,
+        fromLocation: out.fromLocation || null,
+        toLocation: inp.toLocation || null,
+        fromLocationId: out.fromLocationId || null,
+        toLocationId: inp.toLocationId || null,
+        createdBy: out.createdBy || inp.createdBy || null,
+        createdById: out.createdById || inp.createdById || null,
+        createdAt: [out.createdAt, inp.createdAt].filter(Boolean).sort()[0] || out.createdAt,
+      };
+
+      groupedTransfers.push(combined);
+    }
+
+    const combinedList = [...standalone, ...groupedTransfers];
+
+    combinedList.sort((a, b) => {
+      const aVal = a[sortBy];
+      const bVal = b[sortBy];
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return sortOrder === 'asc' ? -1 : 1;
+      if (bVal == null) return sortOrder === 'asc' ? 1 : -1;
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    const total = combinedList.length;
+    const totalPages = Math.ceil(total / limit);
+    const movements = combinedList.slice(skip, skip + limit);
 
     return {
       movements,
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages,
     };
   }
 
@@ -1201,7 +1263,14 @@ export class InventoryRepository implements IInventoryRepository {
     };
 
     if (movementType) {
-      where.movementType = movementType as any;
+      // Support filtering by logical 'transfer' (grouped) which matches both transfer_in and transfer_out rows
+      if (movementType === 'transfer') {
+        where.movementType = {
+          in: [StockMovementType.transfer_in, StockMovementType.transfer_out],
+        } as any;
+      } else {
+        where.movementType = movementType as any;
+      }
     }
 
     if (locationId) {
@@ -1214,35 +1283,90 @@ export class InventoryRepository implements IInventoryRepository {
       if (endDate) where.createdAt.lte = new Date(endDate);
     }
 
-    // Get movements with pagination
-    const [movements, total] = await Promise.all([
-      this.prisma.stockMovement.findMany({
-        where,
-        include: {
-          productBatch: {
-            include: {
-              product: true,
-            },
-          },
-          fromLocation: true,
-          toLocation: true,
-          createdBy: {
-            select: {
-              id: true,
-              username: true,
-              email: true,
-              fullName: true,
-            },
+    // Fetch all matching movements and group transfers by transferGroupId for a single "transfer" record
+    // NOTE: this fetches all matching rows and then paginates on grouped results. If dataset is large, consider implementing DB-level grouping and pagination.
+    const movementsRaw = await this.prisma.stockMovement.findMany({
+      where,
+      include: {
+        productBatch: {
+          include: {
+            product: true,
           },
         },
-        orderBy: { [sortBy]: sortOrder },
-        skip,
-        take: limit,
-      }),
-      this.prisma.stockMovement.count({ where }),
-    ]);
+        fromLocation: true,
+        toLocation: true,
+        createdBy: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            fullName: true,
+          },
+        },
+      },
+      orderBy: { [sortBy]: sortOrder },
+    });
 
+    // Group transfers that have transferGroupId
+    const transferGroups = new Map<string, any[]>();
+    const standalone: any[] = [];
+
+    for (const m of movementsRaw) {
+      if (m.transferGroupId) {
+        if (!transferGroups.has(m.transferGroupId)) transferGroups.set(m.transferGroupId, []);
+        transferGroups.get(m.transferGroupId)!.push(m);
+      } else {
+        standalone.push(m);
+      }
+    }
+
+    const groupedTransfers: any[] = [];
+    for (const [groupId, items] of transferGroups.entries()) {
+      // Expect 2 items (out + in), but be resilient to variations
+      const out = items.find((i) => i.movementType === 'transfer_out') || items[0];
+      const inp = items.find((i) => i.movementType === 'transfer_in') || items[1] || items[0];
+
+      const combined = {
+        id: groupId, // use group id as synthetic id for transfer
+        movementType: 'transfer',
+        productBatchId: out.productBatchId || inp.productBatchId,
+        productId: out.productId || inp.productId,
+        quantity: out.quantity || inp.quantity,
+        reference: out.reference || inp.reference,
+        note: out.note || inp.note,
+        transferGroupId: groupId,
+        // locations as full objects to match include
+        fromLocation: out.fromLocation || null,
+        toLocation: inp.toLocation || null,
+        fromLocationId: out.fromLocationId || null,
+        toLocationId: inp.toLocationId || null,
+        createdBy: out.createdBy || inp.createdBy || null,
+        createdById: out.createdById || inp.createdById || null,
+        // choose earliest createdAt
+        createdAt: [out.createdAt, inp.createdAt].filter(Boolean).sort()[0] || out.createdAt,
+      };
+
+      groupedTransfers.push(combined);
+    }
+
+    // Combine grouped transfers with standalone movements
+    const combinedList = [...standalone, ...groupedTransfers];
+
+    // Sort combined list by sortBy and order
+    combinedList.sort((a, b) => {
+      const aVal = a[sortBy];
+      const bVal = b[sortBy];
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return sortOrder === 'asc' ? -1 : 1;
+      if (bVal == null) return sortOrder === 'asc' ? 1 : -1;
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    const total = combinedList.length;
     const totalPages = Math.ceil(total / limit);
+    const movements = combinedList.slice(skip, skip + limit);
 
     return {
       movements,

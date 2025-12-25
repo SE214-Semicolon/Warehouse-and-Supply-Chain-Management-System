@@ -257,6 +257,7 @@ reporting/
 
 - Query: `StockMovement` filtered by date range, type, location, product
 - Movement types: purchase_receipt, sale_issue, adjustment, transfer_in/out, etc.
+- **Transfers are grouped by default**: transfer_in and transfer_out created as part of the same transfer are returned as a single `movement` with `movementType: 'transfer'` and both `fromLocation` and `toLocation` present.
 - Sorting: By createdAt (default desc)
 
 **Response:**
