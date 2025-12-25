@@ -193,9 +193,22 @@ export class ProductBatchService {
 
     this.logger.log(`Found ${total} product batches`);
 
+    // Enrich each batch with aggregated inventory totals
+    const enrichedBatches = batches.map((b) => {
+      const inv = (b as any).inventory || [];
+      const totalAvailableQty = inv.reduce((s: number, i: any) => s + (i.availableQty || 0), 0);
+      const totalReservedQty = inv.reduce((s: number, i: any) => s + (i.reservedQty || 0), 0);
+      return {
+        ...b,
+        totalAvailableQty,
+        totalReservedQty,
+        totalOnHand: totalAvailableQty + totalReservedQty,
+      };
+    });
+
     return {
       success: true,
-      data: batches,
+      data: enrichedBatches,
       total,
       page,
       limit,
@@ -221,9 +234,21 @@ export class ProductBatchService {
       throw new NotFoundException(`Product batch with ID "${id}" not found`);
     }
 
+    // Compute aggregated inventory totals from included inventory (if present)
+    const inv = (batch as any).inventory || [];
+    const totalAvailableQty = inv.reduce((s: number, i: any) => s + (i.availableQty || 0), 0);
+    const totalReservedQty = inv.reduce((s: number, i: any) => s + (i.reservedQty || 0), 0);
+
+    const enriched = {
+      ...batch,
+      totalAvailableQty,
+      totalReservedQty,
+      totalOnHand: totalAvailableQty + totalReservedQty,
+    };
+
     return {
       success: true,
-      data: batch,
+      data: enriched,
     };
   }
 
@@ -291,9 +316,21 @@ export class ProductBatchService {
 
     this.logger.log(`Found ${total} expiring batches`);
 
+    const enrichedBatches = batches.map((b) => {
+      const inv = (b as any).inventory || [];
+      const totalAvailableQty = inv.reduce((s: number, i: any) => s + (i.availableQty || 0), 0);
+      const totalReservedQty = inv.reduce((s: number, i: any) => s + (i.reservedQty || 0), 0);
+      return {
+        ...b,
+        totalAvailableQty,
+        totalReservedQty,
+        totalOnHand: totalAvailableQty + totalReservedQty,
+      };
+    });
+
     return {
       success: true,
-      data: batches,
+      data: enrichedBatches,
       total,
       page,
       limit,

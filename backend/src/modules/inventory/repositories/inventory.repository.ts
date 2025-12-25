@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma/prisma.service';
 import { StockMovementType, Prisma } from '@prisma/client';
 import { IInventoryRepository } from '../interfaces/inventory-repository.interface';
+import { LocationCapacityExceeded } from '../errors/location-capacity.error';
 
 // Type definitions for inventory operations
 type InventoryWithRelations = Prisma.InventoryGetPayload<{
@@ -104,6 +105,20 @@ export class InventoryRepository implements IInventoryRepository {
         `Receiving inventory - Batch: ${productBatchId}, Location: ${locationId}, Qty: ${quantity}`,
       );
       return this.prisma.$transaction(async (tx) => {
+        // Check capacity for location before receiving
+        const location = await tx.location.findUnique({ where: { id: locationId } });
+        if (location && location.capacity != null) {
+          const agg = await tx.inventory.aggregate({
+            where: { locationId },
+            _sum: { availableQty: true, reservedQty: true },
+          });
+          const currentStored = (agg._sum?.availableQty || 0) + (agg._sum?.reservedQty || 0);
+          const projected = currentStored + quantity;
+          if (location.capacity < projected) {
+            throw new LocationCapacityExceeded(location.capacity, currentStored, quantity);
+          }
+        }
+
         // upsert inventory using transaction client
         const inv = await tx.inventory.upsert({
           where: { productBatchId_locationId: { productBatchId, locationId } },
@@ -341,7 +356,7 @@ export class InventoryRepository implements IInventoryRepository {
     note?: string,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      // Get current inventory or create if doesn't exist
+      // Get current inventory or create if it doesn't exist
       let inventory = await tx.inventory.findUnique({
         where: { productBatchId_locationId: { productBatchId, locationId } },
       });
@@ -356,6 +371,26 @@ export class InventoryRepository implements IInventoryRepository {
             reservedQty: 0,
           },
         });
+      }
+
+      // If positive adjustment, check capacity first
+      if (adjustmentQuantity > 0) {
+        const location = await tx.location.findUnique({ where: { id: locationId } });
+        if (location && location.capacity != null) {
+          const agg = await tx.inventory.aggregate({
+            where: { locationId },
+            _sum: { availableQty: true, reservedQty: true },
+          });
+          const currentStored = (agg._sum?.availableQty || 0) + (agg._sum?.reservedQty || 0);
+          const projected = currentStored + adjustmentQuantity;
+          if (location.capacity < projected) {
+            throw new LocationCapacityExceeded(
+              location.capacity,
+              currentStored,
+              adjustmentQuantity,
+            );
+          }
+        }
       }
 
       // Calculate new available quantity
@@ -423,6 +458,20 @@ export class InventoryRepository implements IInventoryRepository {
 
       if (!sourceInventory || sourceInventory.availableQty < quantity) {
         throw new Error('NotEnoughStock');
+      }
+
+      // Check destination capacity before creating/updating dest inventory
+      const toLocation = await tx.location.findUnique({ where: { id: toLocationId } });
+      if (toLocation && toLocation.capacity != null) {
+        const agg = await tx.inventory.aggregate({
+          where: { locationId: toLocationId },
+          _sum: { availableQty: true, reservedQty: true },
+        });
+        const currentStoredDest = (agg._sum?.availableQty || 0) + (agg._sum?.reservedQty || 0);
+        const projectedDest = currentStoredDest + quantity;
+        if (toLocation.capacity < projectedDest) {
+          throw new LocationCapacityExceeded(toLocation.capacity, currentStoredDest, quantity);
+        }
       }
 
       // Get or create destination inventory
@@ -771,6 +820,26 @@ export class InventoryRepository implements IInventoryRepository {
     availableQty: number,
     reservedQty?: number,
   ) {
+    // Before applying direct updates, ensure it doesn't exceed location capacity
+    const location = await this.prisma.location.findUnique({ where: { id: locationId } });
+
+    if (location && location.capacity != null) {
+      // Compute existing reserved if not provided
+      const existing = await this.prisma.inventory.findUnique({
+        where: { productBatchId_locationId: { productBatchId, locationId } },
+      });
+      const existingReserved = existing?.reservedQty ?? 0;
+      const reservedAfter = reservedQty ?? existingReserved;
+      const totalAfter = availableQty + reservedAfter;
+      if (totalAfter > location.capacity) {
+        throw new LocationCapacityExceeded(
+          location.capacity,
+          (existing?.availableQty ?? 0) + existingReserved,
+          availableQty - (existing?.availableQty ?? 0),
+        );
+      }
+    }
+
     return this.prisma.inventory.update({
       where: {
         productBatchId_locationId: { productBatchId, locationId },

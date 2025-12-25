@@ -344,6 +344,160 @@ describe('Inventory Module (e2e)', () => {
 
       expect(response.body.success).toBe(true);
     });
+
+    it('INV-INT-CAP-01: Should reject receive when location capacity exceeded', async () => {
+      // Create a specific location with small capacity
+      const loc = await prisma.location.create({
+        data: {
+          warehouseId: testWarehouseId,
+          code: `LOC-CAP-${Date.now()}`,
+          name: 'Capacity Test Location',
+          capacity: 100,
+        },
+      });
+
+      // Seed inventory so currentStored = 90
+      await prisma.inventory.upsert({
+        where: {
+          productBatchId_locationId: { productBatchId: testProductBatchId, locationId: loc.id },
+        },
+        update: { availableQty: 90 },
+        create: {
+          productBatchId: testProductBatchId,
+          locationId: loc.id,
+          availableQty: 90,
+          reservedQty: 0,
+        },
+      });
+
+      const receiveDto = {
+        productBatchId: testProductBatchId,
+        locationId: loc.id,
+        quantity: 20,
+        idempotencyKey: `idem-receive-cap-${Date.now()}`,
+      };
+
+      const response = await request(app.getHttpServer())
+        .post('/inventory/receive')
+        .set('Authorization', adminToken)
+        .send(receiveDto)
+        .expect(400);
+
+      expect(response.body.message).toContain('Location capacity exceeded');
+    });
+
+    it('INV-INT-CAP-02: Should reject transfer when destination location capacity exceeded', async () => {
+      // Create source and destination locations
+      const src = await prisma.location.create({
+        data: {
+          warehouseId: testWarehouseId,
+          code: `LOC-SRC-${Date.now()}`,
+          name: 'Src',
+          capacity: 1000,
+        },
+      });
+      const dst = await prisma.location.create({
+        data: {
+          warehouseId: testWarehouseId,
+          code: `LOC-DST-${Date.now()}`,
+          name: 'Dst',
+          capacity: 60,
+        },
+      });
+
+      // Seed inventories: source has enough, dest has 50 stored already
+      await prisma.inventory.upsert({
+        where: {
+          productBatchId_locationId: { productBatchId: testProductBatchId, locationId: src.id },
+        },
+        update: { availableQty: 200 },
+        create: {
+          productBatchId: testProductBatchId,
+          locationId: src.id,
+          availableQty: 200,
+          reservedQty: 0,
+        },
+      });
+      await prisma.inventory.upsert({
+        where: {
+          productBatchId_locationId: { productBatchId: testProductBatchId, locationId: dst.id },
+        },
+        update: { availableQty: 50 },
+        create: {
+          productBatchId: testProductBatchId,
+          locationId: dst.id,
+          availableQty: 50,
+          reservedQty: 0,
+        },
+      });
+
+      const transferDto = {
+        productBatchId: testProductBatchId,
+        fromLocationId: src.id,
+        toLocationId: dst.id,
+        quantity: 20,
+        idempotencyKey: `idem-transfer-cap-${Date.now()}`,
+      };
+
+      const response = await request(app.getHttpServer())
+        .post('/inventory/transfer')
+        .set('Authorization', adminToken)
+        .send(transferDto)
+        .expect(400);
+
+      expect(response.body.message).toContain('Location capacity exceeded');
+    });
+
+    it('INV-INT-AGG-01: ProductBatch GET should include aggregate totals', async () => {
+      // Ensure a deterministic inventory state: set two locations with known qty
+      // Use a fresh batch for this aggregation test to avoid cross-test pollution
+      const localBatch = await prisma.productBatch.create({
+        data: {
+          productId: testProductId,
+          batchNo: `AGG-BATCH-${Date.now()}`,
+          quantity: 0,
+        },
+      });
+      const localBatchId = localBatch.id;
+
+      const locA = await prisma.location.create({
+        data: { warehouseId: testWarehouseId, code: `LOC-AGG-A-${Date.now()}`, name: 'AggA' },
+      });
+      const locB = await prisma.location.create({
+        data: { warehouseId: testWarehouseId, code: `LOC-AGG-B-${Date.now()}`, name: 'AggB' },
+      });
+
+      await prisma.inventory.upsert({
+        where: { productBatchId_locationId: { productBatchId: localBatchId, locationId: locA.id } },
+        update: { availableQty: 12, reservedQty: 3 },
+        create: {
+          productBatchId: localBatchId,
+          locationId: locA.id,
+          availableQty: 12,
+          reservedQty: 3,
+        },
+      });
+
+      await prisma.inventory.upsert({
+        where: { productBatchId_locationId: { productBatchId: localBatchId, locationId: locB.id } },
+        update: { availableQty: 5, reservedQty: 0 },
+        create: {
+          productBatchId: localBatchId,
+          locationId: locB.id,
+          availableQty: 5,
+          reservedQty: 0,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get(`/product-batches/${localBatchId}`)
+        .set('Authorization', adminToken)
+        .expect(200);
+
+      expect(response.body.data.totalAvailableQty).toBe(17);
+      expect(response.body.data.totalReservedQty).toBe(3);
+      expect(response.body.data.totalOnHand).toBe(20);
+    });
   });
 
   describe('POST /inventory/dispatch - Dispatch Inventory', () => {
