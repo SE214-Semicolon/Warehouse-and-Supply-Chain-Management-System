@@ -223,12 +223,3 @@ npm run test:integration
 ## License
 
 This backend code follows the repository license: **MIT**. See [../LICENSE](../LICENSE).
-
----
-
-If you'd like, I can also:
-
-- Add a short `CONTRIBUTING.md` snippet specifically for backend PRs and reviewers
-- Add VS Code launch configurations or a `.env.example` file to the `backend/` folder
-
----
