@@ -328,6 +328,27 @@ describe('InventoryService', () => {
       expect(inventoryRepo.findUser).not.toHaveBeenCalled();
     });
 
+    it('should map LocationCapacityExceeded to BadRequestException on receive', async () => {
+      const receiveDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        quantity: 20,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue({ ...mockLocation, capacity: 100 });
+      // Simulate repository throwing capacity error
+      const { LocationCapacityExceeded } = jest.requireActual(
+        '../../errors/location-capacity.error',
+      );
+      inventoryRepo.receiveInventoryTx.mockRejectedValue(new LocationCapacityExceeded(100, 90, 20));
+
+      await expect(service.receiveInventory(receiveDto)).rejects.toThrow(BadRequestException);
+      await expect(service.receiveInventory(receiveDto)).rejects.toThrow(
+        /Location capacity exceeded: capacity=100, currentStored=90, requested=20/,
+      );
+    });
+
     // Edge case: Receive without idempotency key
     it('should receive inventory without idempotency key', async () => {
       const receiveDto = {
@@ -2084,6 +2105,27 @@ describe('InventoryService', () => {
 
       expect(result.success).toBe(true);
       expect(result.inventory.availableQty).toBe(999999999);
+    });
+
+    it('should map LocationCapacityExceeded to BadRequest on update quantities', async () => {
+      const updateDto = { availableQty: 200 };
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue({ ...mockLocation, capacity: 150 });
+      const { LocationCapacityExceeded } = jest.requireActual(
+        '../../errors/location-capacity.error',
+      );
+      inventoryRepo.updateInventoryQuantities.mockRejectedValue(
+        new LocationCapacityExceeded(150, 140, 200),
+      );
+
+      await expect(
+        service.updateInventoryQuantity('batch-uuid-1', 'location-uuid-1', updateDto),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.updateInventoryQuantity('batch-uuid-1', 'location-uuid-1', updateDto),
+      ).rejects.toThrow(
+        /Location capacity exceeded: capacity=150, currentStored=140, requested=200/,
+      );
     });
   });
 

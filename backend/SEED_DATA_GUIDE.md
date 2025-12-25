@@ -216,6 +216,12 @@ Bạn có thể test login ngay với tài khoản: `admin` / `admin123`
 **API Endpoints:**
 - `GET /inventory/location?locationId=xxx` - Inventory theo location
 - `GET /inventory/product-batch?productBatchId=xxx` - Inventory theo batch
+
+Notes:
+- ProductBatch `quantity` is a static field stored on the batch record and may not reflect real-time on-hand quantities.
+- Use the ProductBatch API (GET `/product-batches/:id`) which now includes `totalAvailableQty`, `totalReservedQty`, and `totalOnHand` (aggregated across all locations) for accurate real-time quantities.
+- When receiving/transferring/adjusting inventory, the system enforces `Location.capacity` (if set). Operations that would exceed capacity will be rejected with a 400 error and a message that includes capacity, currentStored, and requested values.
+
 - `GET /inventory/product?productId=xxx` - Tổng inventory của product
 
 ### 7. Purchase Orders (20 đơn mua hàng)
