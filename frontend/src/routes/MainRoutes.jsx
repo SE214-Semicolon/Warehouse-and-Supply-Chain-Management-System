@@ -10,7 +10,6 @@ import ProductDetail from '@/pages/warehouse/ProductDetail';
 import BatchDetail from '@/pages/warehouse/BatchDetail';
 import LocationDetail from '@/pages/warehouse/LocationDetail';
 import WarehouseDetail from '@/pages/warehouse/WarehouseDetail';
-import Supplier from '@/pages/supplier';
 import Shipment from '@/pages/shipment';
 import SupplierDetail from '@/pages/supplier/SupplierDetail';
 import PODetail from '@/pages/purchase-order/PODetail';
@@ -32,7 +31,6 @@ export default function MainRoutes() {
             path="/warehouse/warehouses/:id"
             element={<WarehouseDetail />}
           />
-          <Route path="/supplier" element={<Supplier />} />
           <Route path="/shipment" element={<Shipment />} />
           <Route path="/supplier/detail" element={<SupplierDetail />} />
           <Route path="/purchase-order/detail" element={<PODetail />} />
