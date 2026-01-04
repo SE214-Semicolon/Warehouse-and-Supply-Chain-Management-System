@@ -30,7 +30,7 @@ export default function ShipmentTracking() {
       const res = await ShipmentService.trackByCode(code);
       if (res) setResult(res);
       else setError("No shipment found.");
-    } catch (err) {
+    } catch {
       setError("Shipment not found or server error.");
     } finally {
       setLoading(false);

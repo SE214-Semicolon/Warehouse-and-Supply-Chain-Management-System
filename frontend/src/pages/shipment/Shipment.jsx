@@ -24,7 +24,7 @@ const Shipment = () => {
     try {
       const res = await ShipmentService.getAll();
       setData(Array.isArray(res) ? res : []);
-    } catch (error) {
+    } catch {
       setData([]);
     } finally {
       setLoading(false);

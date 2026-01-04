@@ -101,7 +101,7 @@ const ShipmentDetail = () => {
     try {
       const res = await ShipmentService.getById(id);
       setShipment(res);
-    } catch (error) {
+    } catch {
       setShipment(null);
     } finally {
       setLoading(false);
