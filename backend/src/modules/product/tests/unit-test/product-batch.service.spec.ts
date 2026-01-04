@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductBatchService } from '../../services/product-batch.service';
 import { ProductBatchRepository } from '../../repositories/product-batch.repository';
 import { ProductRepository } from '../../repositories/product.repository';
+import { AuditMiddleware } from '../../../../database/middleware/audit.middleware';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
 describe('ProductBatchService', () => {
@@ -38,6 +39,9 @@ describe('ProductBatchService', () => {
     updatedAt: new Date(),
     product: mockProduct,
     inventory: [],
+    totalAvailableQty: 0,
+    totalReservedQty: 0,
+    totalOnHand: 0,
   };
 
   beforeEach(async () => {
@@ -56,6 +60,13 @@ describe('ProductBatchService', () => {
       findOne: jest.fn(),
     };
 
+    const mockAuditMiddleware = {
+      logCreate: jest.fn().mockResolvedValue(undefined),
+      logUpdate: jest.fn().mockResolvedValue(undefined),
+      logDelete: jest.fn().mockResolvedValue(undefined),
+      logOperation: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductBatchService,
@@ -66,6 +77,10 @@ describe('ProductBatchService', () => {
         {
           provide: ProductRepository,
           useValue: mockProductRepo,
+        },
+        {
+          provide: AuditMiddleware,
+          useValue: mockAuditMiddleware,
         },
       ],
     }).compile();
@@ -298,6 +313,36 @@ describe('ProductBatchService', () => {
       expect(result.page).toBe(1);
       expect(result.limit).toBe(20);
       expect(result.totalPages).toBe(1);
+    });
+
+    it('should return aggregated totals for each batch in findAll', async () => {
+      const batchA = {
+        ...mockBatch,
+        id: 'batch-a',
+        inventory: [{ availableQty: 7, reservedQty: 1 }],
+      } as any;
+      const batchB = {
+        ...mockBatch,
+        id: 'batch-b',
+        inventory: [
+          { availableQty: 3, reservedQty: 0 },
+          { availableQty: 2, reservedQty: 2 },
+        ],
+      } as any;
+
+      batchRepo.findAll.mockResolvedValue({ batches: [batchA, batchB], total: 2 });
+
+      const result = await service.findAll({});
+
+      expect(result.success).toBe(true);
+      const a = result.data.find((b) => b.id === 'batch-a');
+      const b = result.data.find((b) => b.id === 'batch-b');
+      expect(a!.totalAvailableQty).toBe(7);
+      expect(a!.totalReservedQty).toBe(1);
+      expect(a!.totalOnHand).toBe(8);
+      expect(b!.totalAvailableQty).toBe(5);
+      expect(b!.totalReservedQty).toBe(2);
+      expect(b!.totalOnHand).toBe(7);
     });
 
     // BATCH-TC10: Filter by product ID
@@ -601,6 +646,25 @@ describe('ProductBatchService', () => {
       await expect(service.findOne('invalid-id')).rejects.toThrow(
         'Product batch with ID "invalid-id" not found',
       );
+    });
+
+    it('should include aggregated totals when inventory present', async () => {
+      const batchWithInventory = {
+        ...mockBatch,
+        inventory: [
+          { availableQty: 10, reservedQty: 2, locationId: 'l1' },
+          { availableQty: 5, reservedQty: 1, locationId: 'l2' },
+        ],
+      } as any;
+
+      batchRepo.findOne.mockResolvedValue(batchWithInventory);
+
+      const result = await service.findOne('batch-uuid-1');
+
+      expect(result.success).toBe(true);
+      expect(result.data.totalAvailableQty).toBe(15);
+      expect(result.data.totalReservedQty).toBe(3);
+      expect(result.data.totalOnHand).toBe(18);
     });
 
     // BATCH-TC21: Invalid ID format tested by DTO

@@ -68,7 +68,8 @@ Hệ thống sử dụng nhiều workflow để đảm bảo chất lượng và
 | Workflow | File | Mục đích |
 |----------|------|----------|
 | **Code Check** | `code-check.yml` | Kiểm tra lint, type, formatting |
-| **Test Matrix** | `test-matrix.yml` | Chạy unit/integration/smoke tests |
+| **Build and Test** | `build-and-test.yml` | Build và chạy unit/integration tests với Testcontainers |
+| **Test Matrix** | `test-matrix.yml` | Chạy unit/integration/smoke tests theo ma trận |
 | **Deploy Apps** | `deploy-apps.yml` | Build và deploy ứng dụng |
 | **Deploy Infrastructure** | `deploy-infrastructure.yml` | Triển khai hạ tầng Terraform |
 
@@ -201,16 +202,92 @@ docker pull ghcr.io/se214-semicolon/warehouse-and-supply-chain-management-system
 | `NODE_ENV` | staging/production |
 | `PORT` | Cổng chạy backend (3000) |
 | `FRONTEND_URL` | URL của ứng dụng React |
-| `DATABASE_URL` | Connection string PostgreSQL |
-| `MONGO_URL` | Connection string MongoDB |
+| `DATABASE_URL` | Connection string PostgreSQL (Neon DB) |
+| `MONGO_URL` | Connection string MongoDB (MongoDB Atlas) |
 | `JWT_ACCESS_SECRET` | Secret cho access token |
 | `JWT_REFRESH_SECRET` | Secret cho refresh token |
+| `REDIS_URL` | (Optional) Connection string Redis cho caching |
 
 ---
 
-## 2. Giám sát & Theo dõi (Monitoring)
+## 2. Các Module hệ thống (System Modules)
 
-### 2.1 Công cụ giám sát
+Hệ thống được tổ chức theo **11 bounded contexts** theo mô hình DDD:
+
+### 2.1 Modules chính
+
+| Module | Mô tả | Database |
+|--------|-------|----------|
+| **Product Management** | Quản lý sản phẩm, danh mục, lô hàng | PostgreSQL |
+| **Warehouse Management** | Quản lý kho và vị trí lưu trữ | PostgreSQL |
+| **Inventory Management** | Quản lý tồn kho, stock movements | PostgreSQL |
+| **Procurement** | Quản lý nhà cung cấp, đơn đặt hàng | PostgreSQL |
+| **Sales** | Quản lý khách hàng, đơn bán hàng | PostgreSQL |
+| **Logistics** | Quản lý vận chuyển, giao hàng | PostgreSQL |
+| **Demand Planning** | Dự báo nhu cầu với thuật toán SMA | PostgreSQL |
+| **Reporting** | Báo cáo và phân tích dữ liệu | PostgreSQL (với Redis cache) |
+| **Alerts** | Cảnh báo tồn kho thấp, sản phẩm hết hạn | MongoDB (TTL: 90 ngày) |
+| **Audit Log** | Log hoạt động cho compliance | MongoDB (TTL: 180 ngày) |
+| **User Management** | Quản lý người dùng và phân quyền | PostgreSQL |
+
+### 2.2 User Roles (RBAC)
+
+Hệ thống hỗ trợ **8 vai trò người dùng**:
+
+| Role | Code | Quyền chính |
+|------|------|-------------|
+| Admin | `admin` | Full system access |
+| Manager | `manager` | Phê duyệt, quản lý tổng quan |
+| Warehouse Staff | `warehouse_staff` | Vận hành kho hàng ngày |
+| Procurement | `procurement` | Quản lý nhà cung cấp, PO |
+| Sales | `sales` | Quản lý khách hàng, SO |
+| Logistics | `logistics` | Quản lý vận chuyển |
+| Analyst | `analyst` | Báo cáo, dự báo, phân tích |
+| Partner | `partner` | Truy cập hạn chế (tracking) |
+
+> 📖 Chi tiết phân quyền: Xem [RBAC.md](./RBAC.md)
+
+### 2.3 API Endpoints chính
+
+**Swagger UI:** `http://localhost:3000/docs`
+
+| Nhóm | Prefix | Mô tả |
+|------|--------|-------|
+| Products | `/products` | CRUD sản phẩm, danh mục, lô hàng |
+| Warehouses | `/warehouses` | CRUD kho, vị trí |
+| Inventory | `/inventory` | Stock operations, movements |
+| Suppliers | `/suppliers` | CRUD nhà cung cấp |
+| Purchase Orders | `/purchase-orders` | CRUD đơn mua hàng |
+| Customers | `/customers` | CRUD khách hàng |
+| Sales Orders | `/sales-orders` | CRUD đơn bán hàng |
+| Shipments | `/shipments` | CRUD vận chuyển |
+| Demand Planning | `/demand-planning/forecasts` | Dự báo nhu cầu |
+| Alerts | `/alerts` | Cảnh báo hệ thống |
+| Reports | `/reports/*` | Báo cáo và phân tích |
+| Auth | `/auth` | Đăng nhập, đăng ký, token |
+
+### 2.4 Reports Endpoints
+
+| Endpoint | Mô tả | Roles |
+|----------|-------|-------|
+| `/reports/inventory/low-stock` | Tồn kho dưới ngưỡng | Admin, Manager, Staff, Analyst |
+| `/reports/inventory/expiry` | Sản phẩm sắp hết hạn | Admin, Manager, Staff, Analyst |
+| `/reports/inventory/stock-levels` | Mức tồn kho theo nhóm | Admin, Manager, Staff, Analyst |
+| `/reports/inventory/movements` | Lịch sử biến động kho | Admin, Manager, Staff, Analyst |
+| `/reports/inventory/valuation` | Định giá tồn kho | Admin, Manager, Analyst |
+| `/reports/product/performance` | Hiệu suất sản phẩm | Admin, Manager, Analyst |
+| `/reports/warehouse/utilization` | Tỷ lệ sử dụng kho | Admin, Manager, Staff, Analyst |
+| `/reports/demand-planning/accuracy` | Độ chính xác dự báo | Admin, Manager, Procurement, Sales, Analyst |
+| `/reports/sales/so-performance` | Hiệu suất đơn bán | Admin, Manager, Sales, Analyst |
+| `/reports/sales/sales-trends` | Xu hướng bán hàng | Admin, Manager, Sales, Analyst |
+| `/reports/procurement/po-performance` | Hiệu suất đơn mua | Admin, Manager, Procurement, Analyst |
+| `/reports/procurement/supplier-performance` | Hiệu suất nhà cung cấp | Admin, Manager, Procurement, Analyst |
+
+---
+
+## 3. Giám sát & Theo dõi (Monitoring)
+
+### 3.1 Công cụ giám sát
 
 Hệ thống sử dụng stack monitoring sau:
 - **Azure Application Insights**: APM, request tracking, error logging
@@ -229,7 +306,7 @@ Các chỉ số quan trọng:
 
 ---
 
-### 2.2 Xem log & truy vết lỗi
+### 3.2 Xem log & truy vết lỗi
 
 **Application Insights:**
 - Mở Azure Portal → Application Insights → Logs  
@@ -250,7 +327,7 @@ az webapp log tail \
 
 ---
 
-### 2.3 Cảnh báo và hành động khắc phục
+### 3.3 Cảnh báo và hành động khắc phục
 
 **Ngưỡng cảnh báo (Alert Rules):**
 - P95 latency > 1s  
@@ -266,7 +343,7 @@ az webapp log tail \
 
 ---
 
-### 2.4 Health Check Procedures
+### 3.4 Health Check Procedures
 
 Sử dụng script để kiểm tra health:
 
@@ -287,9 +364,9 @@ curl -s https://warehouse-mgmt-production-frontend.azurewebsites.net/health
 
 ---
 
-## 3. Sao lưu & Phục hồi (Backup)
+## 4. Sao lưu & Phục hồi (Backup)
 
-### 3.1 Cấu hình sao lưu
+### 4.1 Cấu hình sao lưu
 
 **Neon DB (PostgreSQL):**
 - Point-in-Time Restore (PITR) tự động
@@ -306,7 +383,7 @@ curl -s https://warehouse-mgmt-production-frontend.azurewebsites.net/health
 
 ---
 
-### 3.2 Phục hồi dữ liệu
+### 4.2 Phục hồi dữ liệu
 
 **Neon DB:**
 1. Truy cập Neon Console
@@ -323,30 +400,33 @@ curl -s https://warehouse-mgmt-production-frontend.azurewebsites.net/health
 
 ---
 
-## 4. Nhiệm vụ định kỳ (Routine Tasks)
+## 5. Nhiệm vụ định kỳ (Routine Tasks)
 
-### 4.1 Hàng ngày
+### 5.1 Hàng ngày
 - [ ] Kiểm tra logs lỗi trong Application Insights
 - [ ] Đảm bảo các service hoạt động bình thường (App Service, DB)
 - [ ] Kiểm tra dung lượng đĩa PostgreSQL
+- [ ] Xem xét alerts trong `/alerts` (LOW_STOCK, EXPIRING_SOON)
 
-### 4.2 Hàng tuần
+### 5.2 Hàng tuần
 - [ ] Xem báo cáo hiệu năng hệ thống (CPU, Memory)
 - [ ] Kiểm tra cấu hình alert có hoạt động đúng không
 - [ ] Đảm bảo Terraform state và backup được cập nhật
 - [ ] Review failed GitHub Actions runs
+- [ ] Chạy demand forecasting cho các sản phẩm chủ lực
 
-### 4.3 Hàng tháng
+### 5.3 Hàng tháng
 - [ ] Kiểm tra lại quyền truy cập (RBAC, Managed Identity)
 - [ ] Cập nhật phiên bản Node.js, package dependencies
 - [ ] Đánh giá chi phí vận hành Azure và tối ưu tài nguyên
 - [ ] Rotate JWT secrets nếu cần
+- [ ] Xem xét báo cáo `/reports/demand-planning/accuracy` để đánh giá độ chính xác dự báo
 
 ---
 
-## 5. Phụ lục
+## 6. Phụ lục
 
-### 5.1 Liên hệ và vai trò
+### 6.1 Liên hệ và vai trò
 
 | Vai trò | Người phụ trách | Ghi chú |
 |----------|----------------|---------|
@@ -355,7 +435,7 @@ curl -s https://warehouse-mgmt-production-frontend.azurewebsites.net/health
 | Frontend Lead | Thành viên frontend | Triển khai giao diện |
 | Giảng viên | Người hướng dẫn đồ án | Giám sát & đánh giá |
 
-### 5.2 Tài liệu liên quan
+### 6.2 Tài liệu liên quan
 
 | Tài liệu | Đường dẫn |
 |----------|-----------|
@@ -366,12 +446,16 @@ curl -s https://warehouse-mgmt-production-frontend.azurewebsites.net/health
 | **Quy trình rollback** | [ROLLBACK_PLAYBOOK.md](./ROLLBACK_PLAYBOOK.md) |
 | Hướng dẫn IaC | [iac/README.md](../iac/README.md) |
 
-### 5.3 Quick Commands Reference
+### 6.3 Quick Commands Reference
 
 ```bash
 # ===== Deployment =====
 # Trigger manual deployment
 gh workflow run deploy-apps.yml -f environment=staging
+
+# ===== Build and Test =====
+# Trigger build and test workflow
+gh workflow run build-and-test.yml
 
 # ===== Health Checks =====
 ./iac/scripts/health-check.sh production
@@ -392,4 +476,29 @@ terraform apply
 
 # ===== Docker =====
 docker pull ghcr.io/se214-semicolon/warehouse-and-supply-chain-management-system/backend:latest
+
+# ===== Local Development =====
+# Chạy với Docker Compose
+docker-compose up -d
+
+# Chạy tests
+cd backend && npm run test:unit
+cd backend && npm run test:integration
+
+# Chạy demand planning forecast (manual)
+curl -X POST http://localhost:3000/demand-planning/forecasts/run/{productId}
 ```
+
+### 6.4 Database Migrations History
+
+Các migration quan trọng gần đây:
+
+| Migration | Mô tả |
+|-----------|-------|
+| `20251119_feat_demand_planning_and_alerts_support` | Thêm hỗ trợ Demand Planning và Alerts |
+| `20251203_add_sales_analyst_roles` | Thêm role Sales Analyst |
+| `20251214_fix_shipment_schema` | Sửa lỗi schema Shipment |
+| `20251217_add_location_to_sales_order_item` | Thêm locationId vào SalesOrderItem |
+| `20251225_add_transfer_group_id` | Thêm transferGroupId cho StockMovement |
+
+> 💡 **Tip:** Chạy `npx prisma migrate status` để kiểm tra trạng thái migrations

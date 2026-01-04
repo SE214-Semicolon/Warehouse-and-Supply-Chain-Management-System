@@ -19,6 +19,8 @@ import {
 import { CacheService } from 'src/cache/cache.service';
 import { CACHE_PREFIX, CACHE_TTL } from 'src/cache/cache.constants';
 import { AlertGenerationService } from '../../alerts/services/alert-generation.service';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
+import { LocationCapacityExceeded } from '../errors/location-capacity.error';
 
 @Injectable()
 export class InventoryService {
@@ -28,6 +30,7 @@ export class InventoryService {
     private readonly inventoryRepo: InventoryRepository,
     private readonly cacheService: CacheService,
     private readonly alertGenService: AlertGenerationService,
+    private readonly auditMiddleware: AuditMiddleware,
   ) {}
 
   /**
@@ -111,8 +114,25 @@ export class InventoryService {
       // Invalidate inventory caches after receive
       await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
+      // Audit logs for inventory and movement
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for stock movement', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
+
       return { success: true, inventory, movement };
     } catch (err) {
+      if (err instanceof LocationCapacityExceeded) {
+        const message = `Location capacity exceeded: capacity=${err.capacity}, currentStored=${err.currentStored}, requested=${err.requested}`;
+        throw new BadRequestException(message);
+      }
+
       // If movement creation failed due to unique constraint on idempotencyKey, return existing movement
       if (
         dto.idempotencyKey &&
@@ -122,6 +142,7 @@ export class InventoryService {
         const existing = await this.inventoryRepo.findMovementByKey(dto.idempotencyKey);
         if (existing) return { success: true, idempotent: true, movement: existing };
       }
+
       throw err;
     }
   }
@@ -143,7 +164,7 @@ export class InventoryService {
    * - Dispatch exact available quantity (all stock)
    * - Dispatch minimal quantity of 1
    */
-  async dispatchInventory(dto: DispatchInventoryDto) {
+  async dispatchInventory(dto: DispatchInventoryDto, options?: { consumeReservation?: boolean }) {
     // Basic existence validation
     const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
     if (!batch) {
@@ -177,6 +198,11 @@ export class InventoryService {
       }
     }
 
+    const consumeReservation = options?.consumeReservation || false;
+    this.logger.log(
+      `Dispatching inventory with consumeReservation=${consumeReservation} for batch ${dto.productBatchId}`,
+    );
+
     try {
       const { inventory, movement } = await this.inventoryRepo.dispatchInventoryTx(
         dto.productBatchId,
@@ -184,6 +210,7 @@ export class InventoryService {
         dto.quantity,
         dto.createdById,
         dto.idempotencyKey,
+        consumeReservation,
       );
 
       // Trigger low stock alert check (non-blocking)
@@ -195,10 +222,40 @@ export class InventoryService {
         })
         .catch((err) => this.logger.warn('Failed to check low stock alert:', err));
 
+      // Audit logging for dispatch operation
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for stock movement creation', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
       return { success: true, inventory, movement };
     } catch (err) {
-      if (err instanceof Error && err.message === 'NotEnoughStock') {
-        throw new BadRequestException('Not enough stock available');
+      if (err instanceof Error) {
+        if (err.message === 'NotEnoughStock') {
+          throw new BadRequestException('Not enough stock available');
+        }
+        if (err.message === 'NotEnoughReservedStock') {
+          throw new BadRequestException(
+            'Not enough reserved stock. This may indicate the reservation was already consumed or released.',
+          );
+        }
+        if (err.message === 'ReservedQtyNegative') {
+          throw new BadRequestException(
+            'CRITICAL: Reserved quantity went negative. Data inconsistency detected.',
+          );
+        }
+        if (err.message === 'InventoryNotFound') {
+          throw new NotFoundException('Inventory record not found');
+        }
       }
 
       // If unique constraint on idempotencyKey occurred concurrently, return existing movement
@@ -289,8 +346,28 @@ export class InventoryService {
           .catch((err) => this.logger.warn('Failed to check low stock alert:', err));
       }
 
+      // Audit logging for adjustment operation
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for stock movement creation', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
       return { success: true, inventory, movement };
     } catch (err) {
+      if (err instanceof LocationCapacityExceeded) {
+        const message = `Location capacity exceeded: capacity=${err.capacity}, currentStored=${err.currentStored}, requested=${err.requested}`;
+        throw new BadRequestException(message);
+      }
+
       // If unique constraint on idempotencyKey occurred concurrently, return existing movement
       if (
         dto.idempotencyKey &&
@@ -373,6 +450,31 @@ export class InventoryService {
           dto.note,
         );
 
+      // Audit logging for transfer operation
+      this.auditMiddleware
+        .logCreate('StockMovement', transferOutMovement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for transfer out movement', err);
+        });
+      this.auditMiddleware
+        .logCreate('StockMovement', transferInMovement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for transfer in movement', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', fromInventory.id, null, fromInventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for from inventory update', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', toInventory.id, null, toInventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for to inventory update', err);
+        });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
       return {
         success: true,
         fromInventory,
@@ -381,6 +483,11 @@ export class InventoryService {
         transferInMovement,
       };
     } catch (err) {
+      if (err instanceof LocationCapacityExceeded) {
+        const message = `Location capacity exceeded: capacity=${err.capacity}, currentStored=${err.currentStored}, requested=${err.requested}`;
+        throw new BadRequestException(message);
+      }
+
       if (err instanceof Error && err.message === 'NotEnoughStock') {
         throw new BadRequestException('Not enough stock available for transfer');
       }
@@ -467,6 +574,21 @@ export class InventoryService {
         dto.note,
       );
 
+      // Audit logging for reserve operation
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for reserve movement', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
       return { success: true, inventory, movement };
     } catch (err) {
       if (err instanceof Error && err.message === 'NotEnoughStock') {
@@ -542,6 +664,21 @@ export class InventoryService {
         dto.idempotencyKey,
         dto.note,
       );
+
+      // Audit logging for release reservation operation
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for release movement', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
       return { success: true, inventory, movement };
     } catch (err) {
@@ -727,12 +864,24 @@ export class InventoryService {
       throw new BadRequestException('Reserved quantity cannot be negative');
     }
 
-    const updatedInventory = await this.inventoryRepo.updateInventoryQuantities(
-      productBatchId,
-      locationId,
-      dto.availableQty,
-      dto.reservedQty,
-    );
+    let updatedInventory;
+    try {
+      updatedInventory = await this.inventoryRepo.updateInventoryQuantities(
+        productBatchId,
+        locationId,
+        dto.availableQty,
+        dto.reservedQty,
+      );
+    } catch (err) {
+      if (err instanceof LocationCapacityExceeded) {
+        const message = `Location capacity exceeded: capacity=${err.capacity}, currentStored=${err.currentStored}, requested=${err.requested}`;
+        throw new BadRequestException(message);
+      }
+      throw err;
+    }
+
+    // Invalidate inventory caches
+    await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
     return {
       success: true,
@@ -767,6 +916,9 @@ export class InventoryService {
       productBatchId,
       locationId,
     );
+
+    // Invalidate inventory caches
+    await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
     return {
       success: true,
@@ -835,7 +987,7 @@ export class InventoryService {
       dto.productId,
       dto.page || 1,
       dto.limit || 20,
-      dto.sortBy || 'productBatch',
+      dto.sortBy || 'updatedAt',
       dto.sortOrder || 'asc',
     );
 
@@ -979,6 +1131,73 @@ export class InventoryService {
     return {
       success: true,
       ...result,
+    };
+  }
+
+  /**
+   * Get inventory for specific batch and location
+   * Used for batch-specific validation in Sales Order submission
+   */
+  async getInventoryByBatchAndLocation(
+    productBatchId: string,
+    locationId: string,
+  ): Promise<{ availableQty: number; reservedQty: number } | null> {
+    const inventory = await this.inventoryRepo.findInventory(productBatchId, locationId);
+    if (!inventory) return null;
+    return {
+      availableQty: inventory.availableQty,
+      reservedQty: inventory.reservedQty,
+    };
+  }
+
+  /**
+   * Get GLOBAL inventory summary for a product (all batches/locations)
+   * Used for flexible validation when SO items don't have specific batch/location
+   *
+   * Formula: TotalAvailable = SUM(availableQty) across ALL inventory records
+   * Note: This does NOT consider reservedQty from other orders
+   */
+  async getGlobalInventoryByProduct(productId: string): Promise<{
+    productId: string;
+    productName: string | null;
+    totalAvailableQty: number;
+    totalReservedQty: number;
+    batchCount: number;
+  }> {
+    this.logger.log(`Calculating global inventory for product: ${productId}`);
+
+    // Query all inventory records for this product across all batches and locations
+    const inventories = await this.inventoryRepo.findInventoriesByProduct(productId);
+
+    if (!inventories || inventories.length === 0) {
+      // Product exists but has no inventory
+      return {
+        productId,
+        productName: null,
+        totalAvailableQty: 0,
+        totalReservedQty: 0,
+        batchCount: 0,
+      };
+    }
+
+    // Calculate totals
+    const totalAvailableQty = inventories.reduce((sum, inv) => sum + inv.availableQty, 0);
+    const totalReservedQty = inventories.reduce((sum, inv) => sum + inv.reservedQty, 0);
+    const batchCount = new Set(inventories.map((inv) => inv.productBatchId)).size;
+
+    // Get product name from first inventory record
+    const productName = inventories[0]?.productBatch?.product?.name || null;
+
+    this.logger.log(
+      `Global inventory for product ${productId}: Available=${totalAvailableQty}, Reserved=${totalReservedQty}, Batches=${batchCount}`,
+    );
+
+    return {
+      productId,
+      productName,
+      totalAvailableQty,
+      totalReservedQty,
+      batchCount,
     };
   }
 }

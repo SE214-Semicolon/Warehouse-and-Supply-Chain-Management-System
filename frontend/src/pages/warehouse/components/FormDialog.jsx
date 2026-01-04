@@ -26,7 +26,9 @@ const FormDialog = ({
 
   const detectFieldFromError = (msg) => {
     if (!msg) return null;
-    const lowerMsg = msg.toLowerCase();
+    // Convert msg to string in case it's an Error object
+    const msgStr = typeof msg === 'string' ? msg : msg.message || String(msg);
+    const lowerMsg = msgStr.toLowerCase();
 
     if (lowerMsg.includes("sku")) return "sku";
     if (lowerMsg.includes("barcode")) return "barcode";
@@ -46,9 +48,11 @@ const FormDialog = ({
     try {
       await onAction(payload);
       onClose();
-    } catch (msg) {
-      setApiError(msg);
-      setServerErrorField(detectFieldFromError(msg));
+    } catch (error) {
+      // Convert error to string for display
+      const errorMsg = typeof error === 'string' ? error : error.message || String(error);
+      setApiError(errorMsg);
+      setServerErrorField(detectFieldFromError(error));
     }
   };
 

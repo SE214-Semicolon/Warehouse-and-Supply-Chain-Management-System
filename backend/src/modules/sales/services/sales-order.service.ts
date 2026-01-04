@@ -14,6 +14,7 @@ import { DispatchInventoryDto } from '../../inventory/dto/dispatch-inventory.dto
 import { OrderStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../database/prisma/prisma.service';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
 
 @Injectable()
 export class SalesOrderService {
@@ -23,6 +24,7 @@ export class SalesOrderService {
     private readonly soRepo: SalesOrderRepository,
     private readonly inventorySvc: InventoryService,
     private readonly prisma: PrismaService,
+    private readonly auditMiddleware: AuditMiddleware,
   ) {}
 
   /**
@@ -86,6 +88,14 @@ export class SalesOrderService {
     const created = await this.soRepo.findById(so.id);
     if (!created) throw new NotFoundException('SO not found after creation');
     this.logger.log(`Sales order created successfully: ${created.id} (${soNo})`);
+
+    // Audit logging for SO creation
+    this.auditMiddleware
+      .logCreate('SalesOrder', created as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for SO creation', err);
+      });
+
     return {
       success: true,
       data: created,
@@ -94,7 +104,7 @@ export class SalesOrderService {
   }
 
   /**
-   * Submit Sales Order API
+   * Submit Sales Order API (REFACTORED - Flexible Validation)
    * Minimum test cases: 6
    * - SO-TC11: Submit pending SO successfully (200, status → approved)
    * - SO-TC12: Missing userId (400, tested by DTO)
@@ -102,6 +112,10 @@ export class SalesOrderService {
    * - SO-TC14: Submit non-existent SO (404)
    * - SO-TC15: Permission denied role warehouse_staff (403, tested by guard)
    * - SO-TC16: No authentication (401, tested by guard)
+   *
+   * NEW: Flexible inventory validation:
+   * - If item has productBatchId: Validate specific batch inventory
+   * - If item has NO productBatchId: Validate GLOBAL inventory (all batches/locations)
    */
   async submitSalesOrder(id: string, dto: SubmitSalesOrderDto) {
     this.logger.log(`Submitting sales order: ${id}`);
@@ -114,7 +128,69 @@ export class SalesOrderService {
       throw new BadRequestException('Only pending SO can be submitted');
     }
 
-    // Reserve inventory for items that have both productBatchId and locationId
+    // STEP 1: Validate inventory availability for all items
+    // Use flexible validation: batch-specific or global
+    for (const item of so.items || []) {
+      if (item.productBatchId && item.locationId) {
+        // Case A: User specified batch/location - validate specific batch
+        this.logger.log(
+          `Validating batch-specific inventory for SO item ${item.id}: Batch=${item.productBatchId}, Location=${item.locationId}`,
+        );
+        try {
+          const inventory = await this.inventorySvc.getInventoryByBatchAndLocation(
+            item.productBatchId,
+            item.locationId,
+          );
+          if (!inventory || inventory.availableQty < item.qty) {
+            throw new BadRequestException(
+              `Không đủ hàng trong batch ${item.productBatchId} tại location ${item.locationId}. ` +
+                `Khả dụng: ${inventory?.availableQty || 0}, Yêu cầu: ${item.qty}`,
+            );
+          }
+        } catch (error) {
+          if (error instanceof BadRequestException) throw error;
+          throw new BadRequestException(
+            `Lỗi khi kiểm tra tồn kho batch: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+        }
+      } else if (item.productId) {
+        // Case B: User did NOT specify batch - validate GLOBAL inventory
+        this.logger.log(
+          `Validating global inventory for SO item ${item.id}: Product=${item.productId}`,
+        );
+        try {
+          const globalInventory = await this.inventorySvc.getGlobalInventoryByProduct(
+            item.productId,
+          );
+          // Formula: GlobalAvailable = SUM(availableQty) for all batches/locations
+          const totalAvailable = globalInventory.totalAvailableQty;
+
+          if (totalAvailable < item.qty) {
+            const productName = globalInventory.productName || item.productId;
+            throw new BadRequestException(
+              `Sản phẩm "${productName}" không đủ hàng trong kho. ` +
+                `Tổng khả dụng: ${totalAvailable}, Yêu cầu: ${item.qty}`,
+            );
+          }
+          this.logger.log(
+            `Global inventory check passed for product ${item.productId}: Available=${totalAvailable}, Required=${item.qty}`,
+          );
+        } catch (error) {
+          if (error instanceof BadRequestException) throw error;
+          throw new BadRequestException(
+            `Lỗi khi kiểm tra tổng tồn kho: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+        }
+      } else {
+        this.logger.error(`SO item ${item.id} missing both productBatchId and productId`);
+        throw new BadRequestException(
+          `Item ${item.id} không có thông tin sản phẩm (productId hoặc productBatchId)`,
+        );
+      }
+    }
+
+    // STEP 2: Reserve inventory for items that have both productBatchId and locationId
+    // Note: Items without batch/location will be allocated during fulfillment
     // Note: If reservation succeeds but submit fails, retry will be idempotent
     for (const item of so.items || []) {
       if (item.productBatchId && item.locationId) {
@@ -136,8 +212,8 @@ export class SalesOrderService {
           );
         }
       } else {
-        this.logger.warn(
-          `SO item ${item.id} missing productBatchId or locationId, skipping reservation`,
+        this.logger.log(
+          `SO item ${item.id} without batch/location will be allocated during fulfillment`,
         );
       }
     }
@@ -155,6 +231,19 @@ export class SalesOrderService {
     const updated = await this.soRepo.findById(id);
     if (!updated) throw new NotFoundException('SO not found after submit');
     this.logger.log(`Sales order submitted successfully: ${id}`);
+
+    // Audit logging for SO submission (status update)
+    this.auditMiddleware
+      .logUpdate(
+        'SalesOrder',
+        id,
+        so as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for SO submission', err);
+      });
+
     return updated;
   }
 
@@ -285,6 +374,19 @@ export class SalesOrderService {
     await this.soRepo.updateTotals(id);
     const updated = await this.soRepo.findById(id);
     if (!updated) throw new NotFoundException('SO not found after update');
+
+    // Audit logging for SO update
+    this.auditMiddleware
+      .logUpdate(
+        'SalesOrder',
+        id,
+        so as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for SO update', err);
+      });
+
     return updated;
   }
 
@@ -370,38 +472,26 @@ export class SalesOrderService {
       }
     }
 
-    // Dispatch inventory for each item
-    // For items with reservations, we need to release the reservation before dispatching
+    // REFACTORED: Dispatch inventory with ATOMIC reservation consumption
+    // CRITICAL FIX: Do NOT release reservation before dispatch!
+    // The dispatch operation will atomically consume the reservation
     for (const r of dto.items) {
       const soItem = existing.find((e) => e.id === r.soItemId)!;
 
-      // If item has both productBatchId and locationId, it means we made a reservation
-      // Release the reservation first, then dispatch
-      if (soItem.productBatchId && soItem.locationId) {
-        try {
-          await this.inventorySvc.releaseReservation({
-            productBatchId: soItem.productBatchId,
-            locationId: soItem.locationId,
-            quantity: r.qtyToFulfill,
-            orderId: so.id,
-            idempotencyKey: `SO-FULFILL-REL-${so.id}-${r.soItemId}`,
-            note: `Release reservation for SO ${so.soNo} fulfillment`,
-          });
-          this.logger.log(
-            `Released ${r.qtyToFulfill} units reservation for SO ${so.soNo}, item ${r.soItemId}`,
-          );
-        } catch (error) {
-          this.logger.error(
-            `Failed to release reservation for SO ${so.soNo}, item ${r.soItemId}:`,
-            error,
-          );
-          throw new BadRequestException(
-            'Failed to release inventory reservation. Please try again.',
-          );
-        }
+      // Determine if this item has a reservation (indicated by batch/location in SO item)
+      const hasReservation = !!(soItem.productBatchId && soItem.locationId);
+
+      if (hasReservation) {
+        this.logger.log(
+          `Dispatching with reservation consumption for SO ${so.soNo}, item ${r.soItemId}`,
+        );
+      } else {
+        this.logger.log(`Dispatching without reservation for SO ${so.soNo}, item ${r.soItemId}`);
       }
 
-      // Dispatch the actual inventory
+      // Dispatch inventory with atomic reservation consumption
+      // If hasReservation=true: dispatch will decrement BOTH availableQty AND reservedQty
+      // If hasReservation=false: dispatch will decrement ONLY availableQty
       const payload: DispatchInventoryDto = {
         productBatchId: r.productBatchId,
         locationId: r.locationId,
@@ -409,7 +499,23 @@ export class SalesOrderService {
         createdById: r.createdById,
         idempotencyKey: r.idempotencyKey,
       };
-      await this.inventorySvc.dispatchInventory(payload);
+
+      try {
+        await this.inventorySvc.dispatchInventory(payload, {
+          consumeReservation: hasReservation,
+        });
+        this.logger.log(
+          `Successfully dispatched ${r.qtyToFulfill} units for SO ${so.soNo}, item ${r.soItemId}`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to dispatch inventory for SO ${so.soNo}, item ${r.soItemId}:`,
+          error,
+        );
+        throw new BadRequestException(
+          `Failed to dispatch inventory: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+      }
 
       // Update qtyFulfilled for item
       await this.soRepo.updateItemFulfilled(r.soItemId, r.qtyToFulfill);
@@ -433,6 +539,19 @@ export class SalesOrderService {
 
     const updated = await this.soRepo.findById(soId);
     if (!updated) throw new NotFoundException('SO not found after fulfillment');
+
+    // Audit logging for SO fulfillment (status update)
+    this.auditMiddleware
+      .logUpdate(
+        'SalesOrder',
+        soId,
+        so as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for SO fulfillment', err);
+      });
+
     return updated;
   }
 
@@ -494,6 +613,19 @@ export class SalesOrderService {
     const updated = await this.soRepo.findById(id);
     if (!updated) throw new NotFoundException('SO not found after cancel');
     this.logger.log(`Sales order cancelled successfully: ${id}`);
+
+    // Audit logging for SO cancellation
+    this.auditMiddleware
+      .logUpdate(
+        'SalesOrder',
+        id,
+        so as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for SO cancellation', err);
+      });
+
     return updated;
   }
 }

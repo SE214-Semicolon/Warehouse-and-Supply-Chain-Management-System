@@ -4,6 +4,7 @@ import { SalesOrderService } from '../../services/sales-order.service';
 import { SalesOrderRepository } from '../../repositories/sales-order.repository';
 import { InventoryService } from '../../../inventory/services/inventory.service';
 import { PrismaService } from '../../../../database/prisma/prisma.service';
+import { AuditMiddleware } from '../../../../database/middleware/audit.middleware';
 import { OrderStatus } from '@prisma/client';
 
 describe('SalesOrderService', () => {
@@ -65,12 +66,29 @@ describe('SalesOrderService', () => {
       dispatchInventory: jest.fn(),
       reserveInventory: jest.fn(),
       releaseReservation: jest.fn(),
+      getInventoryByBatchAndLocation: jest
+        .fn()
+        .mockResolvedValue({ availableQty: 100, reservedQty: 0 }),
+      getGlobalInventoryByProduct: jest.fn().mockResolvedValue({
+        productId: 'product-uuid-1',
+        productName: 'Product A',
+        totalAvailableQty: 100,
+        totalReservedQty: 0,
+        batchCount: 1,
+      }),
     };
 
     const mockPrisma = {
       productBatch: {
         findUnique: jest.fn(),
       },
+    };
+
+    const mockAuditMiddleware = {
+      logCreate: jest.fn().mockResolvedValue(undefined),
+      logUpdate: jest.fn().mockResolvedValue(undefined),
+      logDelete: jest.fn().mockResolvedValue(undefined),
+      logOperation: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -87,6 +105,10 @@ describe('SalesOrderService', () => {
         {
           provide: PrismaService,
           useValue: mockPrisma,
+        },
+        {
+          provide: AuditMiddleware,
+          useValue: mockAuditMiddleware,
         },
       ],
     }).compile();

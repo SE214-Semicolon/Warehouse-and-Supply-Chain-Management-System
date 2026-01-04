@@ -15,6 +15,7 @@ import {
   ProductBatchListResponseDto,
   ProductBatchDeleteResponseDto,
 } from '../dto/product-batch-response.dto';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
 
 @Injectable()
 export class ProductBatchService {
@@ -23,6 +24,7 @@ export class ProductBatchService {
   constructor(
     private readonly batchRepo: ProductBatchRepository,
     private readonly productRepo: ProductRepository,
+    private readonly auditMiddleware: AuditMiddleware,
   ) {}
 
   /**
@@ -98,6 +100,13 @@ export class ProductBatchService {
     });
 
     this.logger.log(`Product batch created successfully: ${batch.id}`);
+
+    // Audit log
+    this.auditMiddleware
+      .logCreate('ProductBatch', batch as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for batch create', err);
+      });
 
     return {
       success: true,
@@ -184,9 +193,22 @@ export class ProductBatchService {
 
     this.logger.log(`Found ${total} product batches`);
 
+    // Enrich each batch with aggregated inventory totals
+    const enrichedBatches = batches.map((b) => {
+      const inv = (b as any).inventory || [];
+      const totalAvailableQty = inv.reduce((s: number, i: any) => s + (i.availableQty || 0), 0);
+      const totalReservedQty = inv.reduce((s: number, i: any) => s + (i.reservedQty || 0), 0);
+      return {
+        ...b,
+        totalAvailableQty,
+        totalReservedQty,
+        totalOnHand: totalAvailableQty + totalReservedQty,
+      };
+    });
+
     return {
       success: true,
-      data: batches,
+      data: enrichedBatches,
       total,
       page,
       limit,
@@ -212,9 +234,21 @@ export class ProductBatchService {
       throw new NotFoundException(`Product batch with ID "${id}" not found`);
     }
 
+    // Compute aggregated inventory totals from included inventory (if present)
+    const inv = (batch as any).inventory || [];
+    const totalAvailableQty = inv.reduce((s: number, i: any) => s + (i.availableQty || 0), 0);
+    const totalReservedQty = inv.reduce((s: number, i: any) => s + (i.reservedQty || 0), 0);
+
+    const enriched = {
+      ...batch,
+      totalAvailableQty,
+      totalReservedQty,
+      totalOnHand: totalAvailableQty + totalReservedQty,
+    };
+
     return {
       success: true,
-      data: batch,
+      data: enriched,
     };
   }
 
@@ -282,9 +316,21 @@ export class ProductBatchService {
 
     this.logger.log(`Found ${total} expiring batches`);
 
+    const enrichedBatches = batches.map((b) => {
+      const inv = (b as any).inventory || [];
+      const totalAvailableQty = inv.reduce((s: number, i: any) => s + (i.availableQty || 0), 0);
+      const totalReservedQty = inv.reduce((s: number, i: any) => s + (i.reservedQty || 0), 0);
+      return {
+        ...b,
+        totalAvailableQty,
+        totalReservedQty,
+        totalOnHand: totalAvailableQty + totalReservedQty,
+      };
+    });
+
     return {
       success: true,
-      data: batches,
+      data: enrichedBatches,
       total,
       page,
       limit,
@@ -444,6 +490,13 @@ export class ProductBatchService {
     await this.batchRepo.delete(id);
 
     this.logger.log(`Product batch deleted successfully: ${id}`);
+
+    // Audit log
+    this.auditMiddleware
+      .logDelete('ProductBatch', id, batch as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for batch delete', err);
+      });
 
     return {
       success: true,

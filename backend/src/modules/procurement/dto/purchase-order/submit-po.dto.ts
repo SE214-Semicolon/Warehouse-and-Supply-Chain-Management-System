@@ -1,9 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsUUID } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
 
 export class SubmitPurchaseOrderDto {
-  @ApiProperty({ description: 'ID người thực hiện submit' })
+  @ApiPropertyOptional({ description: 'Ghi chú khi submit' })
+  @IsOptional()
   @IsString()
-  @IsUUID()
-  userId!: string;
+  notes?: string;
 }

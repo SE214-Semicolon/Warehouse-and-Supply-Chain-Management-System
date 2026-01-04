@@ -12,6 +12,8 @@ import { ReceiveInventoryDto } from '../../inventory/dto/receive-inventory.dto';
 import { QueryPurchaseOrderDto } from '../dto/purchase-order/query-po.dto';
 import { PoStatus, PurchaseOrder, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
+import { PrismaService } from '../../../database/prisma/prisma.service';
 
 @Injectable()
 export class PurchaseOrderService {
@@ -20,6 +22,8 @@ export class PurchaseOrderService {
   constructor(
     private readonly poRepo: PurchaseOrderRepository,
     private readonly inventorySvc: InventoryService,
+    private readonly auditMiddleware: AuditMiddleware,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -84,6 +88,14 @@ export class PurchaseOrderService {
     const created = await this.poRepo.findById(po.id);
     if (!created) throw new NotFoundException('PO not found after creation');
     this.logger.log(`Purchase order created successfully: ${created.id} (${poNo})`);
+
+    // Audit logging for PO creation
+    this.auditMiddleware
+      .logCreate('PurchaseOrder', created as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for PO creation', err);
+      });
+
     return {
       success: true,
       data: created,
@@ -95,7 +107,7 @@ export class PurchaseOrderService {
    * Submit Purchase Order API
    * Minimum test cases: 6
    * - PO-TC11: Submit draft PO successfully (200)
-   * - PO-TC12: Missing userId (400, tested by DTO)
+   * - PO-TC12: Missing userId (400, now extracted from JWT)
    * - PO-TC13: Submit PO not in draft status (400)
    * - PO-TC14: Submit non-existent PO (404)
    * - PO-TC15: Permission denied role warehouse_staff (403, tested by guard)
@@ -104,11 +116,9 @@ export class PurchaseOrderService {
   async submitPurchaseOrder(
     id: string,
     dto: SubmitPurchaseOrderDto,
+    submittedById: string,
   ): Promise<PurchaseOrderResponseDto> {
-    this.logger.log(`Submitting purchase order: ${id}`);
-    if (!dto?.userId) {
-      throw new BadRequestException('userId is required');
-    }
+    this.logger.log(`Submitting purchase order: ${id} by user: ${submittedById}`);
     const po = await this.poRepo.findById(id);
     if (!po) {
       this.logger.warn(`Purchase order not found: ${id}`);
@@ -122,6 +132,19 @@ export class PurchaseOrderService {
     const updated = await this.poRepo.findById(id);
     if (!updated) throw new NotFoundException('PO not found after submit');
     this.logger.log(`Purchase order submitted successfully: ${id}`);
+
+    // Audit logging for PO submission (status update)
+    this.auditMiddleware
+      .logUpdate(
+        'PurchaseOrder',
+        id,
+        po as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for PO submission', err);
+      });
+
     return {
       success: true,
       data: updated,
@@ -198,10 +221,50 @@ export class PurchaseOrderService {
       }
     }
 
-    // 3) Gọi Inventory receive cho từng dòng (Inventory hỗ trợ idempotencyKey)
-    //    -> Nếu Inventory trả về idempotent=true, KHÔNG được tăng qtyReceived lần nữa.
+    // 3) REFACTORED: Ensure ProductBatch exists before receiving inventory
+    //    If batch doesn't exist, create it first (critical for data integrity)
+    //    Then call Inventory receive for each line (Inventory supports idempotencyKey)
+    //    -> If Inventory returns idempotent=true, do NOT increment qtyReceived again
     const increments: { poItemId: string; qtyInc: number }[] = [];
     for (const r of dto.items) {
+      // STEP 3A: Ensure ProductBatch exists (create if needed)
+      const poItem = existing.find((e) => e.id === r.poItemId)!;
+      const productId = poItem.productId;
+
+      if (!productId) {
+        this.logger.error(`PO item ${r.poItemId} has no productId`);
+        throw new BadRequestException(`PO item ${r.poItemId} is missing productId`);
+      }
+
+      // Check if batch exists, if not create it
+      let batch = await this.prisma.productBatch.findUnique({
+        where: { id: r.productBatchId },
+      });
+
+      if (!batch) {
+        this.logger.log(
+          `ProductBatch ${r.productBatchId} not found, creating new batch for product ${productId}`,
+        );
+        try {
+          batch = await this.prisma.productBatch.create({
+            data: {
+              id: r.productBatchId, // Use the provided batchId
+              productId: productId,
+              batchNo: `BATCH-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`, // Auto-generate batch number
+              quantity: 0, // Will be updated by inventory receive
+              // manufactureDate and expiryDate can be added later if needed
+            },
+          });
+          this.logger.log(`Created new ProductBatch: ${batch.id} (${batch.batchNo})`);
+        } catch (error) {
+          this.logger.error(`Failed to create ProductBatch ${r.productBatchId}:`, error);
+          throw new BadRequestException(
+            `Failed to create product batch: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+        }
+      }
+
+      // STEP 3B: Receive inventory (batch now guaranteed to exist)
       const payload: ReceiveInventoryDto = {
         productBatchId: r.productBatchId,
         locationId: r.locationId,
@@ -209,10 +272,13 @@ export class PurchaseOrderService {
         createdById: r.createdById,
         idempotencyKey: r.idempotencyKey,
       };
-      const invResult: any = await this.inventorySvc.receiveInventory(payload);
+      const invResult = (await this.inventorySvc.receiveInventory(payload)) as {
+        success: boolean;
+        idempotent?: boolean;
+      };
 
       // Track increments only when this call is not idempotently ignored
-      if (!invResult?.idempotent) {
+      if (!invResult.idempotent) {
         increments.push({ poItemId: r.poItemId, qtyInc: r.qtyToReceive });
       }
     }
@@ -371,14 +437,24 @@ export class PurchaseOrderService {
     await this.poRepo.updateTotals(id);
     const updated = await this.poRepo.findById(id);
     if (!updated) throw new NotFoundException('PO not found after update');
+
+    // Audit logging for PO update
+    this.auditMiddleware
+      .logUpdate(
+        'PurchaseOrder',
+        id,
+        po as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for PO update', err);
+      });
+
     return updated;
   }
 
-  async cancelPurchaseOrder(id: string, dto: { userId: string; reason?: string }) {
-    // Validate userId is provided (required by DTO)
-    if (!dto.userId) {
-      throw new BadRequestException('userId is required');
-    }
+  async cancelPurchaseOrder(id: string, dto: { reason?: string }, cancelledById: string) {
+    this.logger.log(`Cancelling purchase order: ${id} by user: ${cancelledById}`);
 
     const po = await this.poRepo.findById(id);
     if (!po) throw new NotFoundException('PO not found');
@@ -392,6 +468,19 @@ export class PurchaseOrderService {
     await this.poRepo.cancel(id);
     const updated = await this.poRepo.findById(id);
     if (!updated) throw new NotFoundException('PO not found after cancel');
+
+    // Audit logging for PO cancellation
+    this.auditMiddleware
+      .logUpdate(
+        'PurchaseOrder',
+        id,
+        po as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for PO cancellation', err);
+      });
+
     return updated;
   }
 
@@ -419,6 +508,19 @@ export class PurchaseOrderService {
 
     const updated = await this.poRepo.findById(id);
     if (!updated) throw new NotFoundException('PO not found after adding items');
+
+    // Audit logging for PO items addition
+    this.auditMiddleware
+      .logUpdate(
+        'PurchaseOrder',
+        id,
+        po as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for PO items addition', err);
+      });
+
     return updated;
   }
 
@@ -441,6 +543,19 @@ export class PurchaseOrderService {
 
     const updated = await this.poRepo.findById(id);
     if (!updated) throw new NotFoundException('PO not found after removing items');
+
+    // Audit logging for PO items removal
+    this.auditMiddleware
+      .logUpdate(
+        'PurchaseOrder',
+        id,
+        po as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for PO items removal', err);
+      });
+
     return updated;
   }
 }

@@ -454,6 +454,29 @@ export class InventoryController {
     status: 200,
     description: 'Stock movement history retrieved successfully',
     type: MovementQueryResponseDto,
+    schema: {
+      example: {
+        success: true,
+        movements: [
+          {
+            id: 'tg-uuid-1',
+            movementType: 'transfer',
+            quantity: 10,
+            transferGroupId: 'tg-uuid-1',
+            fromLocationId: 'loc-1',
+            toLocationId: 'loc-2',
+            fromLocation: { id: 'loc-1', code: 'A-01', name: 'Zone A' },
+            toLocation: { id: 'loc-2', code: 'B-01', name: 'Zone B' },
+            createdById: 'user-1',
+            createdAt: '2025-12-24T12:00:00Z',
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      },
+    },
   })
   @ApiResponse({
     status: 400,

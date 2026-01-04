@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { PrismaService } from 'src/database/prisma/prisma.service';
 import { StockMovementType, Prisma } from '@prisma/client';
 import { IInventoryRepository } from '../interfaces/inventory-repository.interface';
+import { LocationCapacityExceeded } from '../errors/location-capacity.error';
 
 // Type definitions for inventory operations
 type InventoryWithRelations = Prisma.InventoryGetPayload<{
@@ -104,6 +106,20 @@ export class InventoryRepository implements IInventoryRepository {
         `Receiving inventory - Batch: ${productBatchId}, Location: ${locationId}, Qty: ${quantity}`,
       );
       return this.prisma.$transaction(async (tx) => {
+        // Check capacity for location before receiving
+        const location = await tx.location.findUnique({ where: { id: locationId } });
+        if (location && location.capacity != null) {
+          const agg = await tx.inventory.aggregate({
+            where: { locationId },
+            _sum: { availableQty: true, reservedQty: true },
+          });
+          const currentStored = (agg._sum?.availableQty || 0) + (agg._sum?.reservedQty || 0);
+          const projected = currentStored + quantity;
+          if (location.capacity < projected) {
+            throw new LocationCapacityExceeded(location.capacity, currentStored, quantity);
+          }
+        }
+
         // upsert inventory using transaction client
         const inv = await tx.inventory.upsert({
           where: { productBatchId_locationId: { productBatchId, locationId } },
@@ -146,7 +162,12 @@ export class InventoryRepository implements IInventoryRepository {
   }
 
   /**
-   * Transactional dispatch: decrement inventory only if enough availableQty, and create movement in same transaction.
+   * Transactional dispatch: decrement inventory and create movement in single transaction.
+   * REFACTORED: Support atomic reservation consumption
+   *
+   * @param consumeReservation - If true, decrements BOTH availableQty AND reservedQty (for orders with reservation)
+   *                            If false, decrements ONLY availableQty (direct dispatch without reservation)
+   *
    * Returns { inventory, movement } on success. Throws if not enough stock.
    */
   async dispatchInventoryTx(
@@ -155,10 +176,11 @@ export class InventoryRepository implements IInventoryRepository {
     quantity: number,
     createdById?: string,
     idempotencyKey?: string,
+    consumeReservation: boolean = false,
   ) {
     try {
       this.logger.log(
-        `Dispatching inventory - Batch: ${productBatchId}, Location: ${locationId}, Qty: ${quantity}`,
+        `Dispatching inventory - Batch: ${productBatchId}, Location: ${locationId}, Qty: ${quantity}, ConsumeReservation: ${consumeReservation}`,
       );
       return this.prisma.$transaction(async (tx) => {
         // First check if inventory exists and has enough stock
@@ -171,14 +193,54 @@ export class InventoryRepository implements IInventoryRepository {
           },
         });
 
-        if (!existingInventory || existingInventory.availableQty < quantity) {
+        if (!existingInventory) {
           this.logger.warn(
-            `Not enough stock - Batch: ${productBatchId}, Location: ${locationId}, Available: ${existingInventory?.availableQty || 0}, Requested: ${quantity}`,
+            `Inventory not found - Batch: ${productBatchId}, Location: ${locationId}`,
           );
-          throw new Error('NotEnoughStock');
+          throw new Error('InventoryNotFound');
         }
 
-        // Update inventory using direct update (more reliable than updateMany for this use case)
+        // Validation logic depends on whether we're consuming reservation
+        if (consumeReservation) {
+          // When consuming reservation: check if we have enough reserved quantity
+          if (existingInventory.reservedQty < quantity) {
+            this.logger.warn(
+              `Not enough reserved stock - Batch: ${productBatchId}, Location: ${locationId}, Reserved: ${existingInventory.reservedQty}, Requested: ${quantity}`,
+            );
+            throw new Error('NotEnoughReservedStock');
+          }
+          // Also ensure total quantity is sufficient (safety check)
+          const totalQty = existingInventory.availableQty + existingInventory.reservedQty;
+          if (totalQty < quantity) {
+            this.logger.error(
+              `Data inconsistency - Total quantity insufficient. This should not happen!`,
+            );
+            throw new Error('NotEnoughStock');
+          }
+        } else {
+          // When NOT consuming reservation: check available quantity only
+          if (existingInventory.availableQty < quantity) {
+            this.logger.warn(
+              `Not enough available stock - Batch: ${productBatchId}, Location: ${locationId}, Available: ${existingInventory.availableQty}, Requested: ${quantity}`,
+            );
+            throw new Error('NotEnoughStock');
+          }
+        }
+
+        // Update inventory based on dispatch mode
+        const updateData: Prisma.InventoryUpdateInput = consumeReservation
+          ? {
+              // ATOMIC: Consume reservation - decrement BOTH availableQty and reservedQty
+              // This prevents double-counting: reservation already moved qty from available to reserved
+              // Now we remove it from both (net effect: total qty decreases by quantity)
+              availableQty: { decrement: quantity },
+              reservedQty: { decrement: quantity },
+            }
+          : {
+              // Direct dispatch without reservation - decrement availableQty only
+              availableQty: { decrement: quantity },
+            };
+
         const updatedInventory = await tx.inventory.update({
           where: {
             productBatchId_locationId: {
@@ -186,10 +248,16 @@ export class InventoryRepository implements IInventoryRepository {
               locationId,
             },
           },
-          data: {
-            availableQty: { decrement: quantity },
-          },
+          data: updateData,
         });
+
+        // Validate that reservedQty didn't go negative (data integrity check)
+        if (updatedInventory.reservedQty < 0) {
+          this.logger.error(
+            `CRITICAL: Reserved quantity went negative after dispatch! This indicates a bug.`,
+          );
+          throw new Error('ReservedQtyNegative');
+        }
 
         const movement = await tx.stockMovement.create({
           data: {
@@ -202,7 +270,9 @@ export class InventoryRepository implements IInventoryRepository {
           },
         });
 
-        this.logger.log(`Inventory dispatched successfully - Movement ID: ${movement.id}`);
+        this.logger.log(
+          `Inventory dispatched successfully - Movement ID: ${movement.id}, Mode: ${consumeReservation ? 'ConsumeReservation' : 'Direct'}`,
+        );
         return { inventory: updatedInventory, movement };
       });
     } catch (error) {
@@ -287,7 +357,7 @@ export class InventoryRepository implements IInventoryRepository {
     note?: string,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      // Get current inventory or create if doesn't exist
+      // Get current inventory or create if it doesn't exist
       let inventory = await tx.inventory.findUnique({
         where: { productBatchId_locationId: { productBatchId, locationId } },
       });
@@ -302,6 +372,26 @@ export class InventoryRepository implements IInventoryRepository {
             reservedQty: 0,
           },
         });
+      }
+
+      // If positive adjustment, check capacity first
+      if (adjustmentQuantity > 0) {
+        const location = await tx.location.findUnique({ where: { id: locationId } });
+        if (location && location.capacity != null) {
+          const agg = await tx.inventory.aggregate({
+            where: { locationId },
+            _sum: { availableQty: true, reservedQty: true },
+          });
+          const currentStored = (agg._sum?.availableQty || 0) + (agg._sum?.reservedQty || 0);
+          const projected = currentStored + adjustmentQuantity;
+          if (location.capacity < projected) {
+            throw new LocationCapacityExceeded(
+              location.capacity,
+              currentStored,
+              adjustmentQuantity,
+            );
+          }
+        }
       }
 
       // Calculate new available quantity
@@ -371,6 +461,20 @@ export class InventoryRepository implements IInventoryRepository {
         throw new Error('NotEnoughStock');
       }
 
+      // Check destination capacity before creating/updating dest inventory
+      const toLocation = await tx.location.findUnique({ where: { id: toLocationId } });
+      if (toLocation && toLocation.capacity != null) {
+        const agg = await tx.inventory.aggregate({
+          where: { locationId: toLocationId },
+          _sum: { availableQty: true, reservedQty: true },
+        });
+        const currentStoredDest = (agg._sum?.availableQty || 0) + (agg._sum?.reservedQty || 0);
+        const projectedDest = currentStoredDest + quantity;
+        if (toLocation.capacity < projectedDest) {
+          throw new LocationCapacityExceeded(toLocation.capacity, currentStoredDest, quantity);
+        }
+      }
+
       // Get or create destination inventory
       let destInventory = await tx.inventory.findUnique({
         where: {
@@ -418,6 +522,9 @@ export class InventoryRepository implements IInventoryRepository {
         },
       });
 
+      // Create a transfer group id to link the out/in movements
+      const transferGroupId = randomUUID();
+
       // Create transfer out movement
       const transferOutMovement = await tx.stockMovement.create({
         data: {
@@ -428,6 +535,7 @@ export class InventoryRepository implements IInventoryRepository {
           createdById,
           idempotencyKey,
           note,
+          transferGroupId,
         },
       });
 
@@ -440,6 +548,7 @@ export class InventoryRepository implements IInventoryRepository {
           movementType: StockMovementType.transfer_in,
           createdById,
           note,
+          transferGroupId,
         },
       });
 
@@ -717,6 +826,26 @@ export class InventoryRepository implements IInventoryRepository {
     availableQty: number,
     reservedQty?: number,
   ) {
+    // Before applying direct updates, ensure it doesn't exceed location capacity
+    const location = await this.prisma.location.findUnique({ where: { id: locationId } });
+
+    if (location && location.capacity != null) {
+      // Compute existing reserved if not provided
+      const existing = await this.prisma.inventory.findUnique({
+        where: { productBatchId_locationId: { productBatchId, locationId } },
+      });
+      const existingReserved = existing?.reservedQty ?? 0;
+      const reservedAfter = reservedQty ?? existingReserved;
+      const totalAfter = availableQty + reservedAfter;
+      if (totalAfter > location.capacity) {
+        throw new LocationCapacityExceeded(
+          location.capacity,
+          (existing?.availableQty ?? 0) + existingReserved,
+          availableQty - (existing?.availableQty ?? 0),
+        );
+      }
+    }
+
     return this.prisma.inventory.update({
       where: {
         productBatchId_locationId: { productBatchId, locationId },
@@ -811,7 +940,7 @@ export class InventoryRepository implements IInventoryRepository {
     productId?: string,
     page: number = 1,
     limit: number = 20,
-    sortBy: string = 'productBatch',
+    sortBy: string = 'updatedAt',
     sortOrder: 'asc' | 'desc' = 'asc',
   ) {
     const skip = (page - 1) * limit;
@@ -955,37 +1084,93 @@ export class InventoryRepository implements IInventoryRepository {
     }
 
     if (movementType) {
-      whereClause.movementType = movementType as StockMovementType;
+      // Support filtering by logical 'transfer' (grouped) which matches both transfer_in and transfer_out rows
+      if (movementType === 'transfer') {
+        whereClause.movementType = {
+          in: [StockMovementType.transfer_in, StockMovementType.transfer_out],
+        } as any;
+      } else {
+        whereClause.movementType = movementType as StockMovementType;
+      }
     }
 
-    const [movements, total] = await Promise.all([
-      this.prisma.stockMovement.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
-        orderBy: { [sortBy]: sortOrder },
-        include: {
-          productBatch: {
-            include: {
-              product: true,
-            },
+    // Fetch all matching movements and group transfers by transferGroupId
+    const movementsRaw = await this.prisma.stockMovement.findMany({
+      where: whereClause,
+      orderBy: { [sortBy]: sortOrder },
+      include: {
+        productBatch: {
+          include: {
+            product: true,
           },
-          fromLocation: true,
-          toLocation: true,
-          createdBy: true,
         },
-      }),
-      this.prisma.stockMovement.count({
-        where: whereClause,
-      }),
-    ]);
+        fromLocation: true,
+        toLocation: true,
+        createdBy: true,
+      },
+    });
+
+    const transferGroups = new Map<string, any[]>();
+    const standalone: any[] = [];
+
+    for (const m of movementsRaw) {
+      if (m.transferGroupId) {
+        if (!transferGroups.has(m.transferGroupId)) transferGroups.set(m.transferGroupId, []);
+        transferGroups.get(m.transferGroupId)!.push(m);
+      } else {
+        standalone.push(m);
+      }
+    }
+
+    const groupedTransfers: any[] = [];
+    for (const [groupId, items] of transferGroups.entries()) {
+      const out = items.find((i) => i.movementType === 'transfer_out') || items[0];
+      const inp = items.find((i) => i.movementType === 'transfer_in') || items[1] || items[0];
+
+      const combined = {
+        id: groupId,
+        movementType: 'transfer',
+        productBatchId: out.productBatchId || inp.productBatchId,
+        productId: out.productId || inp.productId,
+        quantity: out.quantity || inp.quantity,
+        reference: out.reference || inp.reference,
+        note: out.note || inp.note,
+        transferGroupId: groupId,
+        fromLocation: out.fromLocation || null,
+        toLocation: inp.toLocation || null,
+        fromLocationId: out.fromLocationId || null,
+        toLocationId: inp.toLocationId || null,
+        createdBy: out.createdBy || inp.createdBy || null,
+        createdById: out.createdById || inp.createdById || null,
+        createdAt: [out.createdAt, inp.createdAt].filter(Boolean).sort()[0] || out.createdAt,
+      };
+
+      groupedTransfers.push(combined);
+    }
+
+    const combinedList = [...standalone, ...groupedTransfers];
+
+    combinedList.sort((a, b) => {
+      const aVal = a[sortBy];
+      const bVal = b[sortBy];
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return sortOrder === 'asc' ? -1 : 1;
+      if (bVal == null) return sortOrder === 'asc' ? 1 : -1;
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    const total = combinedList.length;
+    const totalPages = Math.ceil(total / limit);
+    const movements = combinedList.slice(skip, skip + limit);
 
     return {
       movements,
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages,
     };
   }
 
@@ -1078,7 +1263,14 @@ export class InventoryRepository implements IInventoryRepository {
     };
 
     if (movementType) {
-      where.movementType = movementType as any;
+      // Support filtering by logical 'transfer' (grouped) which matches both transfer_in and transfer_out rows
+      if (movementType === 'transfer') {
+        where.movementType = {
+          in: [StockMovementType.transfer_in, StockMovementType.transfer_out],
+        } as any;
+      } else {
+        where.movementType = movementType as any;
+      }
     }
 
     if (locationId) {
@@ -1091,35 +1283,90 @@ export class InventoryRepository implements IInventoryRepository {
       if (endDate) where.createdAt.lte = new Date(endDate);
     }
 
-    // Get movements with pagination
-    const [movements, total] = await Promise.all([
-      this.prisma.stockMovement.findMany({
-        where,
-        include: {
-          productBatch: {
-            include: {
-              product: true,
-            },
-          },
-          fromLocation: true,
-          toLocation: true,
-          createdBy: {
-            select: {
-              id: true,
-              username: true,
-              email: true,
-              fullName: true,
-            },
+    // Fetch all matching movements and group transfers by transferGroupId for a single "transfer" record
+    // NOTE: this fetches all matching rows and then paginates on grouped results. If dataset is large, consider implementing DB-level grouping and pagination.
+    const movementsRaw = await this.prisma.stockMovement.findMany({
+      where,
+      include: {
+        productBatch: {
+          include: {
+            product: true,
           },
         },
-        orderBy: { [sortBy]: sortOrder },
-        skip,
-        take: limit,
-      }),
-      this.prisma.stockMovement.count({ where }),
-    ]);
+        fromLocation: true,
+        toLocation: true,
+        createdBy: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            fullName: true,
+          },
+        },
+      },
+      orderBy: { [sortBy]: sortOrder },
+    });
 
+    // Group transfers that have transferGroupId
+    const transferGroups = new Map<string, any[]>();
+    const standalone: any[] = [];
+
+    for (const m of movementsRaw) {
+      if (m.transferGroupId) {
+        if (!transferGroups.has(m.transferGroupId)) transferGroups.set(m.transferGroupId, []);
+        transferGroups.get(m.transferGroupId)!.push(m);
+      } else {
+        standalone.push(m);
+      }
+    }
+
+    const groupedTransfers: any[] = [];
+    for (const [groupId, items] of transferGroups.entries()) {
+      // Expect 2 items (out + in), but be resilient to variations
+      const out = items.find((i) => i.movementType === 'transfer_out') || items[0];
+      const inp = items.find((i) => i.movementType === 'transfer_in') || items[1] || items[0];
+
+      const combined = {
+        id: groupId, // use group id as synthetic id for transfer
+        movementType: 'transfer',
+        productBatchId: out.productBatchId || inp.productBatchId,
+        productId: out.productId || inp.productId,
+        quantity: out.quantity || inp.quantity,
+        reference: out.reference || inp.reference,
+        note: out.note || inp.note,
+        transferGroupId: groupId,
+        // locations as full objects to match include
+        fromLocation: out.fromLocation || null,
+        toLocation: inp.toLocation || null,
+        fromLocationId: out.fromLocationId || null,
+        toLocationId: inp.toLocationId || null,
+        createdBy: out.createdBy || inp.createdBy || null,
+        createdById: out.createdById || inp.createdById || null,
+        // choose earliest createdAt
+        createdAt: [out.createdAt, inp.createdAt].filter(Boolean).sort()[0] || out.createdAt,
+      };
+
+      groupedTransfers.push(combined);
+    }
+
+    // Combine grouped transfers with standalone movements
+    const combinedList = [...standalone, ...groupedTransfers];
+
+    // Sort combined list by sortBy and order
+    combinedList.sort((a, b) => {
+      const aVal = a[sortBy];
+      const bVal = b[sortBy];
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return sortOrder === 'asc' ? -1 : 1;
+      if (bVal == null) return sortOrder === 'asc' ? 1 : -1;
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    const total = combinedList.length;
     const totalPages = Math.ceil(total / limit);
+    const movements = combinedList.slice(skip, skip + limit);
 
     return {
       movements,
@@ -1209,6 +1456,39 @@ export class InventoryRepository implements IInventoryRepository {
       });
     } catch (error) {
       this.logger.error(`Error finding inventory for product ${productId} in locations:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Find all inventory records for a product (across all batches and locations)
+   * Used for global inventory calculation in Sales Order validation
+   */
+  async findInventoriesByProduct(productId: string): Promise<InventoryWithRelations[]> {
+    try {
+      this.logger.debug(`Finding all inventory for product: ${productId}`);
+      return this.prisma.inventory.findMany({
+        where: {
+          productBatch: {
+            productId: productId,
+          },
+          deletedAt: null,
+        },
+        include: {
+          productBatch: {
+            include: {
+              product: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
+          location: true,
+        },
+      });
+    } catch (error) {
+      this.logger.error(`Error finding inventory for product ${productId}:`, error);
       throw error;
     }
   }

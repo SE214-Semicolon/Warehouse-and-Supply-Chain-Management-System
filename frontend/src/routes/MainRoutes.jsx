@@ -20,6 +20,7 @@ import ShipmentList from '@/pages/shipment';
 import ShipmentCreate from '@/pages/shipment/ShipmentCreate';
 import ShipmentDetail from '@/pages/shipment/ShipmentDetail';
 import ShipmentTracking from '@/pages/shipment/ShipmentTracking';
+import Report from '@/pages/reports';
 
 export default function MainRoutes() {
   return (
@@ -43,6 +44,7 @@ export default function MainRoutes() {
           <Route path="/shipments/create" element={<ShipmentCreate />} />
           <Route path="/shipments/track" element={<ShipmentTracking />} />
           <Route path="/shipments/:id" element={<ShipmentDetail />} />
+          <Route path="/reports" element={<Report />} />
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />

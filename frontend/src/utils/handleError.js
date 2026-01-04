@@ -6,8 +6,13 @@ export const handleError = (err) => {
 
   if (data?.error?.details?.message) {
     const m = data.error.details.message;
-    msg = Array.isArray(m) ? m.join(", ") : m;
-  } else if (data?.message) {
+    if (Array.isArray(m)) {
+      msg = m.join(", ");
+    } else if (typeof m === 'string') {
+      msg = m;
+    }
+    // Non-string, non-array types fall through to default
+  } else if (data?.message && typeof data.message === 'string') {
     msg = data.message;
   }
 

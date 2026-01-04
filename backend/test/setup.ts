@@ -38,9 +38,11 @@ beforeAll(async () => {
   // Only spawn containers for integration/e2e tests, not unit/smoke/sanity tests
   const testPath = expect.getState().testPath || '';
   const isIntegrationTest = testPath.includes('integration-test') || testPath.includes('e2e.spec');
+  const isSanityTest = testPath.includes('sanity-test') || testPath.includes('sanity.spec');
+  const isSmokeTest = testPath.includes('smoke-test') || testPath.includes('smoke.spec');
 
-  if (!isIntegrationTest) {
-    // Skip Testcontainers for unit/smoke/sanity tests
+  if (!isIntegrationTest || isSanityTest || isSmokeTest) {
+    // Skip Testcontainers for unit/smoke/sanity tests (they use local DB or mocks)
     return;
   }
 
@@ -73,19 +75,19 @@ beforeAll(async () => {
   } else {
     newMongoUrl += '?directConnection=true';
   }
-  
+
   delete process.env.MONGO_URL;
   delete process.env.MONGODB_URL;
-  
+
   process.env.MONGO_URL = newMongoUrl;
   process.env.MONGODB_URL = newMongoUrl;
   console.log('Testcontainers MongoDB started at:', newMongoUrl);
 
   // Ensure schema exists for suites that don't run migrations themselves.
-//   await execAsync('npx prisma migrate deploy', {
-//     env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL },
-//   });
-// }, 120000);
+  //   await execAsync('npx prisma migrate deploy', {
+  //     env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL },
+  //   });
+  // }, 120000);
 
   await execAsync('npx prisma db push --accept-data-loss', {
     env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL },

@@ -233,12 +233,17 @@ export class ProductBatchRepository implements IProductBatchRepository {
                 category: true,
               },
             },
+            inventory: {
+              include: {
+                location: true,
+              },
+            },
           },
         }),
         this.prisma.productBatch.count({ where }),
       ]);
 
-      this.logger.log(`Found ${total} expiring batches`);
+      this.logger.log(`Found ${total} expiring product batches`);
       return { batches, total };
     } catch (error) {
       this.logger.error(`Failed to find expiring batches: ${error.message}`, error.stack);

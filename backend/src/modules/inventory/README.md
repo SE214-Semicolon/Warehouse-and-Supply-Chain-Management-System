@@ -21,24 +21,34 @@ Core inventory tracking system managing stock movements, reservations, and real-
 
 👉 **Swagger UI:** `http://localhost:3000/docs#tag/inventory`
 
-| Method | Endpoint                                          | Auth                  | Description                      |
-| ------ | ------------------------------------------------- | --------------------- | -------------------------------- |
-| POST   | `/inventory/receive`                              | Admin, Manager, Staff | Receive inventory into location  |
-| POST   | `/inventory/dispatch`                             | Admin, Manager, Staff | Dispatch inventory from location |
-| POST   | `/inventory/adjust`                               | Admin, Manager        | Adjust inventory quantity (±)    |
-| POST   | `/inventory/transfer`                             | Admin, Manager, Staff | Transfer between locations       |
-| POST   | `/inventory/reserve`                              | Admin, Manager, Staff | Reserve inventory for order      |
-| POST   | `/inventory/release`                              | Admin, Manager, Staff | Release reservation              |
-| GET    | `/inventory/location`                             | All (except Partner)  | Query by location                |
-| GET    | `/inventory/product-batch`                        | All (except Partner)  | Query by product batch           |
-| GET    | `/inventory/movements/product-batch`              | All (except Partner)  | Movement history by batch        |
-| POST   | `/inventory/:batchId/:locationId/update-quantity` | Admin, Manager        | Update quantity directly         |
-| DELETE | `/inventory/:batchId/:locationId`                 | Admin                 | Delete inventory record          |
-| GET    | `/inventory/reports/stock-levels`                 | Admin, Manager        | Stock level report               |
-| GET    | `/inventory/reports/movements`                    | Admin, Manager        | Movement history report          |
-| GET    | `/inventory/reports/valuation`                    | Admin, Manager        | Inventory valuation              |
+| Method | Endpoint                                          | Auth                  | Description                                                                                                                 |
+| ------ | ------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/inventory/receive`                              | Admin, Manager, Staff | Receive inventory into location                                                                                             |
+| POST   | `/inventory/dispatch`                             | Admin, Manager, Staff | Dispatch inventory from location                                                                                            |
+| POST   | `/inventory/adjust`                               | Admin, Manager        | Adjust inventory quantity (±)                                                                                               |
+| POST   | `/inventory/transfer`                             | Admin, Manager, Staff | Transfer between locations                                                                                                  |
+| POST   | `/inventory/reserve`                              | Admin, Manager, Staff | Reserve inventory for order                                                                                                 |
+| POST   | `/inventory/release`                              | Admin, Manager, Staff | Release reservation                                                                                                         |
+| GET    | `/inventory/location`                             | All (except Partner)  | Query by location                                                                                                           |
+| GET    | `/inventory/product-batch`                        | All (except Partner)  | Query by product batch                                                                                                      |
+| GET    | `/inventory/movements/product-batch`              | All (except Partner)  | Movement history by batch (transfers are returned as single 'transfer' records containing both from/to location by default) |
+| POST   | `/inventory/:batchId/:locationId/update-quantity` | Admin, Manager        | Update quantity directly                                                                                                    |
+| DELETE | `/inventory/:batchId/:locationId`                 | Admin                 | Delete inventory record                                                                                                     |
+| GET    | `/inventory/reports/stock-levels`                 | Admin, Manager        | Stock level report                                                                                                          |
+| GET    | `/inventory/reports/movements`                    | Admin, Manager        | Movement history report                                                                                                     |
+| GET    | `/inventory/reports/valuation`                    | Admin, Manager        | Inventory valuation                                                                                                         |
 
 ### Database
+
+Important: we added `transferGroupId` (nullable UUID) to `StockMovement` to link transfer_out and transfer_in records created as part of the same transfer. After pulling this change you must run a Prisma migration:
+
+```bash
+# in backend/
+npm run prisma:migrate
+npm run prisma:generate
+```
+
+Note: we intentionally did **not** backfill historical data — only new transfers will have `transferGroupId` set by the transfer flow.
 
 **PostgreSQL Table:** `Inventory`
 
