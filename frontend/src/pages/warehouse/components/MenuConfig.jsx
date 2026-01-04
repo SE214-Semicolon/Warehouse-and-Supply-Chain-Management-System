@@ -63,7 +63,7 @@ export const menuItems = [
     id: "products",
     label: "Products",
     columns: [
-      { id: "stt", label: "STT", search: false },
+      { id: "stt", label: "No", search: false },
       { id: "sku", label: "SKU" },
       { id: "name", label: "Name" },
       {
@@ -87,7 +87,7 @@ export const menuItems = [
     id: "batches",
     label: "Batches",
     columns: [
-      { id: "stt", label: "STT", search: false },
+      { id: "stt", label: "No", search: false },
       { id: "batchNo", label: "Batch No" },
       {
         id: "productId",

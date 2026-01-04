@@ -83,8 +83,8 @@ const LocationInventorySection = ({ inventory, headerColor = "#764ba2" }) => {
         const item = row || value;
         return (
           <Box display="flex" justifyContent="center">
-            <Typography variant="h5" fontWeight={700} color="success.main">
-              {item?.availableQty}
+            <Typography fontWeight={600} color="success.main">
+              {item?.availableQty?.toLocaleString("vi-VN")}
             </Typography>
           </Box>
         );
@@ -99,12 +99,12 @@ const LocationInventorySection = ({ inventory, headerColor = "#764ba2" }) => {
         const item = row || value;
         return item?.reservedQty > 0 ? (
           <Box display="flex" justifyContent="center">
-            <Typography variant="h6" fontWeight={700} color="warning.main">
-              {item.reservedQty}
+            <Typography fontWeight={600} color="warning.main">
+              {item.reservedQty?.toLocaleString("vi-VN")}
             </Typography>
           </Box>
         ) : (
-          <Typography variant="body1" color="text.disabled" align="center">
+          <Typography color="text.disabled" align="center">
             -
           </Typography>
         );

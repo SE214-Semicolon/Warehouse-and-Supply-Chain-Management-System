@@ -217,7 +217,7 @@ export default function FormFieldsRenderer({
 
       if (val < 0) return `${label} must be greater than or equal to 0`;
       if (val > MAX_VALUE)
-        return `${label} must not exceed ${MAX_VALUE.toLocaleString()}`;
+        return `${label} must not exceed ${MAX_VALUE.toLocaleString("vi-VN")}`;
     }
 
     if (fieldId === "manufactureDate") return `${label} must be today or earlier`;
