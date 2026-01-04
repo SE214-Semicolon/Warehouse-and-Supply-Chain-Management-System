@@ -1,4 +1,5 @@
 import api from '../utils/axiosInstance';
+import { handleError } from '../utils/handleError';
 
 const API_URI = '/suppliers';
 
@@ -9,16 +10,14 @@ const SupplierService = {
       return response.data;
     } catch (error) {
       console.error('Error creating supplier:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
-  getAll: async (page = 1, pageSize = 10, sort = 'createdAt:desc') => {
+  getAll: async (sort = 'createdAt:desc') => {
     try {
       const response = await api.get(API_URI, {
         params: {
-          page,
-          pageSize,
           sort,
         },
       });
@@ -26,7 +25,7 @@ const SupplierService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching suppliers:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
@@ -36,7 +35,7 @@ const SupplierService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching supplier by ID:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
@@ -47,7 +46,7 @@ const SupplierService = {
       return response;
     } catch (error) {
       console.error('Error updating supplier:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
@@ -57,7 +56,7 @@ const SupplierService = {
       return response.data;
     } catch (error) {
       console.error('Error deleting supplier:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 };
