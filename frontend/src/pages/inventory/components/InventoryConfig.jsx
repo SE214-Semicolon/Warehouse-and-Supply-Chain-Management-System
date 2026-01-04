@@ -137,7 +137,7 @@ export const movementColumns = [
   {
     id: "movementType",
     label: "Type",
-    render: (val, _row) => {
+    render: (val) => {
       const config = MOVEMENT_CONFIG[val] || {
         label: val,
         color: "default",
