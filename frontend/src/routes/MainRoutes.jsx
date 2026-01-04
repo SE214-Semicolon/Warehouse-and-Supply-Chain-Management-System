@@ -5,7 +5,7 @@ import Dashboard from '@pages/dashboard';
 import Login from '@pages/auth/login';
 import Signup from '@pages/auth/signup';
 import NotFound from '@pages/notfound';
-import Warehouse from '../pages/warehouse';
+import Warehouse from '@/pages/warehouse';
 import ProductDetail from '@/pages/warehouse/ProductDetail';
 import BatchDetail from '@/pages/warehouse/BatchDetail';
 import LocationDetail from '@/pages/warehouse/LocationDetail';
@@ -21,6 +21,7 @@ import ShipmentCreate from '@/pages/shipment/ShipmentCreate';
 import ShipmentDetail from '@/pages/shipment/ShipmentDetail';
 import ShipmentTracking from '@/pages/shipment/ShipmentTracking';
 import Report from '@/pages/reports';
+import Alert from '@/pages/alert';
 
 export default function MainRoutes() {
   return (
@@ -45,6 +46,7 @@ export default function MainRoutes() {
           <Route path="/shipments/track" element={<ShipmentTracking />} />
           <Route path="/shipments/:id" element={<ShipmentDetail />} />
           <Route path="/reports" element={<Report />} />
+          <Route path="/alerts" element={<Alert />} />
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />

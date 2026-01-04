@@ -135,14 +135,14 @@ export const getInventoryColumns = (onRowAction) => [
 export const movementColumns = [
   { id: "stt", label: "No", width: 70, filterable: false },
   {
-    id: "type",
+    id: "movementType",
     label: "Type",
-    filterable: false,
-    render: (_, row) => {
-      const config = MOVEMENT_CONFIG[row?.movementType] || {
-        label: row?.movementType,
+    render: (val, _row) => {
+      const config = MOVEMENT_CONFIG[val] || {
+        label: val,
         color: "default",
       };
+
       return (
         <Chip
           icon={config.icon}

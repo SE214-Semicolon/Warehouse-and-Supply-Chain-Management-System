@@ -165,7 +165,6 @@ const BatchTabsSection = ({ inventory, movements, onRowAction }) => {
     {
       id: "type",
       label: "Type",
-      filterable: false,
       render: (_, row) => {
         const config = MOVEMENT_CONFIG[row?.movementType] || {
           label: row?.movementType,

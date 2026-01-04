@@ -174,7 +174,6 @@ const Inventory = () => {
 
   return (
     <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 3 }}>
-      {/* SECTION 1: SEARCH HEADER */}
       <Paper
         elevation={0}
         sx={{
@@ -185,14 +184,8 @@ const Inventory = () => {
       >
         <Stack spacing={3}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Box sx={{ p: 1, borderRadius: 1.5, bgcolor: "#eef2ff", color: "#3E468A" }}>
-              <Inventory2OutlinedIcon />
-            </Box>
             <Box>
-              <Typography
-                variant="h5"
-                sx={{ fontWeight: 650, color: "#1e293b", lineHeight: 1.2, mb: 0.5 }}
-              >
+              <Typography variant="h5" fontWeight="bold" color="primary">
                 Inventory Stock Check
               </Typography>
               <Typography variant="body1">

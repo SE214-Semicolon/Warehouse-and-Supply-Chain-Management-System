@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Box,
   Paper,
@@ -20,6 +20,7 @@ import {
   Divider,
 } from "@mui/material";
 import { Visibility, Edit, Delete, FilterList } from "@mui/icons-material";
+import React from "react";
 
 export default function DataTable({ columns, data = [], onEdit, onView, onDelete }) {
   const [page, setPage] = useState(0);
@@ -32,17 +33,27 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
 
   const hasActions = Boolean(onEdit || onView || onDelete);
 
-  const processedData = data.map((row, index) => {
-    const formattedRow = { ...row };
-    columns.forEach((col) => {
-      if (col.id === "stt") {
-        formattedRow["stt"] = index + 1;
-      } else if (col.render) {
-        formattedRow[col.id] = col.render(row[col.id], row);
-      }
+  const processedData = useMemo(() => {
+    return data.map((row, index) => {
+      const formattedRow = { ...row, stt: index + 1 };
+
+      columns.forEach((col) => {
+        if (col.render) {
+          const rawValue = row[col.id];
+          const renderedValue = col.render(rawValue, row);
+
+          if (React.isValidElement(renderedValue)) {
+            return;
+          }
+
+          if (typeof renderedValue === "string" || typeof renderedValue === "number") {
+            formattedRow[col.id] = renderedValue;
+          }
+        }
+      });
+      return formattedRow;
     });
-    return formattedRow;
-  });
+  }, [data, columns]);
 
   const filteredData = processedData.filter((row) => {
     return Object.entries(columnFilters).every(([columnId, selectedValues]) => {
@@ -56,6 +67,11 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
     const aVal = a[orderBy];
     const bVal = b[orderBy];
 
+    if (aVal === bVal) return 0;
+
+    if (aVal === null || aVal === undefined) return 1;
+    if (bVal === null || bVal === undefined) return -1;
+
     if (aVal < bVal) return order === "asc" ? -1 : 1;
     if (aVal > bVal) return order === "asc" ? 1 : -1;
     return 0;
@@ -66,40 +82,33 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
     page * rowsPerPage + rowsPerPage
   );
 
-  const handleChangePage = (event, newPage) => setPage(newPage);
-
+  const handleChangePage = (_event, newPage) => setPage(newPage);
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-
   const handleFilterClick = (event, columnId) => {
     setFilterAnchor(event.currentTarget);
     setActiveFilterColumn(columnId);
   };
-
   const handleFilterClose = () => {
     setFilterAnchor(null);
     setActiveFilterColumn(null);
   };
-
   const handleSortAZ = (columnId) => {
     setOrderBy(columnId);
     setOrder("asc");
   };
-
   const handleSortZA = (columnId) => {
     setOrderBy(columnId);
     setOrder("desc");
   };
-
   const getUniqueValues = (columnId) => {
     const values = processedData
       .map((row) => row[columnId])
       .filter((val) => val !== null && val !== undefined && val !== "");
     return [...new Set(values)];
   };
-
   const handleFilterToggle = (columnId, value) => {
     setColumnFilters((prev) => {
       const current = prev[columnId] || [];
@@ -109,12 +118,10 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
       return { ...prev, [columnId]: newValues };
     });
   };
-
   const handleSelectAll = (columnId) => {
     const allValues = getUniqueValues(columnId);
     setColumnFilters((prev) => ({ ...prev, [columnId]: allValues }));
   };
-
   const handleClearFilter = (columnId) => {
     setColumnFilters((prev) => ({ ...prev, [columnId]: [] }));
   };
@@ -160,7 +167,6 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
                   </Box>
                 </TableCell>
               ))}
-
               {hasActions && (
                 <TableCell
                   align="center"
@@ -175,11 +181,17 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
           <TableBody>
             {paginatedData.map((row, index) => (
               <TableRow key={row.id || index} hover>
-                {columns.map((col) => (
-                  <TableCell key={col.id} align={col.align || "center"}>
-                    {col.id === "stt" ? page * rowsPerPage + index + 1 : row[col.id]}
-                  </TableCell>
-                ))}
+                {columns.map((col) => {
+                  const cellValue = col.render
+                    ? col.render(row[col.id], row)
+                    : row[col.id];
+
+                  return (
+                    <TableCell key={col.id} align={col.align || "center"}>
+                      {cellValue}
+                    </TableCell>
+                  );
+                })}
 
                 {hasActions && (
                   <TableCell align="center" sx={{ width: 180 }}>
@@ -188,9 +200,7 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
                         <IconButton
                           size="small"
                           color="primary"
-                          onClick={() =>
-                            onView({ ...row, stt: page * rowsPerPage + index + 1 })
-                          }
+                          onClick={() => onView(row)}
                         >
                           <Visibility />
                         </IconButton>
@@ -198,8 +208,8 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
                       {onEdit && (
                         <IconButton
                           size="small"
-                          onClick={() => onEdit(row)}
                           sx={{ color: "#1a7d45ff" }}
+                          onClick={() => onEdit(row)}
                         >
                           <Edit />
                         </IconButton>
