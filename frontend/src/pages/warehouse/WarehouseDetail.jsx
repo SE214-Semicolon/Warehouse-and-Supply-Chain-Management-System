@@ -3,8 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Box, CircularProgress } from "@mui/material";
 
 import WarehouseService from "@/services/warehouse.service";
-import LocationService from "@/services/location.service";
-
 import { formatDate } from "@/utils/formatDate";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
@@ -22,14 +20,8 @@ const WarehouseDetail = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Dialog states
   const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [openLocationDialog, setOpenLocationDialog] = useState(false);
   const [openDeleteWarehouseDialog, setOpenDeleteWarehouseDialog] = useState(false);
-  const [openDeleteLocationDialog, setOpenDeleteLocationDialog] = useState(false);
-
-  const [selectedLocation, setSelectedLocation] = useState(null);
-  const [locationMode, setLocationMode] = useState("add");
 
   const fetchWarehouseDetail = useCallback(async () => {
     if (!id) return;
@@ -60,7 +52,6 @@ const WarehouseDetail = () => {
   };
 
   const handleEditWarehouse = () => setOpenEditDialog(true);
-  const handleDeleteWarehouse = () => setOpenDeleteWarehouseDialog(true);
 
   const handleSaveWarehouse = async (formData) => {
     await WarehouseService.update(id, formData);
@@ -68,46 +59,12 @@ const WarehouseDetail = () => {
     setOpenEditDialog(false);
   };
 
+  const handleDeleteWarehouse = () => setOpenDeleteWarehouseDialog(true);
+
   const confirmDeleteWarehouse = async () => {
     if (!id) return;
     await WarehouseService.delete(id);
     handleBack();
-  };
-
-  const handleAddLocation = () => {
-    setLocationMode("add");
-    setSelectedLocation(null);
-    setOpenLocationDialog(true);
-  };
-
-  const handleEditLocation = (loc) => {
-    setLocationMode("edit");
-    setSelectedLocation(loc);
-    setOpenLocationDialog(true);
-  };
-
-  const handleDeleteLocation = (loc) => {
-    setSelectedLocation(loc);
-    setOpenDeleteLocationDialog(true);
-  };
-
-  const handleSaveLocation = async (formData) => {
-    const payload = { ...formData, warehouseId: id };
-
-    if (locationMode === "edit" && selectedLocation?.id) {
-      await LocationService.update(selectedLocation.id, payload);
-    } else {
-      await LocationService.create(payload);
-    }
-    await fetchWarehouseDetail();
-    setOpenLocationDialog(false);
-  };
-
-  const confirmDeleteLocation = async () => {
-    if (!selectedLocation?.id) return;
-    await LocationService.delete(selectedLocation.id);
-    await fetchWarehouseDetail();
-    setOpenDeleteLocationDialog(false);
   };
 
   if (loading) {
@@ -168,40 +125,18 @@ const WarehouseDetail = () => {
 
       <WarehouseLocationsSection
         locations={warehouse.locations || []}
-        onAddLocation={handleAddLocation}
-        onEditLocation={handleEditLocation}
-        onDeleteLocation={handleDeleteLocation}
+        warehouseId={id}
+        onRefresh={fetchWarehouseDetail}
         headerColor="#3e468a"
       />
 
-      {openEditDialog && (
-        <FormDialog
-          open={openEditDialog}
-          onClose={() => setOpenEditDialog(false)}
-          onAction={handleSaveWarehouse}
-          mode="edit"
-          selectedMenu="warehouses"
-          selectedRow={warehouse}
-        />
-      )}
-
-      {openLocationDialog && (
-        <FormDialog
-          open={openLocationDialog}
-          onClose={() => setOpenLocationDialog(false)}
-          onAction={handleSaveLocation}
-          mode={locationMode}
-          selectedMenu="locations"
-          selectedRow={locationMode === "edit" ? selectedLocation : null}
-        />
-      )}
-
-      <ConfirmDeleteDialog
-        open={openDeleteLocationDialog}
-        onClose={() => setOpenDeleteLocationDialog(false)}
-        onConfirm={confirmDeleteLocation}
-        title="Delete Location"
-        content={`Are you sure you want to delete location "${selectedLocation?.code}"?`}
+      <FormDialog
+        open={openEditDialog}
+        onClose={() => setOpenEditDialog(false)}
+        onAction={handleSaveWarehouse}
+        mode="edit"
+        selectedMenu="warehouses"
+        selectedRow={warehouse}
       />
 
       <ConfirmDeleteDialog

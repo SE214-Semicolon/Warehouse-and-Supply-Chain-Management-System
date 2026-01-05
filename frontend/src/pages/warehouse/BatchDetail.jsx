@@ -31,12 +31,12 @@ const BatchDetail = () => {
   const [currentUser, setCurrentUser] = useState(null);
 
   const [loading, setLoading] = useState(true);
-
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
   const [openMovementDialog, setOpenMovementDialog] = useState(false);
   const [movementType, setMovementType] = useState("");
+  const [selectedInventory, setSelectedInventory] = useState(null);
 
   useEffect(() => {
     const initData = async () => {
@@ -62,23 +62,21 @@ const BatchDetail = () => {
 
       if (!batchData) {
         setBatch(null);
-        setInventory([]);
-        setMovements([]);
         return;
       }
 
       setBatch(batchData);
 
-      const invRes = await InventoryService.getByBatch(id);
-      setInventory(invRes?.inventories || invRes?.data?.inventories || []);
+      const [invRes, movementRes] = await Promise.all([
+        InventoryService.getByBatch(id),
+        InventoryService.getMovementByBatch(id),
+      ]);
 
-      const movementRes = await InventoryService.getMovementByBatch(id);
+      setInventory(invRes?.inventories || invRes?.data?.inventories || []);
       setMovements(movementRes?.movements || []);
     } catch (error) {
       console.error("Fetch batch error:", error);
       setBatch(null);
-      setInventory([]);
-      setMovements([]);
     } finally {
       setLoading(false);
     }
@@ -94,13 +92,11 @@ const BatchDetail = () => {
   };
 
   const handleEditBatch = () => setOpenEditDialog(true);
-
   const handleDeleteBatch = () => setOpenDeleteDialog(true);
 
   const confirmDeleteBatch = async () => {
     await ProductBatchService.delete(id);
-    localStorage.setItem("selectedMenu", "batches");
-    navigate("/warehouse");
+    handleBack();
   };
 
   const handleSaveBatch = async (formData) => {
@@ -117,39 +113,34 @@ const BatchDetail = () => {
     setOpenEditDialog(false);
   };
 
-  const handleOpenMovementDialog = (type) => {
+  const handleOpenMovement = (type, inventoryRow = null) => {
     setMovementType(type);
+    setSelectedInventory(inventoryRow);
     setOpenMovementDialog(true);
   };
 
-  const handleSubmitMovement = async (formData) => {
-    const payload = {
+  const handleSubmitMovement = async (preparedData) => {
+    const commonData = {
       productBatchId: id,
-      quantity: parseInt(formData.quantity),
       createdById: currentUser?.userId,
       idempotencyKey: `${movementType}-${Date.now()}`,
     };
 
+    const finalPayload = { ...commonData, ...preparedData };
+
     const actions = {
-      receive: () =>
-        InventoryService.receive({ ...payload, locationId: formData.locationId }),
-      dispatch: () =>
-        InventoryService.dispatch({ ...payload, locationId: formData.locationId }),
-      transfer: () =>
-        InventoryService.transfer({
-          ...payload,
-          fromLocationId: formData.fromLocationId,
-          toLocationId: formData.toLocationId,
-        }),
-      reserve: () =>
-        InventoryService.reserve({ ...payload, locationId: formData.locationId }),
-      release: () =>
-        InventoryService.release({ ...payload, locationId: formData.locationId }),
+      receive: () => InventoryService.receive(finalPayload),
+      dispatch: () => InventoryService.dispatch(finalPayload),
+      transfer: () => InventoryService.transfer(finalPayload),
+      reserve: () => InventoryService.reserve(finalPayload),
+      release: () => InventoryService.release(finalPayload),
+      adjust: () => InventoryService.adjust(finalPayload),
     };
 
     if (actions[movementType]) {
       await actions[movementType]();
       setOpenMovementDialog(false);
+      setSelectedInventory(null);
       await fetchBatchData();
     }
   };
@@ -185,7 +176,7 @@ const BatchDetail = () => {
           { label: "Product", value: batch.product?.name },
           { label: "SKU", value: batch.product?.sku },
         ]}
-        statItems={[{ label: "Quantity", value: batch.quantity }]}
+        statItems={[{ label: "Total Quantity", value: batch.quantity }]}
       />
 
       <InfoCard
@@ -202,15 +193,19 @@ const BatchDetail = () => {
         rightFields={[
           { label: "Product", value: batch.product?.name },
           { label: "SKU", value: batch.product?.sku },
-          { label: "Category", value: batch.product?.category?.name },
+          { label: "Category", value: batch.product?.category?.name || "N/A" },
           { label: "Create Date", value: formatDate(batch.createdAt) },
           { label: "Update Date", value: formatDate(batch.updatedAt) },
         ]}
       />
 
-      <BatchActions onAction={handleOpenMovementDialog} />
+      <BatchActions onAction={(type) => handleOpenMovement(type)} />
 
-      <BatchTabsSection inventory={inventory} movements={movements} />
+      <BatchTabsSection
+        inventory={inventory}
+        movements={movements}
+        onRowAction={(type, row) => handleOpenMovement(type, row)}
+      />
 
       {openEditDialog && (
         <FormDialog
@@ -227,7 +222,11 @@ const BatchDetail = () => {
         open={openMovementDialog}
         type={movementType}
         locations={locations}
-        onClose={() => setOpenMovementDialog(false)}
+        selectedInventory={selectedInventory}
+        onClose={() => {
+          setOpenMovementDialog(false);
+          setSelectedInventory(null);
+        }}
         onSubmit={handleSubmitMovement}
       />
 

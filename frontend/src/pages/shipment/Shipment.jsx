@@ -1,128 +1,122 @@
-import { useState } from "react";
-import { Box, Typography } from "@mui/material";
+import { useState, useEffect, useMemo } from "react";
+import { Box, Button, CircularProgress } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import AddIcon from "@mui/icons-material/Add";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
+
 import DataTable from "@/components/DataTable";
 import SearchBar from "@/components/SearchBar";
-import ActionButtons from "@/components/ActionButton";
-import InventoryToolbar from "./components/ShipmentToolbar";
-import FormDialog from "./components/FormDialog";
-import ViewDialog from "./components/ViewDialog";
-import { menuItems } from "./components/MenuConfig";
-import {
-  shipmentsData,
-  shipmentItemsData,
-  trackingEventsData,
-} from "./components/data_service";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import ShipmentService from "@/services/shipment.service";
+import { shipmentColumns } from "./components/ShipmentConfig";
 
 const Shipment = () => {
-  const [selectedMenu, setSelectedMenu] = useState("shipments");
-  const [openDialog, setOpenDialog] = useState(false);
-  const [dialogMode, setDialogMode] = useState(null);
-  const [selectedRow, setSelectedRow] = useState(null);
+  const navigate = useNavigate();
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const handleAdd = () => {
-    setDialogMode("add");
-    setSelectedRow(null);
-    setOpenDialog(true);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
+
+  const fetchShipments = async () => {
+    setLoading(true);
+    try {
+      const res = await ShipmentService.getAll();
+      setData(Array.isArray(res) ? res : []);
+    } catch {
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEdit = (row) => {
-    setDialogMode("edit");
-    setSelectedRow(row);
-    setOpenDialog(true);
-  };
+  useEffect(() => {
+    fetchShipments();
+  }, []);
 
-  const handleView = (row) => {
-    setDialogMode("view");
-    setSelectedRow(row);
-    setOpenDialog(true);
-  };
+  const filteredData = useMemo(() => {
+    if (!searchTerm) return data;
+    const lowerTerm = searchTerm.toLowerCase();
+    return data.filter(
+      (row) =>
+        (row.trackingCode && row.trackingCode.toLowerCase().includes(lowerTerm)) ||
+        (row.carrier && row.carrier.toLowerCase().includes(lowerTerm))
+    );
+  }, [data, searchTerm]);
 
   const handleDelete = (row) => {
-    alert(`Xóa: ${row.name || row.code || row.batchNo || row.sku || row.id}`);
+    setSelectedRow(row);
+    setOpenDeleteDialog(true);
   };
 
-  const handleSave = () => console.log("Đã lưu");
-  const handleImport = () => console.log("Import clicked");
-  const handleExport = () => console.log("Export clicked");
-  const handlePrint = () => console.log("Print clicked");
-
-  const commonProps = {
-    onEdit: handleEdit,
-    onView: handleView,
-    onDelete: handleDelete,
+  const confirmDelete = async () => {
+    if (selectedRow?.id) {
+      await ShipmentService.delete(selectedRow.id);
+      fetchShipments();
+    }
+    setOpenDeleteDialog(false);
   };
-
-  const datasetMap = {
-    shipments: shipmentsData,
-    "shipment-items": shipmentItemsData,
-    "tracking-events": trackingEventsData,
-  };
-
-  const dataTables = Object.fromEntries(
-    menuItems.map((menu) => [
-      menu.id,
-      <DataTable
-        key={menu.id}
-        title={menu.label}
-        columns={menu.columns}
-        data={datasetMap[menu.id] || []}
-        {...commonProps}
-      />,
-    ])
-  );
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <InventoryToolbar
-        menuItems={menuItems}
-        selectedMenu={selectedMenu}
-        onSelect={setSelectedMenu}
-      />
-
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3, p: 2 }}>
       <Box
         sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          mb: 2,
-          mt: 2,
+          flexWrap: "wrap",
+          gap: 2,
         }}
       >
-        <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
-        <ActionButtons
-          onAdd={handleAdd}
-          onImport={handleImport}
-          onExport={handleExport}
-          onPrint={handlePrint}
+        <SearchBar
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          placeholder="Search Tracking Code, Carrier..."
+          sx={{ width: 300, bgcolor: "white" }}
         />
+        <Box sx={{ display: "flex", gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<LocalShippingIcon />}
+            onClick={() => navigate("/shipments/track")}
+          >
+            Track Order
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate("/shipments/create")}
+            sx={{ bgcolor: "#3E468A" }}
+          >
+            New Shipment
+          </Button>
+        </Box>
       </Box>
 
-      <Box>
-        {dataTables[selectedMenu] || (
-          <Typography>Module khác đang phát triển...</Typography>
+      <Box sx={{ minHeight: "400px" }}>
+        {loading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", mt: 10 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <DataTable
+            columns={shipmentColumns}
+            data={filteredData}
+            onView={(row) => navigate(`/shipments/${row.id}`)}
+            onEdit={(row) => navigate(`/shipments/${row.id}`)}
+            onDelete={handleDelete}
+          />
         )}
       </Box>
 
-      {(dialogMode === "add" || dialogMode === "edit") && (
-        <FormDialog
-          open={openDialog}
-          onClose={() => setOpenDialog(false)}
-          onAction={handleSave}
-          mode={dialogMode}
-          selectedMenu={selectedMenu}
-          selectedRow={dialogMode === "edit" ? selectedRow : null}
-        />
-      )}
-
-      {dialogMode === "view" && selectedRow && (
-        <ViewDialog
-          open={openDialog}
-          onClose={() => setOpenDialog(false)}
-          selectedMenu={selectedMenu}
-          selectedRow={selectedRow}
-        />
-      )}
+      <ConfirmDeleteDialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        onConfirm={confirmDelete}
+        title="Delete Shipment"
+        content={`Are you sure you want to delete shipment ${selectedRow?.trackingCode}?`}
+      />
     </Box>
   );
 };

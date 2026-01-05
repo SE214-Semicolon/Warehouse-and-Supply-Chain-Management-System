@@ -5,159 +5,168 @@ import DialogButtons from "@/components/DialogButtons";
 
 const MAX_QTY = 30000;
 
-const MovementDialog = ({ open, type, locations, onClose, onSubmit }) => {
+const MovementDialog = ({
+  open,
+  type,
+  locations,
+  selectedInventory,
+  onClose,
+  onSubmit,
+}) => {
   const [formData, setFormData] = useState({
     quantity: "",
     locationId: "",
     fromLocationId: "",
     toLocationId: "",
+    reason: "",
+    note: "",
   });
 
   const [errors, setErrors] = useState(new Set());
   const [apiError, setApiError] = useState("");
 
-  const isTransfer = type === "transfer";
-
   useEffect(() => {
     if (open) {
       setFormData({
         quantity: "",
-        locationId: "",
-        fromLocationId: "",
+        locationId: selectedInventory?.locationId || "",
+        fromLocationId: selectedInventory?.locationId || "",
         toLocationId: "",
+        reason: "",
+        note: "",
       });
       setErrors(new Set());
       setApiError("");
     }
-  }, [open]);
+  }, [open, selectedInventory]);
 
-  const locationOptions = useMemo(() => {
-    return locations.map((loc) => ({
-      value: loc.id,
-      label: `${loc.code} - ${loc.name}`,
-    }));
-  }, [locations]);
+  const locationOptions = useMemo(
+    () => locations.map((loc) => ({ value: loc.id, label: `${loc.code} - ${loc.name}` })),
+    [locations]
+  );
 
-  const validateField = (field, value, currentData, currentErrors) => {
-    const nextErrors = new Set(currentErrors);
+  const getTitle = () => {
+    const titles = {
+      receive: "Receive Into Inventory",
+      dispatch: "Dispatch Stock",
+      transfer: "Transfer Stock",
+      reserve: "Reserve Stock",
+      release: "Release Reserved Stock",
+      adjust: "Adjust Stock Quantity",
+    };
+    return titles[type] || "Inventory Action";
+  };
 
-    if (field === "quantity") {
-      nextErrors.delete("quantity_required");
-      nextErrors.delete("quantity_invalid");
-      nextErrors.delete("quantity_exceed");
+  const validateField = (name, value, currentData) => {
+    const nextErrors = new Set(errors);
+
+    if (name === "quantity") {
+      nextErrors.delete("qty_req");
+      nextErrors.delete("qty_inv");
+      nextErrors.delete("qty_max");
 
       const qty = Number(value);
-      if (!value) nextErrors.add("quantity_required");
-      else if (qty <= 0) nextErrors.add("quantity_invalid");
-      else if (qty > MAX_QTY) nextErrors.add("quantity_exceed");
+      if (!value || value === "") nextErrors.add("qty_req");
+      else if (qty <= 0) nextErrors.add("qty_inv");
+      else if (qty > MAX_QTY) nextErrors.add("qty_max");
     }
 
-    if (field === "locationId") {
-      nextErrors.delete("locationId");
-      if (!value) nextErrors.add("locationId");
+    if (name === "locationId") {
+      nextErrors.delete("loc_req");
+      if (!value) nextErrors.add("loc_req");
     }
 
-    if (field === "fromLocationId" || field === "toLocationId") {
-      nextErrors.delete(field);
-      if (!value) nextErrors.add(field);
+    if (name === "toLocationId") {
+      nextErrors.delete("to_loc_req");
+      nextErrors.delete("same_loc");
+      if (!value) nextErrors.add("to_loc_req");
+      if (value && value === currentData.fromLocationId) nextErrors.add("same_loc");
+    }
 
-      const from = field === "fromLocationId" ? value : currentData.fromLocationId;
-      const to = field === "toLocationId" ? value : currentData.toLocationId;
-
-      nextErrors.delete("same_location");
-      if (from && to && from === to) {
-        nextErrors.add("same_location");
-      }
+    if (name === "reason") {
+      nextErrors.delete("reason_req");
+      if (!value && type === "adjust") nextErrors.add("reason_req");
     }
 
     return nextErrors;
   };
 
-  const validateAll = () => {
-    const nextErrors = new Set();
-    const qty = Number(formData.quantity);
+  const handleChange = (name, value) => {
+    const updatedData = { ...formData, [name]: value };
+    setFormData(updatedData);
+    setErrors(validateField(name, value, updatedData));
 
-    if (!formData.quantity) nextErrors.add("quantity_required");
-    else if (qty <= 0) nextErrors.add("quantity_invalid");
-    else if (qty > MAX_QTY) nextErrors.add("quantity_exceed");
-
-    if (isTransfer) {
-      if (!formData.fromLocationId) nextErrors.add("fromLocationId");
-      if (!formData.toLocationId) nextErrors.add("toLocationId");
-      if (
-        formData.fromLocationId &&
-        formData.toLocationId &&
-        formData.fromLocationId === formData.toLocationId
-      ) {
-        nextErrors.add("same_location");
-      }
-    } else {
-      if (!formData.locationId) nextErrors.add("locationId");
-    }
-    return nextErrors;
-  };
-
-  const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => validateField(field, value, formData, prev));
     if (apiError) setApiError("");
   };
 
-  const handleKeyDown = (e) => {
-    if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault();
+  const getHelperText = (name) => {
+    if (name === "quantity") {
+      if (errors.has("qty_req")) return "Quantity is required";
+      if (errors.has("qty_inv")) return "Must be greater than 0";
+      if (errors.has("qty_max"))
+        return `Maximum allowed is ${MAX_QTY.toLocaleString("vi-VN")}`;
+    }
+    if (name === "locationId" && errors.has("loc_req")) return "Location is required";
+    if (name === "toLocationId") {
+      if (errors.has("to_loc_req")) return "Destination is required";
+      if (errors.has("same_loc")) return "Cannot transfer to the same location";
+    }
+    if (name === "reason" && errors.has("reason_req"))
+      return "Reason is required for adjustment";
+    return "";
   };
 
   const handleSubmit = async () => {
-    const allErrors = validateAll();
-    if (allErrors.size > 0) {
-      setErrors(allErrors);
+    const finalErrors = new Set();
+    if (!formData.quantity) finalErrors.add("qty_req");
+    else if (Number(formData.quantity) > MAX_QTY) finalErrors.add("qty_max");
+
+    if (type === "receive" && !formData.locationId) finalErrors.add("loc_req");
+    if (type === "transfer") {
+      if (!formData.toLocationId) finalErrors.add("to_loc_req");
+      if (formData.toLocationId === formData.fromLocationId) finalErrors.add("same_loc");
+    }
+    if (type === "adjust" && !formData.reason) finalErrors.add("reason_req");
+
+    if (finalErrors.size > 0) {
+      setErrors(finalErrors);
       return;
     }
 
-    setApiError("");
+    let payload = {};
+    if (type === "transfer") {
+      payload = {
+        fromLocationId: formData.fromLocationId,
+        toLocationId: formData.toLocationId,
+        quantity: Number(formData.quantity),
+        note: formData.note || undefined,
+      };
+    } else if (type === "adjust") {
+      payload = {
+        locationId: formData.locationId,
+        adjustmentQuantity: Number(formData.quantity),
+        reason: formData.reason,
+        note: formData.note || undefined,
+      };
+    } else {
+      payload = {
+        locationId: formData.locationId,
+        quantity: Number(formData.quantity),
+      };
+    }
 
     try {
-      await onSubmit(formData);
+      await onSubmit(payload);
     } catch (msg) {
       setApiError(msg);
     }
   };
 
-  const getHelperText = (field) => {
-    if (field === "quantity") {
-      if (errors.has("quantity_required")) return "Quantity is required";
-      if (errors.has("quantity_invalid")) return "Quantity must be > 0";
-      if (errors.has("quantity_exceed"))
-        return `Must not exceed ${MAX_QTY.toLocaleString()}`;
-    }
-    if (field === "toLocationId" && errors.has("same_location")) {
-      return "Destination cannot be same as Source";
-    }
-    if (errors.has(field)) return "This field is required";
-    return "";
-  };
-
-  const getTitle = () => {
-    const titles = {
-      receive: "Receive Inventory",
-      dispatch: "Dispatch Inventory",
-      transfer: "Transfer Inventory",
-      reserve: "Reserve Inventory",
-      release: "Release Inventory",
-    };
-    return titles[type] || "Inventory Action";
-  };
-
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      PaperProps={{ sx: { width: "520px", maxHeight: "90vh" } }}
-    >
+    <Dialog open={open} onClose={onClose} PaperProps={{ sx: { width: "480px" } }}>
       <DialogTitle sx={{ bgcolor: "#7F408E", color: "white", fontWeight: 600 }}>
         {getTitle()}
       </DialogTitle>
-
       <DialogContent dividers>
         {apiError && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -165,41 +174,48 @@ const MovementDialog = ({ open, type, locations, onClose, onSubmit }) => {
           </Alert>
         )}
 
-        <Box
-          sx={{
-            pt: apiError ? 0 : 2,
-            display: "flex",
-            flexDirection: "column",
-            gap: 2.5,
-          }}
-        >
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, pt: 1 }}>
+          {selectedInventory && (
+            <Alert severity="info" icon={false}>
+              <b>Current Location:</b> {selectedInventory.location?.name}
+              <br />
+              <b>Available:</b> {selectedInventory.availableQty}
+            </Alert>
+          )}
+
           <FormInput
-            label="Quantity"
+            label={type === "adjust" ? "Adjustment Quantity" : "Quantity"}
             type="number"
             value={formData.quantity}
             onChange={(val) => handleChange("quantity", val)}
-            onKeyDown={handleKeyDown}
             required
-            autoFocus
             error={
-              errors.has("quantity_required") ||
-              errors.has("quantity_invalid") ||
-              errors.has("quantity_exceed")
+              errors.has("qty_req") || errors.has("qty_inv") || errors.has("qty_max")
             }
             helperText={getHelperText("quantity")}
           />
 
-          {isTransfer ? (
+          {type === "receive" && (
+            <FormInput
+              label="Destination Location"
+              type="select"
+              options={locationOptions}
+              value={formData.locationId}
+              onChange={(val) => handleChange("locationId", val)}
+              required
+              error={errors.has("loc_req")}
+              helperText={getHelperText("locationId")}
+            />
+          )}
+
+          {type === "transfer" && (
             <>
               <FormInput
                 label="From Location"
                 type="select"
                 options={locationOptions}
                 value={formData.fromLocationId}
-                onChange={(val) => handleChange("fromLocationId", val)}
-                required
-                error={errors.has("fromLocationId")}
-                helperText={getHelperText("fromLocationId")}
+                disabled
               />
               <FormInput
                 label="To Location"
@@ -208,25 +224,34 @@ const MovementDialog = ({ open, type, locations, onClose, onSubmit }) => {
                 value={formData.toLocationId}
                 onChange={(val) => handleChange("toLocationId", val)}
                 required
-                error={errors.has("toLocationId") || errors.has("same_location")}
+                error={errors.has("to_loc_req") || errors.has("same_loc")}
                 helperText={getHelperText("toLocationId")}
               />
             </>
-          ) : (
+          )}
+
+          {(type === "adjust" || type === "transfer") && (
             <FormInput
-              label="Location"
-              type="select"
-              options={locationOptions}
-              value={formData.locationId}
-              onChange={(val) => handleChange("locationId", val)}
+              label="Note"
+              value={formData.note}
+              onChange={(val) => handleChange("note", val)}
+              placeholder="Internal reference or description"
+            />
+          )}
+
+          {type === "adjust" && (
+            <FormInput
+              label="Reason for Adjustment"
+              value={formData.reason}
+              onChange={(val) => handleChange("reason", val)}
               required
-              error={errors.has("locationId")}
-              helperText={getHelperText("locationId")}
+              error={errors.has("reason_req")}
+              helperText={getHelperText("reason")}
+              placeholder="e.g. Damage, Count error"
             />
           )}
         </Box>
       </DialogContent>
-
       <DialogButtons onClose={onClose} onAction={handleSubmit} labelAction="Save" />
     </Dialog>
   );

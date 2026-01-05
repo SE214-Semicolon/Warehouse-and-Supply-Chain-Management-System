@@ -1,3 +1,4 @@
+import { Typography } from "@mui/material";
 import { formatDate } from "@/utils/formatDate";
 
 export const menuItems = [
@@ -13,13 +14,14 @@ export const menuItems = [
         id: "totalArea",
         label: "Area",
         render: (_, row) => row.metadata?.totalArea ?? "-",
-        searchValue: (row) => row.metadata?.totalArea,
       },
       {
         id: "updatedAt",
         label: "Update Date",
-        render: (_, row) => formatDate(row.updatedAt),
-        searchValue: (row) => formatDate(row.updatedAt),
+        filterable: false,
+        render: (_, row) => (
+          <Typography variant="body2">{formatDate(row.updatedAt)}</Typography>
+        ),
       },
     ],
   },
@@ -53,8 +55,10 @@ export const menuItems = [
       {
         id: "updatedAt",
         label: "Update Date",
-        render: (_, row) => formatDate(row.updatedAt),
-        searchValue: (row) => formatDate(row.updatedAt),
+        filterable: false,
+        render: (_, row) => (
+          <Typography variant="body2">{formatDate(row.updatedAt)}</Typography>
+        ),
       },
     ],
   },
@@ -63,7 +67,7 @@ export const menuItems = [
     id: "products",
     label: "Products",
     columns: [
-      { id: "stt", label: "STT", search: false },
+      { id: "stt", label: "No", search: false },
       { id: "sku", label: "SKU" },
       { id: "name", label: "Name" },
       {
@@ -77,8 +81,10 @@ export const menuItems = [
       {
         id: "updatedAt",
         label: "Update Date",
-        render: (_, row) => formatDate(row.updatedAt),
-        searchValue: (row) => formatDate(row.updatedAt),
+        filterable: false,
+        render: (_, row) => (
+          <Typography variant="body2">{formatDate(row.updatedAt)}</Typography>
+        ),
       },
     ],
   },
@@ -87,7 +93,7 @@ export const menuItems = [
     id: "batches",
     label: "Batches",
     columns: [
-      { id: "stt", label: "STT", search: false },
+      { id: "stt", label: "No", search: false },
       { id: "batchNo", label: "Batch No" },
       {
         id: "productId",
@@ -100,20 +106,26 @@ export const menuItems = [
       {
         id: "manufactureDate",
         label: "Mfg Date",
-        render: (_, row) => formatDate(row.manufactureDate),
-        searchValue: (row) => formatDate(row.manufactureDate),
+        filterable: false,
+        render: (_, row) => (
+          <Typography variant="body2">{formatDate(row.manufactureDate)}</Typography>
+        ),
       },
       {
         id: "expiryDate",
         label: "Exp Date",
-        render: (_, row) => formatDate(row.expiryDate) ?? "-",
-        searchValue: (row) => formatDate(row.expiryDate),
+        filterable: false,
+        render: (_, row) => (
+          <Typography variant="body2">{formatDate(row.expiryDate) ?? "-"}</Typography>
+        ),
       },
       {
         id: "updatedAt",
         label: "Update Date",
-        render: (_, row) => formatDate(row.updatedAt),
-        searchValue: (row) => formatDate(row.updatedAt),
+        filterable: false,
+        render: (_, row) => (
+          <Typography variant="body2">{formatDate(row.updatedAt)}</Typography>
+        ),
       },
     ],
   },
