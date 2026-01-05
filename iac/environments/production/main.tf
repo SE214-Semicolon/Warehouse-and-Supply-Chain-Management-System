@@ -51,7 +51,7 @@ module "monitoring" {
   subscription_id     = data.azurerm_client_config.current.subscription_id
 
   # Monitoring Configuration for Production
-  log_analytics_retention_days = 90 # Longer retention for production
+  log_analytics_retention_days = 30 # 30 days (sufficient and cost-effective)
   alert_email_addresses        = var.alert_email_addresses
   create_dashboard             = true
 
@@ -59,8 +59,8 @@ module "monitoring" {
   enable_prometheus                 = var.enable_prometheus
   enable_grafana                    = var.enable_grafana
   grafana_sku                       = "Standard"
-  grafana_zone_redundancy           = true # Enable zone redundancy for production
-  grafana_deterministic_outbound_ip = true # Enable deterministic IP for production
+  grafana_zone_redundancy           = false # Disabled: not supported in Southeast Asia region
+  grafana_deterministic_outbound_ip = true  # Enable deterministic IP for production
   grafana_public_network_access     = true
   grafana_subscription_reader       = true
   grafana_admin_object_ids          = var.grafana_admin_object_ids
@@ -107,24 +107,19 @@ module "app_service" {
   # Monitoring
   application_insights_connection_string = module.monitoring.application_insights_connection_string
 
-  # Production specific settings
-  enable_autoscaling      = true # Enable autoscaling for production
-  enable_deployment_slots = true # Enable deployment slots for blue-green deployment
-
-  autoscale_capacity_default = 2
-  autoscale_capacity_minimum = 1
-  autoscale_capacity_maximum = 5
+  # Production specific settings (optimized Basic B1 tier)
+  enable_autoscaling      = false # Disabled: requires Standard tier
+  enable_deployment_slots = false # Disabled: already have separate staging environment, requires Standard S1 tier
 
   backend_app_settings = {
-    WEBSITE_NODE_DEFAULT_VERSION   = "20-lts"
-    SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
-    WEBSITE_RUN_FROM_PACKAGE       = "1"
+    # Docker container configuration
+    WEBSITES_PORT = "3000" # Must match EXPOSE 3000 in backend Dockerfile
+    NODE_ENV      = "production"
   }
 
   frontend_app_settings = {
-    WEBSITE_NODE_DEFAULT_VERSION   = "20-lts"
-    SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
-    WEBSITE_RUN_FROM_PACKAGE       = "1"
+    # Docker container configuration
+    WEBSITES_PORT = "8080" # Must match EXPOSE 8080 in frontend Dockerfile (Nginx)
   }
 
   tags = merge(var.tags, {
@@ -230,10 +225,10 @@ resource "azurerm_monitor_metric_alert" "app_service_memory" {
 
   criteria {
     metric_namespace = "Microsoft.Web/sites"
-    metric_name      = "MemoryPercentage"
+    metric_name      = "MemoryWorkingSet" # Fixed: MemoryPercentage not available for Linux App Service
     aggregation      = "Average"
     operator         = "GreaterThan"
-    threshold        = 70 # Lower threshold for production
+    threshold        = 1073741824 # 1GB in bytes (adjusted for MemoryWorkingSet metric)
   }
 
   action {

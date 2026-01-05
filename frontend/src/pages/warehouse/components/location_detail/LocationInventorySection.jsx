@@ -13,6 +13,7 @@ const LocationInventorySection = ({ inventory, headerColor = "#764ba2" }) => {
       label: "Product",
       align: "left",
       minWidth: 280,
+      valueGetter: (row) => row.productBatch?.product?.name || "",
       render: (value, row) => {
         const item = row || value;
         const product = item?.productBatch?.product;
@@ -35,6 +36,7 @@ const LocationInventorySection = ({ inventory, headerColor = "#764ba2" }) => {
       label: "SKU",
       align: "center",
       minWidth: 120,
+      valueGetter: (row) => row.productBatch?.product?.sku || "",
       render: (value, row) => {
         const item = row || value;
         return (
@@ -47,6 +49,7 @@ const LocationInventorySection = ({ inventory, headerColor = "#764ba2" }) => {
       label: "Batch No",
       align: "center",
       minWidth: 140,
+      valueGetter: (row) => row.productBatch?.batchNo || "",
       render: (value, row) => {
         const item = row || value;
         return (
@@ -64,11 +67,12 @@ const LocationInventorySection = ({ inventory, headerColor = "#764ba2" }) => {
       id: "expiryDate",
       label: "Expiry Date",
       align: "center",
+      filterable: false,
       minWidth: 100,
       render: (value, row) => {
         const item = row || value;
         return (
-          <Typography variant="body1">
+          <Typography variant="body2">
             {formatDate(item?.productBatch?.expiryDate)}
           </Typography>
         );
@@ -83,8 +87,8 @@ const LocationInventorySection = ({ inventory, headerColor = "#764ba2" }) => {
         const item = row || value;
         return (
           <Box display="flex" justifyContent="center">
-            <Typography variant="h5" fontWeight={700} color="success.main">
-              {item?.availableQty}
+            <Typography fontWeight={600} color="success.main">
+              {item?.availableQty?.toLocaleString("vi-VN")}
             </Typography>
           </Box>
         );
@@ -99,12 +103,12 @@ const LocationInventorySection = ({ inventory, headerColor = "#764ba2" }) => {
         const item = row || value;
         return item?.reservedQty > 0 ? (
           <Box display="flex" justifyContent="center">
-            <Typography variant="h6" fontWeight={700} color="warning.main">
-              {item.reservedQty}
+            <Typography fontWeight={600} color="warning.main">
+              {item.reservedQty?.toLocaleString("vi-VN")}
             </Typography>
           </Box>
         ) : (
-          <Typography variant="body1" color="text.disabled" align="center">
+          <Typography color="text.disabled" align="center">
             -
           </Typography>
         );
