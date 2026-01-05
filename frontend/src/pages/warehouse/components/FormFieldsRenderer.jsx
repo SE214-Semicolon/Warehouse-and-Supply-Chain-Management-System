@@ -142,6 +142,8 @@ export default function FormFieldsRenderer({
 
     const payload = {};
     Object.entries(formData).forEach(([key, value]) => {
+      if (selectedMenu === "warehouses" && key === "totalArea") return;
+
       if (!isFieldDisabled(key)) {
         payload[key] = value;
       }

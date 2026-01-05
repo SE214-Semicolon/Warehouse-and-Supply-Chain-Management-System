@@ -13,6 +13,7 @@ const LocationInventorySection = ({ inventory, headerColor = "#764ba2" }) => {
       label: "Product",
       align: "left",
       minWidth: 280,
+      valueGetter: (row) => row.productBatch?.product?.name || "",
       render: (value, row) => {
         const item = row || value;
         const product = item?.productBatch?.product;
@@ -35,6 +36,7 @@ const LocationInventorySection = ({ inventory, headerColor = "#764ba2" }) => {
       label: "SKU",
       align: "center",
       minWidth: 120,
+      valueGetter: (row) => row.productBatch?.product?.sku || "",
       render: (value, row) => {
         const item = row || value;
         return (
@@ -47,6 +49,7 @@ const LocationInventorySection = ({ inventory, headerColor = "#764ba2" }) => {
       label: "Batch No",
       align: "center",
       minWidth: 140,
+      valueGetter: (row) => row.productBatch?.batchNo || "",
       render: (value, row) => {
         const item = row || value;
         return (
@@ -64,11 +67,12 @@ const LocationInventorySection = ({ inventory, headerColor = "#764ba2" }) => {
       id: "expiryDate",
       label: "Expiry Date",
       align: "center",
+      filterable: false,
       minWidth: 100,
       render: (value, row) => {
         const item = row || value;
         return (
-          <Typography variant="body1">
+          <Typography variant="body2">
             {formatDate(item?.productBatch?.expiryDate)}
           </Typography>
         );

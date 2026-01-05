@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   Box,
   Paper,
@@ -33,22 +33,42 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
 
   const hasActions = Boolean(onEdit || onView || onDelete);
 
+  const tableContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (tableContainerRef.current) {
+      const { top } = tableContainerRef.current.getBoundingClientRect();
+
+      if (top < 60) {
+        tableContainerRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+    }
+  }, [page, rowsPerPage]);
+
   const processedData = useMemo(() => {
     return data.map((row, index) => {
-      const formattedRow = { ...row, stt: index + 1 };
+      const formattedRow = { ...row, stt: index + 1, _original: row };
 
       columns.forEach((col) => {
-        if (col.render) {
-          const rawValue = row[col.id];
+        const rawValue = row[col.id];
+
+        if (col.valueGetter) {
+          formattedRow[col.id] = col.valueGetter(row);
+        } else if (col.render) {
           const renderedValue = col.render(rawValue, row);
-
-          if (React.isValidElement(renderedValue)) {
-            return;
-          }
-
-          if (typeof renderedValue === "string" || typeof renderedValue === "number") {
+          if (
+            !React.isValidElement(renderedValue) &&
+            (typeof renderedValue === "string" || typeof renderedValue === "number")
+          ) {
             formattedRow[col.id] = renderedValue;
           }
+        }
+
+        if (formattedRow[col.id] === undefined) {
+          formattedRow[col.id] = rawValue !== undefined ? rawValue : "";
         }
       });
       return formattedRow;
@@ -82,11 +102,15 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
     page * rowsPerPage + rowsPerPage
   );
 
-  const handleChangePage = (_event, newPage) => setPage(newPage);
+  const handleChangePage = (_event, newPage) => {
+    setPage(newPage);
+  };
+
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
+
   const handleFilterClick = (event, columnId) => {
     setFilterAnchor(event.currentTarget);
     setActiveFilterColumn(columnId);
@@ -128,7 +152,11 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
 
   return (
     <Box>
-      <TableContainer component={Paper}>
+      <TableContainer
+        component={Paper}
+        ref={tableContainerRef}
+        sx={{ scrollMarginTop: "60px" }}
+      >
         <Table sx={{ "& th, & td": { border: "1px solid #929292c3" } }}>
           <TableHead>
             <TableRow>

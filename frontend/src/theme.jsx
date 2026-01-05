@@ -17,6 +17,10 @@ const theme = createTheme({
   },
   typography: {
     fontFamily: "Roboto, sans-serif",
+    body2: {
+      fontSize: "0.95rem",
+      lineHeight: 1.5,
+    },
   },
   components: {
     MuiOutlinedInput: {

@@ -71,7 +71,7 @@ export const getAlertColumns = (onMarkRead) => [
         label={val?.replace(/_/g, " ")}
         variant="outlined"
         size="small"
-        sx={{ borderColor: "#e0e0e0", color: "#555", fontSize: "0.75rem" }}
+        sx={{ borderColor: "rgba(0, 0, 0, 0.23)", color: "#555", fontSize: "0.75rem" }}
       />
     ),
   },
@@ -87,7 +87,7 @@ export const getAlertColumns = (onMarkRead) => [
           variant="body2"
           sx={{
             color: row.isRead ? "text.secondary" : "text.primary",
-            fontWeight: row.isRead ? 500 : 650,
+            fontWeight: row.isRead ? 450 : 550,
           }}
         >
           {val}
@@ -103,8 +103,12 @@ export const getAlertColumns = (onMarkRead) => [
 
   {
     id: "createdAt",
-    label: "Created At",
+    label: "Create Date",
     minWidth: 150,
-    render: (val) => <Typography variant="body1">{formatDateTime(val)}</Typography>,
+    render: (val) => (
+      <Typography variant="body2" color="text.secondary">
+        {formatDateTime(val)}
+      </Typography>
+    ),
   },
 ];

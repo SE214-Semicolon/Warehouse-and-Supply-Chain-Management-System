@@ -5,7 +5,7 @@ import { Refresh as RefreshIcon } from "@mui/icons-material";
 import DataTable from "@/components/DataTable";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import AlertService from "@/services/alert.service";
-import { getAlertColumns } from "./components/alert_columns/alertColumns";
+import { getAlertColumns } from "./components/alert-columns/alertColumns";
 
 const Alert = () => {
   const [loading, setLoading] = useState(false);

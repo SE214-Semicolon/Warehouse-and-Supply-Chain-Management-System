@@ -20,6 +20,7 @@ const Sidebar = ({ width = 264, headerHeight = 60 }) => {
     { text: 'Shipment', path: '/shipment' },
     { text: 'Inventory', path: '/inventory'},
     { text: 'Reports', path: '/reports' },
+    { text: 'DemandPlanning', path: '/demand-planning' },
   ];
 
   return (

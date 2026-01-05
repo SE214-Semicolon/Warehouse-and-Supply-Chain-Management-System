@@ -22,6 +22,7 @@ import ShipmentDetail from '@/pages/shipment/ShipmentDetail';
 import ShipmentTracking from '@/pages/shipment/ShipmentTracking';
 import Report from '@/pages/reports';
 import Alert from '@/pages/alert';
+import DemandPlanning from '@/pages/demand-planning';
 
 export default function MainRoutes() {
   return (
@@ -47,6 +48,7 @@ export default function MainRoutes() {
           <Route path="/shipments/:id" element={<ShipmentDetail />} />
           <Route path="/reports" element={<Report />} />
           <Route path="/alerts" element={<Alert />} />
+          <Route path="/demand-planning" element={<DemandPlanning />} />
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />

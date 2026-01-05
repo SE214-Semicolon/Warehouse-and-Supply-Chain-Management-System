@@ -198,7 +198,9 @@ const BatchTabsSection = ({ inventory, movements, onRowAction }) => {
       id: "date",
       label: "Create Date",
       align: "center",
-      render: (_, row) => formatDate(row?.createdAt),
+      render: (_, row) => (
+        <Typography variant="body2">{formatDate(row?.createdAt)}</Typography>
+      ),
     },
   ];
 
