@@ -11,7 +11,7 @@ import BatchDetail from '@/pages/warehouse/BatchDetail';
 import LocationDetail from '@/pages/warehouse/LocationDetail';
 import WarehouseDetail from '@/pages/warehouse/WarehouseDetail';
 import Inventory from '@/pages/inventory';
-import Supplier from '@/pages/supplier';
+// import Supplier from '@/pages/supplier';
 import SupplierDetail from '@/pages/supplier/SupplierDetail';
 import PODetail from '@/pages/purchase-order/PODetail';
 import Procurement from '@/pages/procurement';
@@ -37,16 +37,11 @@ export default function MainRoutes() {
           <Route path="/warehouse/locations/:id" element={<LocationDetail />} />
           <Route path="/warehouse/warehouses/:id" element={<WarehouseDetail />} />
           <Route path="/inventory" element={<Inventory />} />
-          <Route path="/supplier" element={<Supplier />} />
-          <Route
-            path="/warehouse/warehouses/:id"
-            element={<WarehouseDetail />}
-          />
-          <Route path="/shipment" element={<Shipment />} />
+          {/* <Route path="/supplier" element={<Supplier />} /> */}
           <Route path="/supplier/detail" element={<SupplierDetail />} />
           <Route path="/purchase-order/detail" element={<PODetail />} />
           <Route path="/procurement" element={<Procurement />} />
-          <Route path="/shipments" element={<ShipmentList />} />
+          <Route path="/shipment" element={<ShipmentList />} />
           <Route path="/shipments/create" element={<ShipmentCreate />} />
           <Route path="/shipments/track" element={<ShipmentTracking />} />
           <Route path="/shipments/:id" element={<ShipmentDetail />} />
