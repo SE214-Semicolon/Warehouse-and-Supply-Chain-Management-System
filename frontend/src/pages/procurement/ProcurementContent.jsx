@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import DataTable from '@/components/DataTable';
 import SearchBar from '@/components/SearchBar';
@@ -8,11 +8,11 @@ import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { supplierConfig } from './tabs/supplier.config';
 import { poConfig } from './tabs/po.config';
 import { useNavigate } from 'react-router-dom';
-import { showToast } from '@/utils/toast';
 
 const configMap = {
   supplier: supplierConfig,
   'purchase-order': poConfig,
+  // add new tab here
 };
 
 export default function ProcurementContent({ menuId }) {
@@ -40,25 +40,21 @@ export default function ProcurementContent({ menuId }) {
 
   const navigate = useNavigate();
 
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await service.getAll();
-      setData(res.data?.data || res.data || []);
-    } catch (msg) {
-      showToast.error(msg || 'Error fetching data');
-    } finally {
-      setLoading(false);
-    }
-  }, [service]);
-
   useEffect(() => {
     setLoading(true);
     setOpenDialog(false);
     setOpenDeleteDialog(false);
     setSearchTerm('');
-
-    fetchData();
-  }, [fetchData]);
+    service
+      .getAll()
+      .then((res) => {
+        setData(res.data?.data || res.data || []);
+      })
+      .catch(() => {
+        setData([]);
+      })
+      .finally(() => setLoading(false));
+  }, [menuId, service]);
 
   const handleAdd = () => {
     setDialogMode('add');
@@ -87,11 +83,11 @@ export default function ProcurementContent({ menuId }) {
 
     try {
       await config.service.delete(selectedRow.id);
-      showToast.success('Deleted successfully');
+
       const res = await config.service.getAll();
       setData(res.data?.data || res.data || []);
-    } catch (msg) {
-      showToast.error(msg || 'Error deleting item');
+    } catch (e) {
+      console.error(e);
     }
 
     setOpenDeleteDialog(false);
@@ -152,8 +148,14 @@ export default function ProcurementContent({ menuId }) {
           onClose={() => setOpenDialog(false)}
           mode={dialogMode}
           selectedRow={selectedRow}
-          onSuccess={() => {
-            fetchData();
+          onSuccess={(newItem) => {
+            if (dialogMode === 'add') {
+              setData((prev) => [...prev, newItem]);
+            } else {
+              setData((prev) =>
+                prev.map((item) => (item.id === newItem.id ? newItem : item))
+              );
+            }
             setOpenDialog(false);
           }}
         />

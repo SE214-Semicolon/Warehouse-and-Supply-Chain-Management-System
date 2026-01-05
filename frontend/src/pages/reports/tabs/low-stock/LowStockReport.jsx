@@ -97,7 +97,7 @@ export default function LowStockReport() {
               textTransform: 'none',
             }}
           >
-            Quick order
+            Đặt hàng nhanh
           </Button>
         }
       />
@@ -149,7 +149,7 @@ export default function LowStockReport() {
           }}
         >
           <TextField
-            placeholder="Search by product name or SKU"
+            placeholder="Tìm SKU, tên sản phẩm..."
             size="small"
             fullWidth
             value={searchTerm}
@@ -218,15 +218,15 @@ export default function LowStockReport() {
         </TableContainer>
       </Paper>
 
+      {/* Legend / Alert */}
       <Box sx={{ mt: 3 }}>
         <Alert
-          sx={{ mt: 3, borderRadius: 3 }}
+          icon={<AlertTriangle size={20} />}
           severity="info"
-          variant="outlined"
+          sx={{ borderRadius: 2 }}
         >
-          Minimum stock levels (Min Stock) are calculated based on the
-          consumption rate over the past 30 days and the estimated replenishment
-          lead time.
+          <strong>Lưu ý:</strong> Định mức tồn kho (Min Stock) được tính toán
+          dựa trên tốc độ tiêu thụ 30 ngày qua và thời gian nhập hàng dự kiến.
         </Alert>
       </Box>
     </Box>

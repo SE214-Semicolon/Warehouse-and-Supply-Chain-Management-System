@@ -1,27 +1,27 @@
 export const columns = [
-  { id: 'stt', label: 'No' },
-  { id: 'poNo', label: 'PO Code' },
+  { id: 'stt', label: 'STT' },
+  { id: 'poNo', label: 'Mã PO' },
   {
     id: 'supplier.name',
-    label: 'Supplier',
-    render: (value) => value || '—',
+    label: 'Nhà cung cấp',
+    render: (_value, row) => row.supplier?.name || '—',
   },
-  { id: 'totalAmount', label: 'Total' },
+  { id: 'totalAmount', label: 'Tổng tiền' },
   {
     id: 'placedAt',
-    label: 'Order date',
+    label: 'Ngày đặt',
     render: (value) =>
       value ? new Date(value).toLocaleDateString('vi-VN') : '—',
   },
   {
     id: 'expectedArrival',
-    label: 'Expected arrival',
+    label: 'Dự kiến nhận',
     render: (value) =>
       value ? new Date(value).toLocaleDateString('vi-VN') : '—',
   },
   {
     id: 'status',
-    label: 'Status',
+    label: 'Trạng thái',
     render: (value) => {
       const color =
         {

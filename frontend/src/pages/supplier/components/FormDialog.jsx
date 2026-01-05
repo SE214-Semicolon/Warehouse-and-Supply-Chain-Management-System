@@ -3,29 +3,23 @@ import { Dialog, DialogTitle, DialogContent, Box } from '@mui/material';
 import DialogButtons from '@/components/DialogButtons';
 import FormInput from '@/components/FormInput';
 import SupplierService from '../../../services/supplier.service';
-import { showToast } from '@/utils/toast';
-import { onlyNumber, onlyLetter, noVietnamese } from '@/utils/inputFilter';
 
 const fields = [
-  { id: 'code', label: 'Supplier code', required: true },
-  { id: 'name', label: 'Supplier name', required: true },
-  { id: 'contactPerson', label: 'Contact person name' },
-  { id: 'phone', label: 'Phone number' },
+  { id: 'code', label: 'Mã nhà cung cấp', required: true },
+  { id: 'name', label: 'Tên nhà cung cấp', required: true },
+  { id: 'contactPerson', label: 'Người liên hệ' },
+  { id: 'phone', label: 'Điện thoại' },
   { id: 'email', label: 'Email', type: 'email' },
-  { id: 'address', label: 'Address' },
+  { id: 'address', label: 'Địa chỉ' },
+  {
+    id: 'extraInfo',
+    label: 'Thông tin bổ sung',
+    multiline: true,
+    rows: 4,
+    placeholder: `Ví dụ gõ mỗi dòng 1 thông tin:\nZalo: 0901234567\nFacebook: abc.company\nSkype: supplier_abc\nGhi chú: Giao hàng buổi sáng`,
+    helperText: 'Mỗi dòng là một thông tin (Zalo, Facebook, Skype, ghi chú...)',
+  },
 ];
-
-const validateEmail = (email) => {
-  if (!email) return true;
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email);
-};
-
-const validatePhone = (phone) => {
-  if (!phone) return true;
-  const re = /^0\d{9,10}$/;
-  return re.test(phone.replace(/[\s-]/g, ''));
-};
 
 export default function FormDialog({
   open,
@@ -43,6 +37,7 @@ export default function FormDialog({
     phone: '',
     email: '',
     address: '',
+    extraInfo: '',
   });
 
   const [errors, setErrors] = useState({
@@ -61,6 +56,7 @@ export default function FormDialog({
         phone: ci.phone || '',
         email: ci.email || '',
         address: selectedRow.address || '',
+        extraInfo: ci.extraInfo || '',
       });
       setErrors({ code: '', name: '' });
     } else {
@@ -71,95 +67,35 @@ export default function FormDialog({
         phone: '',
         email: '',
         address: '',
+        extraInfo: '',
       });
       setErrors({ code: '', name: '' });
     }
   }, [selectedRow, isEdit, open]);
 
-  const handleKeyDown = (e, id) => {
-    if (id === 'phone') {
-      const allowedKeys = [
-        'Backspace',
-        'Delete',
-        'ArrowLeft',
-        'ArrowRight',
-        'Tab',
-      ];
-      if (
-        !/[0-9]/.test(e.key) &&
-        !allowedKeys.includes(e.key) &&
-        !e.ctrlKey &&
-        !e.metaKey
-      ) {
-        e.preventDefault();
-      }
-    }
-
-    if (id === 'name' || id === 'contactPerson') {
-      if (/[0-9]/.test(e.key)) {
-        e.preventDefault();
-      }
-    }
-  };
-
   const handleChange = (id, value) => {
-    let v = value;
-
-    switch (id) {
-      case 'name':
-      case 'contactPerson':
-        v = noVietnamese(v);
-        v = onlyLetter(v);
-        break;
-
-      case 'code':
-        v = noVietnamese(v).toUpperCase();
-        break;
-
-      case 'phone':
-        v = onlyNumber(v);
-        break;
-
-      default:
-        v = noVietnamese(v);
-        break;
-    }
-
-    setFormValues((prev) => ({ ...prev, [id]: v }));
-
+    setFormValues((prev) => ({ ...prev, [id]: value }));
     if (errors[id]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[id];
-        return newErrors;
-      });
+      setErrors((prev) => ({ ...prev, [id]: '' }));
     }
-  };
-
-  const validate = () => {
-    const newErrors = {};
-
-    if (!formValues.code.trim()) {
-      newErrors.code = 'Supplier code is required';
-    }
-    if (!formValues.name.trim()) {
-      newErrors.name = 'Supplier name is required';
-    }
-
-    if (formValues?.email && !validateEmail(formValues?.email)) {
-      newErrors.email = 'Invalid email format';
-    }
-
-    if (formValues?.phone && !validatePhone(formValues?.phone)) {
-      newErrors.phone = 'Invalid phone number format';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
   const handleSave = async () => {
-    if (!validate()) {
+    setErrors({ code: '', name: '' });
+
+    let hasError = false;
+    const newErrors = {};
+    if (!formValues.code.trim()) {
+      newErrors.code = 'Vui lòng nhập mã nhà cung cấp';
+      hasError = true;
+    }
+    if (!formValues.name.trim()) {
+      newErrors.name = 'Vui lòng nhập tên nhà cung cấp';
+      hasError = true;
+    }
+
+    if (hasError) {
+      setErrors(newErrors);
       return;
     }
 
@@ -171,6 +107,7 @@ export default function FormDialog({
         contactPerson: formValues.contactPerson.trim() || null,
         phone: formValues.phone.trim() || null,
         email: formValues.email.trim() || null,
+        extraInfo: formValues.extraInfo.trim() || null,
       },
     };
 
@@ -182,18 +119,12 @@ export default function FormDialog({
         result = await SupplierService.create(payload);
       }
       console.log(result.data);
-      if (onSuccess) {
-        onSuccess();
-        showToast.success(
-          isEdit
-            ? 'Update supplier successfully!'
-            : 'Add new supplier successfully!'
-        );
-      }
-
+      if (onSuccess) onSuccess(result.data);
       onClose();
     } catch (err) {
-      showToast.error(err);
+      console.log(err);
+      const msg = err.response?.data?.message || 'Lưu thất bại!';
+      alert(msg);
     }
   };
 
@@ -207,7 +138,7 @@ export default function FormDialog({
           WebkitTextFillColor: 'transparent',
         }}
       >
-        {isEdit ? 'Update supplier' : 'Add new supplier'}
+        {isEdit ? 'Sửa nhà cung cấp' : 'Thêm nhà cung cấp mới'}
       </DialogTitle>
 
       <DialogContent dividers>
@@ -218,7 +149,6 @@ export default function FormDialog({
               label={field.label}
               value={formValues[field.id] || ''}
               onChange={(value) => handleChange(field.id, value)}
-              onKeyDown={(e) => handleKeyDown(e, field.id)}
               required={field.required}
               type={field.type || 'text'}
               multiline={field.multiline}
@@ -227,7 +157,6 @@ export default function FormDialog({
               fullWidth
               error={!!errors[field.id]}
               helperText={errors[field.id] || field.helperText}
-              autoComplete="off"
             />
           ))}
         </Box>
@@ -236,7 +165,7 @@ export default function FormDialog({
       <DialogButtons
         onClose={onClose}
         onAction={handleSave}
-        actionText={isEdit ? 'Update' : 'Create'}
+        actionText={isEdit ? 'Cập nhật' : 'Thêm mới'}
         actionColor="linear-gradient(90deg, #7F408E, #3A9775)"
       />
     </Dialog>

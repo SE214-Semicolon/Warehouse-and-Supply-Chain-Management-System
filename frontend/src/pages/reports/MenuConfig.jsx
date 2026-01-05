@@ -1,6 +1,6 @@
 import LowStockReport from './tabs/low-stock';
-import ExpiryReport from './tabs/expiry';
-import StockLevelReport from './tabs/stock-level';
+// import ExpiryReport from './tabs/expiry';
+// import StockLevelReport from './tabs/stock-level';
 import MovementReport from './tabs/movement';
 
 export const menuItems = [
@@ -12,12 +12,12 @@ export const menuItems = [
   {
     id: 'expiry',
     label: 'Expiry',
-    ReportComponent: ExpiryReport,
+    // ReportComponent: ExpiryReport,
   },
   {
     id: 'stock-level',
     label: 'Stock Level',
-    ReportComponent: StockLevelReport,
+    // ReportComponent: StockLevelReport,
   },
   {
     id: 'movement',

@@ -1,5 +1,4 @@
 import api from '../utils/axiosInstance';
-import { handleError } from '../utils/handleError';
 
 const API_URI = '/purchase-orders';
 
@@ -10,7 +9,7 @@ const POService = {
       console.log(response);
       return response.data;
     } catch (error) {
-      handleError(error);
+      throw error.response?.data || error.message;
     }
   },
 
@@ -21,7 +20,7 @@ const POService = {
       return response.data;
     } catch (error) {
       console.log(error);
-      handleError(error);
+      throw error.response?.data || error.message;
     }
   },
 
@@ -38,7 +37,7 @@ const POService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching pos:', error);
-      handleError(error);
+      throw error.response?.data || error.message;
     }
   },
 
@@ -48,7 +47,7 @@ const POService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching po by ID:', error);
-      handleError(error);
+      throw error.response?.data || error.message;
     }
   },
 
@@ -58,7 +57,7 @@ const POService = {
       return response.data;
     } catch (error) {
       console.error('Error updating po:', error);
-      handleError(error);
+      throw error.response?.data || error.message;
     }
   },
 
@@ -68,7 +67,7 @@ const POService = {
       return response.data;
     } catch (error) {
       console.error('Error updating po:', error);
-      handleError(error);
+      throw error.response?.data || error.message;
     }
   },
 
@@ -78,7 +77,7 @@ const POService = {
       return response.data;
     } catch (error) {
       console.error('Error updating po:', error);
-      handleError(error);
+      throw error.response?.data || error.message;
     }
   },
 };

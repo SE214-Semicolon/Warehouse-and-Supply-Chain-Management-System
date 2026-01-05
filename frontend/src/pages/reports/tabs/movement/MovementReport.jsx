@@ -43,25 +43,25 @@ export default function MovementReport() {
     if (!movements.length) {
       return [
         {
-          label: 'Total Movements',
+          label: 'Tổng lượt biến động',
           value: 0,
           icon: <History />,
           color: '#6366f1',
         },
         {
-          label: 'Received Quantity',
+          label: 'Sản lượng nhập',
           value: '0',
           icon: <ArrowDownLeft />,
           color: '#10b981',
         },
         {
-          label: 'Issued Quantity',
+          label: 'Sản lượng xuất',
           value: '0',
           icon: <ArrowUpRight />,
           color: '#ef4444',
         },
         {
-          label: 'Unique Users',
+          label: 'Số nhân viên thực hiện',
           value: '0',
           icon: <User />,
           color: '#f59e0b',
@@ -86,25 +86,25 @@ export default function MovementReport() {
 
     return [
       {
-        label: 'Total Movements',
+        label: 'Tổng lượt biến động',
         value: total || movements.length,
         icon: <History size={24} />,
         color: '#6366f1',
       },
       {
-        label: 'Received Quantity',
+        label: 'Sản lượng nhập',
         value: totalIn.toLocaleString(),
         icon: <ArrowDownLeft size={24} />,
         color: '#10b981',
       },
       {
-        label: 'Issued Quantity',
+        label: 'Sản lượng xuất',
         value: totalOut.toLocaleString(),
         icon: <ArrowUpRight size={24} />,
         color: '#ef4444',
       },
       {
-        label: 'Unique Users',
+        label: 'Số nhân viên thực hiện',
         value: uniqueUsers.size.toString().padStart(2, '0'),
         icon: <User size={24} />,
         color: '#f59e0b',
@@ -114,25 +114,25 @@ export default function MovementReport() {
 
   const movementTypeMap = {
     purchase_receipt: {
-      label: 'Goods Receipt',
+      label: 'Nhập hàng',
       color: 'success',
       icon: <ArrowDownLeft size={16} />,
       category: 'in',
     },
     sale_issue: {
-      label: 'Sales Issue',
+      label: 'Xuất bán',
       color: 'error',
       icon: <ArrowUpRight size={16} />,
       category: 'out',
     },
     transfer_in: {
-      label: 'Transfer In',
+      label: 'Điều chuyển đến',
       color: 'info',
       icon: <MoveHorizontal size={16} />,
       category: 'internal',
     },
     transfer_out: {
-      label: 'Transfer Out',
+      label: 'Điều chuyển đi',
       color: 'warning',
       icon: <MoveHorizontal size={16} />,
       category: 'internal',
@@ -172,7 +172,7 @@ export default function MovementReport() {
     <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: '#f8fafc', minHeight: '100vh' }}>
       <ReportHeader
         title="Movement History"
-        subtitle="Analyze inventory movements over time"
+        subtitle="Truy vết mọi giao dịch nhập, xuất và điều chuyển vị trí hàng hóa"
         icon={History}
         onRefresh={() => window.location.reload()}
         onExport={() => console.log('Export CSV')}
@@ -206,22 +206,22 @@ export default function MovementReport() {
             sx={{ px: 2 }}
           >
             <Tab
-              label="All"
+              label="Tất cả biến động"
               value="all"
               sx={{ textTransform: 'none', fontWeight: 700 }}
             />
             <Tab
-              label="Goods Receipt"
+              label="Nhập hàng"
               value="in"
               sx={{ textTransform: 'none', fontWeight: 700 }}
             />
             <Tab
-              label="Sales Issue"
+              label="Xuất hàng"
               value="out"
               sx={{ textTransform: 'none', fontWeight: 700 }}
             />
             <Tab
-              label="Internal Transfers"
+              label="Điều chuyển kho"
               value="internal"
               sx={{ textTransform: 'none', fontWeight: 700 }}
             />
@@ -237,7 +237,7 @@ export default function MovementReport() {
           }}
         >
           <TextField
-            placeholder="Search by product name or SKU"
+            placeholder="Tìm theo SKU, tên sản phẩm hoặc mã phiếu..."
             size="small"
             fullWidth
             value={searchTerm}
@@ -262,7 +262,7 @@ export default function MovementReport() {
               textTransform: 'none',
             }}
           >
-            This Month
+            Tháng này
           </Button>
           <Box sx={{ flexGrow: 1 }} />
           <IconButton sx={{ border: '1px solid #e2e8f0', borderRadius: 2 }}>

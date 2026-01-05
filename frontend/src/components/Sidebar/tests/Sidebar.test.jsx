@@ -6,7 +6,7 @@ import Sidebar from '../Sidebar';
 
 /**
  * UNIT TEST: Sidebar Component
- *
+ * 
  * Testing Design Techniques Applied:
  * 1. Happy Path Testing - Normal navigation
  * 2. Equivalence Partitioning - Different routes
@@ -56,7 +56,7 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter();
 
       await user.click(screen.getByText('Warehouse'));
-
+      
       expect(mockNavigate).toHaveBeenCalledWith('/warehouse');
     });
 
@@ -72,7 +72,7 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter();
 
       await user.click(screen.getByText('Dashboard'));
-
+      
       expect(mockNavigate).toHaveBeenCalledWith('/');
     });
   });
@@ -111,9 +111,7 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter('/unknown-route');
 
       const buttons = screen.getAllByRole('button');
-      const selectedButtons = buttons.filter((btn) =>
-        btn.classList.contains('Mui-selected')
-      );
+      const selectedButtons = buttons.filter(btn => btn.classList.contains('Mui-selected'));
       expect(selectedButtons.length).toBe(0);
     });
   });
@@ -125,7 +123,7 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter();
 
       await user.click(screen.getByText('Dashboard'));
-
+      
       expect(mockNavigate).toHaveBeenCalledWith('/');
     });
 
@@ -134,7 +132,7 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter();
 
       await user.click(screen.getByText('Shipment'));
-
+      
       expect(mockNavigate).toHaveBeenCalledWith('/shipment');
     });
 
@@ -143,7 +141,7 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter();
 
       await user.click(screen.getByText('Warehouse'));
-
+      
       expect(mockNavigate).toHaveBeenCalledWith('/warehouse');
     });
   });
@@ -154,9 +152,7 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter('/warehouse');
 
       const buttons = screen.getAllByRole('button');
-      const selectedButtons = buttons.filter((btn) =>
-        btn.classList.contains('Mui-selected')
-      );
+      const selectedButtons = buttons.filter(btn => btn.classList.contains('Mui-selected'));
       expect(selectedButtons.length).toBe(1);
     });
 
@@ -179,9 +175,7 @@ describe('Sidebar Component - Unit Tests', () => {
       );
 
       // Verify procurement is now selected
-      const procurementButton = screen.getByRole('button', {
-        name: 'Procurement',
-      });
+      const procurementButton = screen.getByRole('button', { name: 'Procurement' });
       expect(procurementButton).toBeInTheDocument();
     });
 
@@ -214,7 +208,7 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter();
 
       const buttons = screen.getAllByRole('button');
-      expect(buttons.length).toBe(6); // 4 menu items
+      expect(buttons.length).toBe(5); // 4 menu items
     });
 
     it('should have text labels for all menu items', () => {
@@ -230,7 +224,7 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter();
 
       const buttons = screen.getAllByRole('button');
-      buttons.forEach((button) => {
+      buttons.forEach(button => {
         // MUI ListItemButton renders as DIV with role="button"
         expect(button).toHaveAttribute('role', 'button');
       });
@@ -247,7 +241,7 @@ describe('Sidebar Component - Unit Tests', () => {
       expect(dashboardButton).toHaveClass('Mui-selected');
 
       await user.click(screen.getByText('Warehouse'));
-
+      
       expect(mockNavigate).toHaveBeenCalledWith('/warehouse');
     });
 
@@ -274,7 +268,7 @@ describe('Sidebar Component - Unit Tests', () => {
       await user.click(screen.getByText('Warehouse'));
       await user.click(screen.getByText('Procurement'));
       await user.click(screen.getByText('Shipment'));
-
+      
       expect(mockNavigate).toHaveBeenCalledTimes(3);
     });
 
@@ -283,9 +277,7 @@ describe('Sidebar Component - Unit Tests', () => {
 
       // Should not highlight anything since path doesn't match exactly
       const buttons = screen.getAllByRole('button');
-      const selectedButtons = buttons.filter((btn) =>
-        btn.classList.contains('Mui-selected')
-      );
+      const selectedButtons = buttons.filter(btn => btn.classList.contains('Mui-selected'));
       expect(selectedButtons.length).toBe(0);
     });
 
@@ -302,7 +294,7 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter();
 
       await user.dblClick(screen.getByText('Procurement'));
-
+      
       expect(mockNavigate).toHaveBeenCalledWith('/procurement');
     });
 
@@ -310,8 +302,8 @@ describe('Sidebar Component - Unit Tests', () => {
       renderWithRouter();
 
       const menuItems = ['Dashboard', 'Warehouse', 'Procurement', 'Shipment'];
-
-      menuItems.forEach((item) => {
+      
+      menuItems.forEach(item => {
         expect(screen.getByText(item)).toBeVisible();
       });
     });
