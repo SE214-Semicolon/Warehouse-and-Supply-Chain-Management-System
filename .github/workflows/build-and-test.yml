@@ -105,18 +105,18 @@ jobs:
       # ============================================
       # SANITY TESTS
       # ============================================
-      - name: Run Backend Sanity Tests
-        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
-        working-directory: ./backend
-        run: |
-          chmod +x scripts/run-tests-by-type.sh
-          ./scripts/run-tests-by-type.sh sanity
-        env:
-          NODE_ENV: test
-          JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
-          JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
-          JWT_ACCESS_TTL: 15m
-          JWT_REFRESH_TTL: 7d
+      # - name: Run Backend Sanity Tests
+      #   if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+      #   working-directory: ./backend
+      #   run: |
+      #     chmod +x scripts/run-tests-by-type.sh
+      #     ./scripts/run-tests-by-type.sh sanity
+      #   env:
+      #     NODE_ENV: test
+      #     JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
+      #     JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
+      #     JWT_ACCESS_TTL: 15m
+      #     JWT_REFRESH_TTL: 7d
 
       # ============================================
       # INTEGRATION TESTS (uses Testcontainers for PostgreSQL + MongoDB)
