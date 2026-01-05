@@ -105,13 +105,16 @@ module "app_service" {
   enable_deployment_slots = false # No deployment slots for staging
 
   backend_app_settings = {
-    WEBSITE_NODE_DEFAULT_VERSION   = "20-lts"
-    SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
+    # Docker container configuration
+    WEBSITES_PORT = "3000" # Must match EXPOSE 3000 in backend Dockerfile
+    NODE_ENV      = "staging"
+
   }
 
   frontend_app_settings = {
-    WEBSITE_NODE_DEFAULT_VERSION   = "20-lts"
-    SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
+    # Docker container configuration
+    WEBSITES_PORT = "8080" # Must match EXPOSE 8080 in frontend Dockerfile (Nginx)
+
   }
 
   tags = merge(var.tags, {
