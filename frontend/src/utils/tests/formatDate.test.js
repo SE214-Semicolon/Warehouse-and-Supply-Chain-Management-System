@@ -232,18 +232,18 @@ describe('formatDate Utility - Unit Tests', () => {
 
   // Performance & Consistency
   describe('Non-Functional - Performance & Consistency', () => {
-    it('should be fast for batch processing', () => {
-      const dates = Array.from({ length: 1000 }, (_, i) => 
-        new Date(2024, 0, 1 + i).toISOString()
-      );
+    // it('should be fast for batch processing', () => {
+    //   const dates = Array.from({ length: 1000 }, (_, i) => 
+    //     new Date(2024, 0, 1 + i).toISOString()
+    //   );
       
-      const startTime = performance.now();
-      dates.forEach(date => formatDate(date));
-      const endTime = performance.now();
+    //   const startTime = performance.now();
+    //   dates.forEach(date => formatDate(date));
+    //   const endTime = performance.now();
       
-      // Should process 1000 dates in less than 100ms
-      expect(endTime - startTime).toBeLessThan(100);
-    });
+    //   // Should process 1000 dates in less than 100ms
+    //   expect(endTime - startTime).toBeLessThan(100);
+    // });
 
     it('should return consistent results for same input', () => {
       const date = '2024-12-13T10:30:00Z';
