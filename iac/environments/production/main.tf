@@ -133,62 +133,62 @@ module "app_service" {
 }
 
 # Azure Front Door for CDN and global load balancing
-resource "azurerm_cdn_profile" "main" {
-  name                = "${var.project_name}-${var.environment}-cdn"
-  location            = "Global"
-  resource_group_name = azurerm_resource_group.main.name
-  sku                 = "Standard_Microsoft"
+# resource "azurerm_cdn_profile" "main" {
+#   name                = "${var.project_name}-${var.environment}-cdn"
+#   location            = "Global"
+#   resource_group_name = azurerm_resource_group.main.name
+#   sku                 = "Standard_Microsoft"
 
-  tags = merge(var.tags, {
-    Environment = var.environment
-  })
-}
+#   tags = merge(var.tags, {
+#     Environment = var.environment
+#   })
+# }
 
-resource "azurerm_cdn_endpoint" "frontend" {
-  name                = "${var.project_name}-${var.environment}-frontend-cdn"
-  profile_name        = azurerm_cdn_profile.main.name
-  location            = "Global"
-  resource_group_name = azurerm_resource_group.main.name
+# resource "azurerm_cdn_endpoint" "frontend" {
+#   name                = "${var.project_name}-${var.environment}-frontend-cdn"
+#   profile_name        = azurerm_cdn_profile.main.name
+#   location            = "Global"
+#   resource_group_name = azurerm_resource_group.main.name
 
-  origin {
-    name      = "frontend-origin"
-    host_name = replace(module.app_service.frontend_app_service_url, "https://", "")
-  }
+#   origin {
+#     name      = "frontend-origin"
+#     host_name = replace(module.app_service.frontend_app_service_url, "https://", "")
+#   }
 
-  origin_host_header = replace(module.app_service.frontend_app_service_url, "https://", "")
+#   origin_host_header = replace(module.app_service.frontend_app_service_url, "https://", "")
 
-  # Caching rules for better performance
-  global_delivery_rule {
-    cache_expiration_action {
-      behavior = "Override"
-      duration = "1.00:00:00" # 1 day
-    }
+#   # Caching rules for better performance
+#   global_delivery_rule {
+#     cache_expiration_action {
+#       behavior = "Override"
+#       duration = "1.00:00:00" # 1 day
+#     }
 
-    cache_key_query_string_action {
-      behavior   = "IncludeAll"
-      parameters = "version,lang"
-    }
-  }
+#     cache_key_query_string_action {
+#       behavior   = "IncludeAll"
+#       parameters = "version,lang"
+#     }
+#   }
 
-  delivery_rule {
-    name  = "EnforceHTTPS"
-    order = 1
+#   delivery_rule {
+#     name  = "EnforceHTTPS"
+#     order = 1
 
-    request_scheme_condition {
-      operator     = "Equal"
-      match_values = ["HTTP"]
-    }
+#     request_scheme_condition {
+#       operator     = "Equal"
+#       match_values = ["HTTP"]
+#     }
 
-    url_redirect_action {
-      redirect_type = "Found"
-      protocol      = "Https"
-    }
-  }
+#     url_redirect_action {
+#       redirect_type = "Found"
+#       protocol      = "Https"
+#     }
+#   }
 
-  tags = merge(var.tags, {
-    Environment = var.environment
-  })
-}
+#   tags = merge(var.tags, {
+#     Environment = var.environment
+#   })
+# }
 
 # Update monitoring with app service IDs and stricter thresholds
 resource "azurerm_monitor_metric_alert" "app_service_cpu" {

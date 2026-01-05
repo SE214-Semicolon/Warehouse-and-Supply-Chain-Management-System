@@ -5,14 +5,12 @@ import SearchBar from '@/components/SearchBar';
 import ActionButtons from '@/components/ActionButton';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 
-import { supplierConfig } from './tabs/supplier.config';
-import { poConfig } from './tabs/po.config';
+import { customerConfig } from './tabs/customer.config';
 import { useNavigate } from 'react-router-dom';
 import { showToast } from '@/utils/toast';
 
 const configMap = {
-  supplier: supplierConfig,
-  'purchase-order': poConfig,
+  customer: customerConfig,
 };
 
 export default function ProcurementContent({ menuId }) {
