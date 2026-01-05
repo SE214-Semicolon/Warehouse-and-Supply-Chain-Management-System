@@ -66,6 +66,12 @@ describe('SalesOrderService', () => {
       dispatchInventory: jest.fn(),
       reserveInventory: jest.fn(),
       releaseReservation: jest.fn(),
+      getGlobalInventoryByProduct: jest.fn().mockResolvedValue({
+        productId: 'product-uuid-1',
+        productName: 'Test Product',
+        totalAvailableQty: 100,
+        totalReservedQty: 0,
+      }),
     };
 
     const mockPrisma = {
@@ -510,7 +516,7 @@ describe('SalesOrderService', () => {
       (prisma.productBatch.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'batch-uuid-1',
         batchNo: 'BATCH-001',
-        expiryDate: new Date('2025-12-31'), // Valid batch with future expiry
+        expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)), // Valid batch with future expiry (1 year from now)
       } as any);
       inventorySvc.releaseReservation.mockResolvedValue(undefined as any);
       inventorySvc.dispatchInventory.mockResolvedValue(undefined as any);
@@ -549,7 +555,7 @@ describe('SalesOrderService', () => {
       (prisma.productBatch.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'batch-uuid-1',
         batchNo: 'BATCH-001',
-        expiryDate: new Date('2025-12-31'), // Valid batch with future expiry
+        expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)), // Valid batch with future expiry (1 year from now)
       } as any);
       inventorySvc.releaseReservation.mockResolvedValue(undefined as any);
       inventorySvc.dispatchInventory.mockResolvedValue(undefined as any);
