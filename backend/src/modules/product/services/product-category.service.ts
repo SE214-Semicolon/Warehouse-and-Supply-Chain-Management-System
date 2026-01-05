@@ -7,12 +7,16 @@ import {
   ProductCategoryListResponseDto,
   ProductCategoryDeleteResponseDto,
 } from '../dto/product-category-response.dto';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
 
 @Injectable()
 export class ProductCategoryService {
   private readonly logger = new Logger(ProductCategoryService.name);
 
-  constructor(private readonly categoryRepo: ProductCategoryRepository) {}
+  constructor(
+    private readonly categoryRepo: ProductCategoryRepository,
+    private readonly auditMiddleware: AuditMiddleware,
+  ) {}
 
   /**
    * Create Category API - Test Cases: 15
@@ -47,6 +51,14 @@ export class ProductCategoryService {
     }
     const category = await this.categoryRepo.create(createCategoryDto);
     this.logger.log(`Category created successfully: ${category.id}`);
+
+    // Audit log - async, don't block response
+    this.auditMiddleware
+      .logCreate('ProductCategory', category as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for category create', err);
+      });
+
     return { success: true, data: category, message: 'Category created successfully' };
   }
 
@@ -162,6 +174,19 @@ export class ProductCategoryService {
 
     const updated = await this.categoryRepo.update(id, updateCategoryDto);
     this.logger.log(`Category updated successfully: ${id}`);
+
+    // Audit log - async, don't block response
+    this.auditMiddleware
+      .logUpdate(
+        'ProductCategory',
+        id,
+        category as Record<string, unknown>,
+        updated as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for category update', err);
+      });
+
     return { success: true, data: updated, message: 'Category updated successfully' };
   }
 
@@ -201,6 +226,14 @@ export class ProductCategoryService {
 
     await this.categoryRepo.delete(id);
     this.logger.log(`Category deleted successfully: ${id}`);
+
+    // Audit log - async, don't block response
+    this.auditMiddleware
+      .logDelete('ProductCategory', id, category as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for category delete', err);
+      });
+
     return { success: true, message: 'Category deleted successfully' };
   }
 }

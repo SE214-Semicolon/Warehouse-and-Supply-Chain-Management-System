@@ -1,13 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsUUID, IsOptional, IsNotEmpty } from 'class-validator';
+import { IsString, IsUUID, IsOptional, IsNotEmpty, MaxLength, Matches } from 'class-validator';
 
 export class CreateCategoryDto {
   @ApiProperty({
     example: 'Electronics',
     description: 'Name of the product category',
+    maxLength: 200,
   })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
+  @Matches(/^(?!\s*$).+/, { message: 'Name cannot be empty or contain only whitespace' })
   name: string;
 
   @ApiPropertyOptional({

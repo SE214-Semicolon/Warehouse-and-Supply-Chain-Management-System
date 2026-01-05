@@ -8,6 +8,7 @@ import {
   IsObject,
   MaxLength,
   Min,
+  Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -38,6 +39,7 @@ export class CreateLocationDto {
   @IsOptional()
   @IsString()
   @MaxLength(200)
+  @Matches(/^(?!\s*$).+/, { message: 'Name cannot be empty or contain only whitespace' })
   name?: string;
 
   @ApiPropertyOptional({

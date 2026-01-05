@@ -10,8 +10,18 @@ export class ProductBatchEntity {
   @ApiPropertyOptional({ description: 'Batch number/code' })
   batchNo?: string | null;
 
-  @ApiProperty({ description: 'Quantity in batch' })
+  @ApiProperty({ description: 'Quantity in batch', default: 0 })
   quantity: number;
+
+  // Aggregated inventory fields (computed from Inventory table)
+  @ApiProperty({ description: 'Total available quantity across all locations', default: 0 })
+  totalAvailableQty?: number;
+
+  @ApiProperty({ description: 'Total reserved quantity across all locations', default: 0 })
+  totalReservedQty?: number;
+
+  @ApiProperty({ description: 'Total on-hand quantity (available + reserved)', default: 0 })
+  totalOnHand?: number;
 
   @ApiPropertyOptional({ description: 'Manufacture date' })
   manufactureDate?: Date | null;

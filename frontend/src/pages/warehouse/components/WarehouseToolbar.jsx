@@ -1,4 +1,4 @@
-import { Stack, Button } from "@mui/material";
+import { Stack, Button, Paper } from "@mui/material"; // Nhớ import Paper
 
 export default function WarehouseToolbar({
   menuItems,
@@ -6,23 +6,58 @@ export default function WarehouseToolbar({
   onSelect,
 }) {
   return (
-    <Stack
-      direction="row"
-      justifyContent="space-between"
-      flexWrap="wrap"
-      gap={1}
-      sx={{ background: "#f5f5f5", borderRadius: 1, p: 1 }}
+    <Paper
+      elevation={3}
+      sx={{
+        p: 1,
+        borderRadius: 2,
+        bgcolor: "background.paper",
+        mb: 2,
+      }}
     >
-      {menuItems.map((item) => (
-        <Button
-          key={item.id}
-          color={selectedMenu === item.id ? "secondary" : "inherit"}
-          startIcon={item.icon}
-          onClick={() => onSelect(item.id)}
-        >
-          {item.label}
-        </Button>
-      ))}
-    </Stack>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        // gap={7}
+      >
+        {menuItems.map((item) => {
+          const isActive = selectedMenu === item.id;
+
+          return (
+            <Button
+              key={item.id}
+              startIcon={item.icon}
+              onClick={() => onSelect(item.id)}
+              sx={{
+                color: isActive ? "primary.main" : "text.secondary",
+                fontWeight: isActive ? 600 : 500,
+                fontSize: "14.5px",
+                position: "relative",
+                borderRadius: 1,
+                px: 2,
+                py: 1,
+                "&:hover": {
+                  backgroundColor: "action.hover",
+                },
+                "::after": {
+                  content: '""',
+                  position: "absolute",
+                  left: 12,
+                  right: 12,
+                  bottom: 4,
+                  height: "3px",
+                  borderRadius: "3px",
+                  backgroundColor: isActive ? "primary.main" : "transparent",
+                  transition: "0.2s scaleX",
+                  transform: isActive ? "scaleX(1)" : "scaleX(0)",
+                },
+              }}
+            >
+              {item.label}
+            </Button>
+          );
+        })}
+      </Stack>
+    </Paper>
   );
 }

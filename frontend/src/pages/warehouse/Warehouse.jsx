@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
-import { Box, Typography } from "@mui/material";
+import { useState, useEffect, useMemo } from "react";
+import { Box, CircularProgress } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+
 import DataTable from "@/components/DataTable";
 import SearchBar from "@/components/SearchBar";
 import ActionButtons from "@/components/ActionButton";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import WarehouseToolbar from "./components/WarehouseToolbar";
 import FormDialog from "./components/FormDialog";
-import ViewDialog from "./components/ViewDialog";
+
 import { menuItems } from "./components/MenuConfig";
 import {
   fetchCategoriesData,
@@ -20,58 +22,57 @@ import ProductService from "@/services/product.service";
 import WarehouseService from "@/services/warehouse.service";
 import LocationService from "@/services/location.service";
 import ProductBatchService from "@/services/batch.service";
-import { useNavigate } from "react-router-dom";
 import { convertDate } from "@/utils/convertDate";
-import { CircularProgress } from "@mui/material";
 
 const menuConfig = {
-  categories: {
-    fetchData: fetchCategoriesData,
-    service: ProductCategoryService,
-  },
-  products: {
-    fetchData: fetchProductsData,
-    service: ProductService,
-  },
-  warehouses: {
-    fetchData: fetchWarehousesData,
-    service: WarehouseService,
-  },
-  locations: {
-    fetchData: fetchLocationsData,
-    service: LocationService,
-  },
-  batches: {
-    fetchData: fetchBatchesData,
-    service: ProductBatchService,
-  },
+  categories: { fetchData: fetchCategoriesData, service: ProductCategoryService },
+  products: { fetchData: fetchProductsData, service: ProductService },
+  warehouses: { fetchData: fetchWarehousesData, service: WarehouseService },
+  locations: { fetchData: fetchLocationsData, service: LocationService },
+  batches: { fetchData: fetchBatchesData, service: ProductBatchService },
+};
+
+const viewRoutes = {
+  warehouses: "/warehouse/warehouses",
+  locations: "/warehouse/locations",
+  products: "/warehouse/products",
+  batches: "/warehouse/batches",
 };
 
 const Warehouse = () => {
   const navigate = useNavigate();
-  const [selectedMenu, setSelectedMenu] = useState("warehouses");
+  const [selectedMenu, setSelectedMenu] = useState(() => {
+    return localStorage.getItem("selectedMenu") || "warehouses";
+  });
+
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState(null);
   const [selectedRow, setSelectedRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-
   const [dynamicData, setDynamicData] = useState({});
   const [loading, setLoading] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
   useEffect(() => {
     const config = menuConfig[selectedMenu];
-
     if (config?.fetchData) {
       const loadData = async () => {
         setLoading(true);
         const data = await config.fetchData();
-        setDynamicData((prev) => ({ ...prev, [selectedMenu]: data }));
+
+        const cleanData = Array.isArray(data) ? data : data?.data || [];
+        setDynamicData((prev) => ({ ...prev, [selectedMenu]: cleanData }));
         setLoading(false);
       };
       loadData();
     }
   }, [selectedMenu]);
+
+  const handleSelectMenu = (menuId) => {
+    setSelectedMenu(menuId);
+    setSearchTerm("");
+    localStorage.setItem("selectedMenu", menuId);
+  };
 
   const handleAdd = () => {
     setDialogMode("add");
@@ -86,14 +87,10 @@ const Warehouse = () => {
   };
 
   const handleView = (row) => {
-    if (selectedMenu === "batches") {
-      navigate(`/warehouse/batches/${row.id}`);
-      return;
+    const basePath = viewRoutes[selectedMenu];
+    if (basePath) {
+      navigate(`${basePath}/${row.id}`);
     }
-
-    setDialogMode("view");
-    setSelectedRow(row);
-    setOpenDialog(true);
   };
 
   const handleDelete = (row) => {
@@ -110,7 +107,8 @@ const Warehouse = () => {
 
       if (res) {
         const reload = await config.fetchData();
-        setDynamicData((prev) => ({ ...prev, [selectedMenu]: reload }));
+        const cleanData = Array.isArray(reload) ? reload : reload?.data || [];
+        setDynamicData((prev) => ({ ...prev, [selectedMenu]: cleanData }));
       }
     }
 
@@ -119,71 +117,71 @@ const Warehouse = () => {
 
   const handleSave = async (formData) => {
     const config = menuConfig[selectedMenu];
+    let preparedData = { ...formData };
 
     if (selectedMenu === "batches") {
-      formData = {
-        ...formData,
+      preparedData = {
+        ...preparedData,
         manufactureDate: convertDate(formData.manufactureDate),
         expiryDate: convertDate(formData.expiryDate),
         quantity: parseInt(formData.quantity),
       };
     }
 
-    let res;
     if (dialogMode === "edit" && selectedRow?.id) {
-      res = await config.service.update(selectedRow.id, formData);
+      await config.service.update(selectedRow.id, preparedData);
     } else {
-      res = await config.service.create(formData);
+      await config.service.create(preparedData);
     }
 
-    if (res) {
-      const reload = await config.fetchData();
-      setDynamicData((prev) => ({ ...prev, [selectedMenu]: reload }));
-    }
-
-    setOpenDialog(false);
+    const reload = await config.fetchData();
+    const cleanData = Array.isArray(reload) ? reload : reload?.data || [];
+    setDynamicData((prev) => ({ ...prev, [selectedMenu]: cleanData }));
   };
 
-  const handleImport = () => console.log("Import clicked");
-  const handleExport = () => console.log("Export clicked");
-  const handlePrint = () => console.log("Print clicked");
+  const currentMenuConfig = menuItems.find((m) => m.id === selectedMenu);
 
-  const currentMenuConfig = menuItems.find((menu) => menu.id === selectedMenu);
+  const filteredAndSearchedData = useMemo(() => {
+    const rawData = dynamicData[selectedMenu] || [];
+    if (!searchTerm) return rawData;
 
-  const commonProps = {
-    onEdit: handleEdit,
-    onDelete: handleDelete,
-    onView: currentMenuConfig?.allowView === false ? undefined : handleView,
+    const keyword = searchTerm.toLowerCase();
+    const searchableColumns =
+      currentMenuConfig?.columns.filter(
+        (col) => col.search !== false && col.id !== "stt"
+      ) || [];
+
+    return rawData.filter((row) =>
+      searchableColumns.some((col) => {
+        let value;
+        if (typeof col.searchValue === "function") {
+          value = col.searchValue(row);
+        } else if (col.render) {
+          value = col.render(row[col.id], row);
+        } else {
+          value = row[col.id];
+        }
+        return String(value || "")
+          .toLowerCase()
+          .includes(keyword);
+      })
+    );
+  }, [dynamicData, selectedMenu, searchTerm, currentMenuConfig]);
+
+  const getSearchPlaceholder = () => {
+    if (!currentMenuConfig) return "Search...";
+    const labels = currentMenuConfig.columns
+      .filter((col) => col.search !== false && col.id !== "stt")
+      .map((c) => c.label.toLowerCase());
+    return `Search ${labels.join(", ")}...`;
   };
-
-  const getCurrentData = (menuId) => {
-    return dynamicData[menuId] || [];
-  };
-
-  const dataTables = Object.fromEntries(
-    menuItems.map((menu) => {
-      const data = getCurrentData(menu.id);
-
-      return [
-        menu.id,
-        <DataTable
-          key={menu.id}
-          title={menu.label}
-          columns={menu.columns}
-          data={Array.isArray(data) ? data : data?.data || []}
-          loading={menuConfig[menu.id] ? loading : undefined}
-          {...commonProps}
-        />,
-      ];
-    })
-  );
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <WarehouseToolbar
         menuItems={menuItems}
         selectedMenu={selectedMenu}
-        onSelect={setSelectedMenu}
+        onSelect={handleSelectMenu}
       />
 
       <Box
@@ -191,20 +189,23 @@ const Warehouse = () => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          mb: 2,
           mt: 2,
         }}
       >
-        <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+        <SearchBar
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          placeholder={getSearchPlaceholder()}
+        />
         <ActionButtons
           onAdd={handleAdd}
-          onImport={handleImport}
-          onExport={handleExport}
-          onPrint={handlePrint}
+          onImport={() => console.log("Importing...")}
+          onExport={() => console.log("Exporting...")}
+          onPrint={() => console.log("Printing...")}
         />
       </Box>
 
-      <Box sx={{ position: "relative", minHeight: "200px" }}>
+      <Box sx={{ position: "relative", minHeight: "200px", mt: 1 }}>
         {loading ? (
           <Box
             sx={{
@@ -217,7 +218,14 @@ const Warehouse = () => {
             <CircularProgress />
           </Box>
         ) : (
-          dataTables[selectedMenu] || <Typography>In progress...</Typography>
+          <DataTable
+            key={selectedMenu}
+            columns={currentMenuConfig?.columns || []}
+            data={filteredAndSearchedData}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onView={currentMenuConfig?.allowView === false ? undefined : handleView}
+          />
         )}
       </Box>
 
@@ -229,15 +237,6 @@ const Warehouse = () => {
           mode={dialogMode}
           selectedMenu={selectedMenu}
           selectedRow={dialogMode === "edit" ? selectedRow : null}
-        />
-      )}
-
-      {dialogMode === "view" && selectedRow && (
-        <ViewDialog
-          open={openDialog}
-          onClose={() => setOpenDialog(false)}
-          selectedMenu={selectedMenu}
-          selectedRow={selectedRow}
         />
       )}
 

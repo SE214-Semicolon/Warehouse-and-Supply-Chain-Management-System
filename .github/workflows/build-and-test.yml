@@ -1,0 +1,154 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/build-and-test.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/build-and-test.yml"
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      backend-changed:
+        description: "Whether backend files changed"
+        value: ${{ jobs.build-and-test.outputs.backend-changed }}
+      frontend-changed:
+        description: "Whether frontend files changed"
+        value: ${{ jobs.build-and-test.outputs.frontend-changed }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    outputs:
+      backend-changed: ${{ steps.changes.outputs.backend }}
+      frontend-changed: ${{ steps.changes.outputs.frontend }}
+    # NOTE: Integration tests use Testcontainers to provision PostgreSQL and MongoDB dynamically
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          base: ${{ github.event.before }}
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      # ============================================
+      # UNIT TESTS
+      # ============================================
+      - name: Install backend dependencies
+        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Generate Prisma Client
+        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./backend
+        run: npx prisma generate
+
+      - name: Run Backend Unit Tests
+        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./backend
+        run: |
+          chmod +x scripts/run-tests-by-type.sh
+          ./scripts/run-tests-by-type.sh unit
+        env:
+          NODE_ENV: test
+          # Provide dummy values for config validation (unit tests mock DB connections)
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          MONGO_URL: mongodb://localhost:27017/test
+          JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
+          JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
+          JWT_ACCESS_TTL: 15m
+          JWT_REFRESH_TTL: 7d
+
+      # ============================================
+      # SMOKE TESTS (run early to fail fast)
+      # ============================================
+      - name: Run Backend Smoke Tests
+        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./backend
+        run: |
+          chmod +x scripts/run-tests-by-type.sh
+          ./scripts/run-tests-by-type.sh smoke
+        env:
+          NODE_ENV: test
+          # Provide dummy values for config validation (smoke tests may mock DB)
+          JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
+          JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
+          JWT_ACCESS_TTL: 15m
+          JWT_REFRESH_TTL: 7d
+
+      # ============================================
+      # SANITY TESTS
+      # ============================================
+      - name: Run Backend Sanity Tests
+        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./backend
+        run: |
+          chmod +x scripts/run-tests-by-type.sh
+          ./scripts/run-tests-by-type.sh sanity
+        env:
+          NODE_ENV: test
+          JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
+          JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
+          JWT_ACCESS_TTL: 15m
+          JWT_REFRESH_TTL: 7d
+
+      # ============================================
+      # INTEGRATION TESTS (uses Testcontainers for PostgreSQL + MongoDB)
+      # ============================================
+      - name: Run Backend Integration Tests
+        if: steps.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./backend
+        run: |
+          chmod +x scripts/run-tests-by-type.sh
+           ./scripts/run-tests-by-type.sh integration -- --testTimeout=120000
+        env:
+          NODE_ENV: test
+          # Testcontainers will provision databases dynamically
+          # These are fallback/dummy values for config validation
+          # JWT secrets for authentication in tests
+          JWT_ACCESS_SECRET: test-access-secret-key-for-ci-pipeline
+          JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-pipeline
+          JWT_ACCESS_TTL: 15m
+          JWT_REFRESH_TTL: 7d
+          # Testcontainers configuration for GitHub Actions
+          TESTCONTAINERS_HOST_OVERRIDE: localhost
+          TESTCONTAINERS_RYUK_DISABLED: true
+
+      # ============================================
+      # FRONTEND TESTS
+      # ============================================
+      - name: Install frontend dependencies
+        if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run frontend tests
+        if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./frontend
+        run: npm run test

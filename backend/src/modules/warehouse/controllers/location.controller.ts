@@ -16,9 +16,9 @@ import { LocationService } from '../services/location.service';
 import { CreateLocationDto } from '../dto/create-location.dto';
 import { UpdateLocationDto } from '../dto/update-location.dto';
 import { QueryLocationDto } from '../dto/query-location.dto';
-import { JwtAuthGuard } from '../../../auth/jwt.guard';
-import { RolesGuard } from '../../../auth/roles.guard';
-import { Roles } from '../../../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt.guard';
+import { RolesGuard } from 'src/modules/auth/guards/roles.guard';
+import { Roles } from 'src/modules/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 
@@ -32,7 +32,7 @@ export class LocationController {
   constructor(private readonly locationService: LocationService) {}
 
   @Post()
-  @Roles(UserRole.admin, UserRole.manager, UserRole.warehouse_staff)
+  @Roles(UserRole.admin, UserRole.manager)
   @ApiOperation({ summary: 'Create a new location' })
   @ApiResponse({ status: 201, description: 'Location created successfully.' })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
@@ -113,7 +113,7 @@ export class LocationController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.admin, UserRole.manager, UserRole.warehouse_staff)
+  @Roles(UserRole.admin, UserRole.manager)
   @ApiOperation({ summary: 'Update a location' })
   @ApiResponse({ status: 200, description: 'Location updated successfully.' })
   @ApiResponse({ status: 404, description: 'Location not found.' })

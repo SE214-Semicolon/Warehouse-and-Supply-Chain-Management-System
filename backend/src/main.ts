@@ -26,8 +26,8 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  // Dùng đường dẫn /api để Swagger UI không bị lỗi asset relative path
-  SwaggerModule.setup('api', app, document);
+  // Setup Swagger at /docs to avoid path conflicts
+  SwaggerModule.setup('docs', app, document);
 
   await app.listen(process.env.PORT || 3000, '0.0.0.0');
 }

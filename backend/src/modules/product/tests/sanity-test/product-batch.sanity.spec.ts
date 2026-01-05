@@ -1,0 +1,137 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import request from 'supertest';
+import { AppModule } from '../../../../app.module';
+import { PrismaService } from '../../../../database/prisma/prisma.service';
+import { JwtService } from '@nestjs/jwt';
+import { UserRole } from '@prisma/client';
+
+// Unique test suite identifier for parallel execution
+const TEST_SUITE_ID = `batch-sanity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+/**
+ * SANITY TEST - Product Batch Module
+ * Critical path testing for basic CRUD operations
+ */
+describe('Product Batch Module - Sanity Tests', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let jwtService: JwtService;
+  let adminToken: string;
+  let productId: string;
+
+  beforeAll(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
+    await app.init();
+
+    prisma = moduleFixture.get<PrismaService>(PrismaService);
+    jwtService = moduleFixture.get<JwtService>(JwtService);
+
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+
+    const adminUser = await prisma.user.create({
+      data: {
+        username: `admin-batch-sanity-${TEST_SUITE_ID}`,
+        email: `admin-batch-sanity-${TEST_SUITE_ID}@test.com`,
+        fullName: 'Admin Batch Smoke',
+        passwordHash: '$2b$10$validhashedpassword',
+        role: UserRole.admin,
+        active: true,
+      },
+    });
+
+    adminToken = `Bearer ${jwtService.sign({
+      sub: adminUser.id,
+      email: adminUser.email,
+      role: adminUser.role,
+    })}`;
+
+    const product = await prisma.product.create({
+      data: {
+        sku: `SANITY-BATCH-PROD-${TEST_SUITE_ID}`,
+        name: `Smoke Batch Product ${TEST_SUITE_ID}`,
+        unit: 'pcs',
+      },
+    });
+
+    productId = product.id;
+  }, 30000);
+
+  afterAll(async () => {
+    await prisma.productBatch.deleteMany({
+      where: { product: { sku: { contains: TEST_SUITE_ID } } },
+    });
+    await prisma.product.deleteMany({ where: { sku: { contains: TEST_SUITE_ID } } });
+    await prisma.user.deleteMany({ where: { email: { contains: TEST_SUITE_ID } } });
+    await prisma.$disconnect();
+    await app.close();
+  }, 30000);
+
+  describe('SANITY-BATCH-01: CRUD Operations', () => {
+    let batchId: string;
+
+    it('should CREATE product batch', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/product-batches')
+        .set('Authorization', adminToken)
+        .send({
+          productId: productId,
+          batchNo: 'SANITY-BATCH-001',
+          quantity: 100,
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      batchId = response.body.data.id;
+    });
+
+    it('should READ product batches', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/product-batches')
+        .set('Authorization', adminToken)
+        .expect(200);
+
+      expect(Array.isArray(response.body.data)).toBe(true);
+    });
+
+    it('should UPDATE product batch', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/product-batches/${batchId}`)
+        .set('Authorization', adminToken)
+        .send({
+          quantity: 150,
+        })
+        .expect(200);
+
+      expect(response.body.data.quantity).toBe(150);
+    });
+
+    it('should DELETE product batch', async () => {
+      await request(app.getHttpServer())
+        .delete(`/product-batches/${batchId}`)
+        .set('Authorization', adminToken)
+        .expect(200);
+    });
+  });
+
+  describe('SANITY-BATCH-02: Authentication Check', () => {
+    it('should reject requests without authentication', async () => {
+      await request(app.getHttpServer()).get('/product-batches').expect(401);
+    });
+  });
+});

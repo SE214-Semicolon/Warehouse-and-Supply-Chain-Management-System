@@ -116,12 +116,17 @@ export class ProductBatchRepository implements IProductBatchRepository {
 
   async findByBatchNo(productId: string, batchNo: string): Promise<ProductBatch | null> {
     try {
-      this.logger.log(`Finding batch by product ${productId} and batch number: ${batchNo}`);
+      this.logger.log(
+        `Finding batch by product ${productId} and batch number: ${batchNo} (case-insensitive)`,
+      );
 
       const batch = await this.prisma.productBatch.findFirst({
         where: {
           productId,
-          batchNo,
+          batchNo: {
+            equals: batchNo,
+            mode: 'insensitive',
+          },
         },
         include: {
           product: true,
@@ -228,12 +233,17 @@ export class ProductBatchRepository implements IProductBatchRepository {
                 category: true,
               },
             },
+            inventory: {
+              include: {
+                location: true,
+              },
+            },
           },
         }),
         this.prisma.productBatch.count({ where }),
       ]);
 
-      this.logger.log(`Found ${total} expiring batches`);
+      this.logger.log(`Found ${total} expiring product batches`);
       return { batches, total };
     } catch (error) {
       this.logger.error(`Failed to find expiring batches: ${error.message}`, error.stack);

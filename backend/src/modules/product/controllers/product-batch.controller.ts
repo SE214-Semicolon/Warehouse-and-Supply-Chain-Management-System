@@ -21,9 +21,9 @@ import {
   ProductBatchListResponseDto,
   ProductBatchDeleteResponseDto,
 } from '../dto/product-batch-response.dto';
-import { JwtAuthGuard } from '../../../auth/jwt.guard';
-import { RolesGuard } from '../../../auth/roles.guard';
-import { Roles } from '../../../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt.guard';
+import { RolesGuard } from 'src/modules/auth/guards/roles.guard';
+import { Roles } from 'src/modules/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 
@@ -37,7 +37,7 @@ export class ProductBatchController {
   constructor(private readonly batchService: ProductBatchService) {}
 
   @Post()
-  @Roles(UserRole.admin, UserRole.manager, UserRole.warehouse_staff, UserRole.procurement)
+  @Roles(UserRole.admin, UserRole.manager, UserRole.procurement)
   @ApiOperation({ summary: 'Create a new product batch' })
   @ApiResponse({
     status: 201,
@@ -127,7 +127,7 @@ export class ProductBatchController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.admin, UserRole.manager, UserRole.warehouse_staff)
+  @Roles(UserRole.admin, UserRole.manager)
   @ApiOperation({ summary: 'Update a product batch' })
   @ApiResponse({
     status: 200,

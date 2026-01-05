@@ -19,6 +19,7 @@ export interface IInventoryRepository {
     quantity: number,
     createdById?: string,
     idempotencyKey?: string,
+    consumeReservation?: boolean,
   ): Promise<{ inventory: Inventory; movement: StockMovement }>;
 
   adjustInventoryTx(
@@ -167,6 +168,24 @@ export interface IInventoryRepository {
     sortOrder?: 'asc' | 'desc',
   ): Promise<{
     movements: any[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }>;
+
+  getMovementsByProductBatch(
+    productBatchId: string,
+    movementType?: string,
+    locationId?: string,
+    startDate?: string,
+    endDate?: string,
+    page?: number,
+    limit?: number,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc',
+  ): Promise<{
+    movements: StockMovement[];
     total: number;
     page: number;
     limit: number;

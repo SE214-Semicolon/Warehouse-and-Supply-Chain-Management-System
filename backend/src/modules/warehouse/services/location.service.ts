@@ -12,6 +12,7 @@ import { UpdateLocationDto } from '../dto/update-location.dto';
 import { QueryLocationDto } from '../dto/query-location.dto';
 import { CacheService } from '../../../cache/cache.service';
 import { CACHE_TTL, CACHE_PREFIX } from '../../../cache/cache.constants';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
 
 @Injectable()
 export class LocationService {
@@ -21,6 +22,7 @@ export class LocationService {
     private readonly locationRepo: LocationRepository,
     private readonly warehouseRepo: WarehouseRepository,
     private readonly cacheService: CacheService,
+    private readonly auditMiddleware: AuditMiddleware,
   ) {}
 
   /**
@@ -83,9 +85,14 @@ export class LocationService {
     await this.cacheService.deleteByPrefix(CACHE_PREFIX.WAREHOUSE);
     this.logger.log(`Location created successfully: ${location.id}`);
 
+    // Audit log
+    this.auditMiddleware.logCreate('Location', location as Record<string, unknown>).catch((err) => {
+      this.logger.error('Failed to write audit log for location create', err);
+    });
+
     return {
       success: true,
-      location,
+      data: location,
       message: 'Location created successfully',
     };
   }
@@ -152,7 +159,7 @@ export class LocationService {
 
     return {
       success: true,
-      locations,
+      data: locations,
       total,
       page,
       limit,
@@ -191,7 +198,7 @@ export class LocationService {
 
         return {
           success: true,
-          location,
+          data: location,
           stats,
         };
       },
@@ -233,7 +240,7 @@ export class LocationService {
 
         return {
           success: true,
-          location,
+          data: location,
           stats,
         };
       },
@@ -276,7 +283,7 @@ export class LocationService {
             code: warehouse.code,
             name: warehouse.name,
           },
-          locations,
+          data: locations,
           total: locations.length,
         };
       },
@@ -326,7 +333,7 @@ export class LocationService {
       success: true,
       warehouseId,
       minCapacity,
-      locations: availableLocations,
+      data: availableLocations,
       total: locations.length,
     };
   }
@@ -393,9 +400,21 @@ export class LocationService {
     await this.cacheService.deleteByPrefix(CACHE_PREFIX.WAREHOUSE);
     this.logger.log(`Location updated successfully: ${id}`);
 
+    // Audit log
+    this.auditMiddleware
+      .logUpdate(
+        'Location',
+        id,
+        location as Record<string, unknown>,
+        updatedLocation as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for location update', err);
+      });
+
     return {
       success: true,
-      location: updatedLocation,
+      data: updatedLocation,
       message: 'Location updated successfully',
     };
   }
@@ -451,6 +470,13 @@ export class LocationService {
     // Invalidate warehouse cache
     await this.cacheService.deleteByPrefix(CACHE_PREFIX.WAREHOUSE);
     this.logger.log(`Location deleted successfully: ${id}`);
+
+    // Audit log
+    this.auditMiddleware
+      .logDelete('Location', id, location as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for location delete', err);
+      });
 
     return {
       success: true,

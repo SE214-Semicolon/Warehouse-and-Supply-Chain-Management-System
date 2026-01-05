@@ -18,7 +18,9 @@ export class MongoDBService implements OnModuleInit, OnModuleDestroy {
 
       this.client = new MongoClient(mongoUri);
       await this.client.connect();
-      this.db = this.client.db('warehouse_analytics');
+      // Use database name from env or default to 'warehouse_analytics'
+      const dbName = process.env.MONGODB_DB_NAME || 'warehouse_analytics';
+      this.db = this.client.db(dbName);
     } catch (error) {
       throw error;
     }

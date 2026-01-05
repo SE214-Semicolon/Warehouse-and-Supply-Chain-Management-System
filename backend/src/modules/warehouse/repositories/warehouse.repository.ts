@@ -132,10 +132,13 @@ export class WarehouseRepository implements IWarehouseRepository {
 
   async checkCodeExists(code: string, excludeId?: string): Promise<boolean> {
     try {
-      this.logger.debug(`Checking if warehouse code ${code} exists`);
+      this.logger.debug(`Checking if warehouse code ${code} exists (case-insensitive)`);
       const count = await this.prisma.warehouse.count({
         where: {
-          code,
+          code: {
+            equals: code,
+            mode: 'insensitive',
+          },
           id: excludeId ? { not: excludeId } : undefined,
         },
       });

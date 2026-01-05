@@ -1,31 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuditLogController } from './audit-log.controller';
 import { AuditLogService } from '../services/audit-log.service';
+import { QueryAuditLogDto } from '../dto/query-audit-log.dto';
 
 describe('AuditLogController', () => {
   let controller: AuditLogController;
-  let service: AuditLogService;
 
   const mockService = {
     query: jest.fn(),
-  };
+  } as Record<string, jest.Mock>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuditLogController],
-      providers: [
-        {
-          provide: AuditLogService,
-          useValue: mockService,
-        },
-      ],
+      providers: [{ provide: AuditLogService, useValue: mockService }],
     }).compile();
 
     controller = module.get<AuditLogController>(AuditLogController);
-    service = module.get<AuditLogService>(AuditLogService);
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
   });
 
@@ -33,56 +24,49 @@ describe('AuditLogController', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('list', () => {
-    it('should return paginated audit logs', async () => {
-      const query = {
-        entityType: 'Product',
-        page: 1,
-        limit: 50,
-      };
+  it('should query audit logs', async () => {
+    const query: QueryAuditLogDto = {
+      entityType: 'Product',
+      page: 1,
+      limit: 20,
+    };
+    const serviceResult = {
+      success: true,
+      data: [{ id: '1', entityType: 'Product', action: 'CREATE' }],
+      total: 1,
+      page: 1,
+      limit: 20,
+      totalPages: 1,
+    };
+    mockService.query.mockResolvedValue(serviceResult);
 
-      const mockResponse = {
-        page: 1,
-        limit: 50,
-        total: 100,
-        results: [
-          {
-            timestamp: new Date(),
-            entityType: 'Product',
-            entityId: 'test-id',
-            action: 'CREATE',
-          },
-        ],
-      };
+    const res = await controller.list(query);
 
-      mockService.query.mockResolvedValue(mockResponse);
+    expect(mockService.query).toHaveBeenCalledWith(query);
+    expect(res).toEqual(serviceResult);
+  });
 
-      const result = await controller.list(query);
+  it('should handle query with filters', async () => {
+    const query: QueryAuditLogDto = {
+      entityType: 'SalesOrder',
+      action: 'UPDATE',
+      userId: 'user123',
+      startDate: new Date('2025-01-01'),
+      endDate: new Date('2025-12-31'),
+    };
+    const serviceResult = {
+      success: true,
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 20,
+      totalPages: 0,
+    };
+    mockService.query.mockResolvedValue(serviceResult);
 
-      expect(service.query).toHaveBeenCalledWith(query);
-      expect(result).toEqual(mockResponse);
-    });
+    const res = await controller.list(query);
 
-    it('should handle empty results', async () => {
-      const query = {
-        entityType: 'Inventory',
-        page: 1,
-        limit: 50,
-      };
-
-      const mockResponse = {
-        page: 1,
-        limit: 50,
-        total: 0,
-        results: [],
-      };
-
-      mockService.query.mockResolvedValue(mockResponse);
-
-      const result = await controller.list(query);
-
-      expect(result.total).toBe(0);
-      expect(result.results).toHaveLength(0);
-    });
+    expect(mockService.query).toHaveBeenCalledWith(query);
+    expect(res).toEqual(serviceResult);
   });
 });

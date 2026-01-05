@@ -10,6 +10,7 @@ import { ReleaseReservationDto } from '../dto/release-reservation.dto';
 import { QueryByLocationDto } from '../dto/query-by-location.dto';
 import { QueryByProductBatchDto } from '../dto/query-by-product-batch.dto';
 import { AlertQueryDto } from '../dto/alert-query.dto';
+import { MovementQueryDto } from '../dto/movement-query.dto';
 import {
   StockLevelReportDto,
   MovementReportDto,
@@ -17,6 +18,9 @@ import {
 } from '../dto/report-query.dto';
 import { CacheService } from 'src/cache/cache.service';
 import { CACHE_PREFIX, CACHE_TTL } from 'src/cache/cache.constants';
+import { AlertGenerationService } from '../../alerts/services/alert-generation.service';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
+import { LocationCapacityExceeded } from '../errors/location-capacity.error';
 
 @Injectable()
 export class InventoryService {
@@ -25,6 +29,8 @@ export class InventoryService {
   constructor(
     private readonly inventoryRepo: InventoryRepository,
     private readonly cacheService: CacheService,
+    private readonly alertGenService: AlertGenerationService,
+    private readonly auditMiddleware: AuditMiddleware,
   ) {}
 
   /**
@@ -54,6 +60,25 @@ export class InventoryService {
     if (!batch) {
       this.logger.warn(`ProductBatch not found: ${dto.productBatchId}`);
       throw new NotFoundException(`ProductBatch not found: ${dto.productBatchId}`);
+    }
+
+    // Warn if receiving expired or near-expiry batch
+    if (batch.expiryDate) {
+      const now = new Date();
+      if (batch.expiryDate < now) {
+        this.logger.warn(
+          `Receiving EXPIRED batch ${batch.batchNo || batch.id}. Expired on ${batch.expiryDate.toISOString().split('T')[0]}`,
+        );
+      } else {
+        const daysUntilExpiry = Math.floor(
+          (batch.expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+        );
+        if (daysUntilExpiry <= 30) {
+          this.logger.warn(
+            `Receiving near-expiry batch ${batch.batchNo || batch.id}. Expires in ${daysUntilExpiry} days (${batch.expiryDate.toISOString().split('T')[0]})`,
+          );
+        }
+      }
     }
 
     const location = await this.inventoryRepo.findLocation(dto.locationId);
@@ -89,8 +114,25 @@ export class InventoryService {
       // Invalidate inventory caches after receive
       await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
+      // Audit logs for inventory and movement
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for stock movement', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
+
       return { success: true, inventory, movement };
     } catch (err) {
+      if (err instanceof LocationCapacityExceeded) {
+        const message = `Location capacity exceeded: capacity=${err.capacity}, currentStored=${err.currentStored}, requested=${err.requested}`;
+        throw new BadRequestException(message);
+      }
+
       // If movement creation failed due to unique constraint on idempotencyKey, return existing movement
       if (
         dto.idempotencyKey &&
@@ -100,6 +142,7 @@ export class InventoryService {
         const existing = await this.inventoryRepo.findMovementByKey(dto.idempotencyKey);
         if (existing) return { success: true, idempotent: true, movement: existing };
       }
+
       throw err;
     }
   }
@@ -121,11 +164,18 @@ export class InventoryService {
    * - Dispatch exact available quantity (all stock)
    * - Dispatch minimal quantity of 1
    */
-  async dispatchInventory(dto: DispatchInventoryDto) {
+  async dispatchInventory(dto: DispatchInventoryDto, options?: { consumeReservation?: boolean }) {
     // Basic existence validation
     const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
     if (!batch) {
       throw new NotFoundException(`ProductBatch not found: ${dto.productBatchId}`);
+    }
+
+    // Validate batch expiry
+    if (batch.expiryDate && batch.expiryDate < new Date()) {
+      throw new BadRequestException(
+        `Cannot dispatch expired batch ${batch.batchNo || batch.id}. Expired on ${batch.expiryDate.toISOString().split('T')[0]}`,
+      );
     }
 
     const location = await this.inventoryRepo.findLocation(dto.locationId);
@@ -148,6 +198,11 @@ export class InventoryService {
       }
     }
 
+    const consumeReservation = options?.consumeReservation || false;
+    this.logger.log(
+      `Dispatching inventory with consumeReservation=${consumeReservation} for batch ${dto.productBatchId}`,
+    );
+
     try {
       const { inventory, movement } = await this.inventoryRepo.dispatchInventoryTx(
         dto.productBatchId,
@@ -155,12 +210,52 @@ export class InventoryService {
         dto.quantity,
         dto.createdById,
         dto.idempotencyKey,
+        consumeReservation,
       );
+
+      // Trigger low stock alert check (non-blocking)
+      this.alertGenService
+        .checkLowStockAlert({
+          productBatchId: dto.productBatchId,
+          locationId: dto.locationId,
+          availableQty: inventory.availableQty,
+        })
+        .catch((err) => this.logger.warn('Failed to check low stock alert:', err));
+
+      // Audit logging for dispatch operation
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for stock movement creation', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
       return { success: true, inventory, movement };
     } catch (err) {
-      if (err instanceof Error && err.message === 'NotEnoughStock') {
-        throw new BadRequestException('Not enough stock available');
+      if (err instanceof Error) {
+        if (err.message === 'NotEnoughStock') {
+          throw new BadRequestException('Not enough stock available');
+        }
+        if (err.message === 'NotEnoughReservedStock') {
+          throw new BadRequestException(
+            'Not enough reserved stock. This may indicate the reservation was already consumed or released.',
+          );
+        }
+        if (err.message === 'ReservedQtyNegative') {
+          throw new BadRequestException(
+            'CRITICAL: Reserved quantity went negative. Data inconsistency detected.',
+          );
+        }
+        if (err.message === 'InventoryNotFound') {
+          throw new NotFoundException('Inventory record not found');
+        }
       }
 
       // If unique constraint on idempotencyKey occurred concurrently, return existing movement
@@ -240,8 +335,39 @@ export class InventoryService {
         dto.note,
       );
 
+      // Trigger low stock alert check if adjustment decreased inventory (non-blocking)
+      if (dto.adjustmentQuantity < 0) {
+        this.alertGenService
+          .checkLowStockAlert({
+            productBatchId: dto.productBatchId,
+            locationId: dto.locationId,
+            availableQty: inventory.availableQty,
+          })
+          .catch((err) => this.logger.warn('Failed to check low stock alert:', err));
+      }
+
+      // Audit logging for adjustment operation
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for stock movement creation', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
       return { success: true, inventory, movement };
     } catch (err) {
+      if (err instanceof LocationCapacityExceeded) {
+        const message = `Location capacity exceeded: capacity=${err.capacity}, currentStored=${err.currentStored}, requested=${err.requested}`;
+        throw new BadRequestException(message);
+      }
+
       // If unique constraint on idempotencyKey occurred concurrently, return existing movement
       if (
         dto.idempotencyKey &&
@@ -324,6 +450,31 @@ export class InventoryService {
           dto.note,
         );
 
+      // Audit logging for transfer operation
+      this.auditMiddleware
+        .logCreate('StockMovement', transferOutMovement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for transfer out movement', err);
+        });
+      this.auditMiddleware
+        .logCreate('StockMovement', transferInMovement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for transfer in movement', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', fromInventory.id, null, fromInventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for from inventory update', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', toInventory.id, null, toInventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for to inventory update', err);
+        });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
       return {
         success: true,
         fromInventory,
@@ -332,6 +483,11 @@ export class InventoryService {
         transferInMovement,
       };
     } catch (err) {
+      if (err instanceof LocationCapacityExceeded) {
+        const message = `Location capacity exceeded: capacity=${err.capacity}, currentStored=${err.currentStored}, requested=${err.requested}`;
+        throw new BadRequestException(message);
+      }
+
       if (err instanceof Error && err.message === 'NotEnoughStock') {
         throw new BadRequestException('Not enough stock available for transfer');
       }
@@ -375,6 +531,13 @@ export class InventoryService {
       throw new NotFoundException(`ProductBatch not found: ${dto.productBatchId}`);
     }
 
+    // Validate batch expiry - don't reserve expired batches
+    if (batch.expiryDate && batch.expiryDate < new Date()) {
+      throw new BadRequestException(
+        `Cannot reserve expired batch ${batch.batchNo || batch.id}. Expired on ${batch.expiryDate.toISOString().split('T')[0]}`,
+      );
+    }
+
     const location = await this.inventoryRepo.findLocation(dto.locationId);
     if (!location) {
       throw new NotFoundException(`Location not found: ${dto.locationId}`);
@@ -410,6 +573,21 @@ export class InventoryService {
         dto.idempotencyKey,
         dto.note,
       );
+
+      // Audit logging for reserve operation
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for reserve movement', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
       return { success: true, inventory, movement };
     } catch (err) {
@@ -486,6 +664,21 @@ export class InventoryService {
         dto.idempotencyKey,
         dto.note,
       );
+
+      // Audit logging for release reservation operation
+      this.auditMiddleware
+        .logCreate('StockMovement', movement as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for release movement', err);
+        });
+      this.auditMiddleware
+        .logUpdate('Inventory', inventory.id, null, inventory as Record<string, unknown>)
+        .catch((err) => {
+          this.logger.error('Failed to write audit log for inventory update', err);
+        });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
       return { success: true, inventory, movement };
     } catch (err) {
@@ -671,12 +864,24 @@ export class InventoryService {
       throw new BadRequestException('Reserved quantity cannot be negative');
     }
 
-    const updatedInventory = await this.inventoryRepo.updateInventoryQuantities(
-      productBatchId,
-      locationId,
-      dto.availableQty,
-      dto.reservedQty,
-    );
+    let updatedInventory;
+    try {
+      updatedInventory = await this.inventoryRepo.updateInventoryQuantities(
+        productBatchId,
+        locationId,
+        dto.availableQty,
+        dto.reservedQty,
+      );
+    } catch (err) {
+      if (err instanceof LocationCapacityExceeded) {
+        const message = `Location capacity exceeded: capacity=${err.capacity}, currentStored=${err.currentStored}, requested=${err.requested}`;
+        throw new BadRequestException(message);
+      }
+      throw err;
+    }
+
+    // Invalidate inventory caches
+    await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
     return {
       success: true,
@@ -711,6 +916,9 @@ export class InventoryService {
       productBatchId,
       locationId,
     );
+
+    // Invalidate inventory caches
+    await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
     return {
       success: true,
@@ -779,7 +987,7 @@ export class InventoryService {
       dto.productId,
       dto.page || 1,
       dto.limit || 20,
-      dto.sortBy || 'productBatch',
+      dto.sortBy || 'updatedAt',
       dto.sortOrder || 'asc',
     );
 
@@ -877,6 +1085,119 @@ export class InventoryService {
     return {
       success: true,
       ...result,
+    };
+  }
+
+  /**
+   * Get Movements By Product Batch API
+   * Returns movement history for a specific product batch
+   * Test coverage: INV-TC101-105
+   * - INV-TC101: Get movements with valid product batch ID (200)
+   * - INV-TC102: Product batch not found (404)
+   * - INV-TC103: Filter by movement type (200)
+   * - INV-TC104: Filter by location (200)
+   * - INV-TC105: Filter by date range (200)
+   */
+  async getMovementsByProductBatch(dto: MovementQueryDto) {
+    this.logger.log(`Getting movements for product batch: ${dto.productBatchId}`);
+
+    // Validate product batch exists
+    const batch = await this.inventoryRepo.findProductBatch(dto.productBatchId);
+    if (!batch) {
+      throw new NotFoundException(`ProductBatch not found: ${dto.productBatchId}`);
+    }
+
+    // Validate pagination parameters
+    if (dto.page != undefined && dto.page < 1) {
+      throw new BadRequestException('Page must be greater than 0');
+    }
+
+    if (dto.limit != undefined && (dto.limit < 1 || dto.limit > 100)) {
+      throw new BadRequestException('Limit must be between 1 and 100');
+    }
+
+    const result = await this.inventoryRepo.getMovementsByProductBatch(
+      dto.productBatchId,
+      dto.movementType,
+      dto.locationId,
+      dto.startDate,
+      dto.endDate,
+      dto.page || 1,
+      dto.limit || 20,
+      dto.sortBy || 'createdAt',
+      dto.sortOrder || 'desc',
+    );
+
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  /**
+   * Get inventory for specific batch and location
+   * Used for batch-specific validation in Sales Order submission
+   */
+  async getInventoryByBatchAndLocation(
+    productBatchId: string,
+    locationId: string,
+  ): Promise<{ availableQty: number; reservedQty: number } | null> {
+    const inventory = await this.inventoryRepo.findInventory(productBatchId, locationId);
+    if (!inventory) return null;
+    return {
+      availableQty: inventory.availableQty,
+      reservedQty: inventory.reservedQty,
+    };
+  }
+
+  /**
+   * Get GLOBAL inventory summary for a product (all batches/locations)
+   * Used for flexible validation when SO items don't have specific batch/location
+   *
+   * Formula: TotalAvailable = SUM(availableQty) across ALL inventory records
+   * Note: This does NOT consider reservedQty from other orders
+   */
+  async getGlobalInventoryByProduct(productId: string): Promise<{
+    productId: string;
+    productName: string | null;
+    totalAvailableQty: number;
+    totalReservedQty: number;
+    batchCount: number;
+  }> {
+    this.logger.log(`Calculating global inventory for product: ${productId}`);
+
+    // Query all inventory records for this product across all batches and locations
+    const inventories = await this.inventoryRepo.findInventoriesByProduct(productId);
+
+    if (!inventories || inventories.length === 0) {
+      // Product exists but has no inventory
+      return {
+        productId,
+        productName: null,
+        totalAvailableQty: 0,
+        totalReservedQty: 0,
+        batchCount: 0,
+      };
+    }
+
+    // Calculate totals
+    const totalAvailableQty = inventories.reduce((sum, inv) => sum + inv.availableQty, 0);
+    const totalReservedQty = inventories.reduce((sum, inv) => sum + inv.reservedQty, 0);
+    const batchCount = new Set(inventories.map((inv) => inv.productBatchId)).size;
+
+    // Get product name from first inventory record
+    const productName = inventories[0]?.productBatch?.product?.name || null;
+
+    this.logger.log(
+      `Global inventory for product ${productId}: Available=${totalAvailableQty}, Reserved=${totalReservedQty}, Batches=${batchCount}`,
+    );
+
+    return {
+      productId,
+      productName,
+      totalAvailableQty,
+      totalReservedQty,
+      batchCount,
     };
   }
 }

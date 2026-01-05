@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsObject, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsObject, MaxLength, Matches } from 'class-validator';
 
 export class CreateWarehouseDto {
   @ApiProperty({
@@ -20,6 +20,7 @@ export class CreateWarehouseDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)
+  @Matches(/^(?!\s*$).+/, { message: 'Name cannot be empty or contain only whitespace' })
   name: string;
 
   @ApiPropertyOptional({

@@ -100,6 +100,17 @@ const InventoryService = {
       handleError(err);
     }
   },
+
+  getMovementByBatch: async (productBatchId) => {
+    try {
+      const res = await api.get(`${BASE}/movements/product-batch`, {
+        params: { productBatchId },
+      });
+      return res.data;
+    } catch (err) {
+      handleError(err);
+    }
+  },
 };
 
 export default InventoryService;

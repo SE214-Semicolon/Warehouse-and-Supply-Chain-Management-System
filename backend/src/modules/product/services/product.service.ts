@@ -17,6 +17,7 @@ import {
 } from '../dto/product-response.dto';
 import { CacheService } from 'src/cache/cache.service';
 import { CACHE_PREFIX, CACHE_TTL } from 'src/cache/cache.constants';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
 
 @Injectable()
 export class ProductService {
@@ -26,6 +27,7 @@ export class ProductService {
     private readonly productRepo: ProductRepository,
     private readonly categoryRepo: ProductCategoryRepository,
     private readonly cacheService: CacheService,
+    private readonly auditMiddleware: AuditMiddleware,
   ) {}
 
   /**
@@ -83,6 +85,11 @@ export class ProductService {
     });
 
     this.logger.log(`Product created successfully: ${product.id}`);
+
+    // Audit log
+    this.auditMiddleware.logCreate('Product', product as Record<string, unknown>).catch((err) => {
+      this.logger.error('Failed to write audit log for product create', err);
+    });
 
     // Invalidate product-related caches
     await this.cacheService.deleteByPrefix(CACHE_PREFIX.PRODUCT);
@@ -381,6 +388,18 @@ export class ProductService {
 
     this.logger.log(`Product updated successfully: ${id}`);
 
+    // Audit log
+    this.auditMiddleware
+      .logUpdate(
+        'Product',
+        id,
+        product as Record<string, unknown>,
+        updatedProduct as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for product update', err);
+      });
+
     // Invalidate product-related caches
     await this.cacheService.deleteByPrefix(CACHE_PREFIX.PRODUCT);
 
@@ -430,6 +449,13 @@ export class ProductService {
     await this.productRepo.delete(id);
 
     this.logger.log(`Product deleted successfully: ${id}`);
+
+    // Audit log
+    this.auditMiddleware
+      .logDelete('Product', id, product as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for product delete', err);
+      });
 
     // Invalidate product-related caches
     await this.cacheService.deleteByPrefix(CACHE_PREFIX.PRODUCT);

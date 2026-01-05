@@ -11,6 +11,7 @@ import { UpdateWarehouseDto } from '../dto/update-warehouse.dto';
 import { QueryWarehouseDto } from '../dto/query-warehouse.dto';
 import { CacheService } from '../../../cache/cache.service';
 import { CACHE_TTL, CACHE_PREFIX } from '../../../cache/cache.constants';
+import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
 
 @Injectable()
 export class WarehouseService {
@@ -19,6 +20,7 @@ export class WarehouseService {
   constructor(
     private readonly warehouseRepo: WarehouseRepository,
     private readonly cacheService: CacheService,
+    private readonly auditMiddleware: AuditMiddleware,
   ) {}
 
   /**
@@ -61,9 +63,16 @@ export class WarehouseService {
     await this.cacheService.deleteByPrefix(CACHE_PREFIX.WAREHOUSE);
     this.logger.log(`Warehouse created successfully: ${warehouse.id}`);
 
+    // Audit log
+    this.auditMiddleware
+      .logCreate('Warehouse', warehouse as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for warehouse create', err);
+      });
+
     return {
       success: true,
-      warehouse,
+      data: warehouse,
       message: 'Warehouse created successfully',
     };
   }
@@ -121,7 +130,7 @@ export class WarehouseService {
 
     return {
       success: true,
-      warehouses,
+      data: warehouses,
       total,
       page,
       limit,
@@ -160,7 +169,7 @@ export class WarehouseService {
 
         return {
           success: true,
-          warehouse,
+          data: warehouse,
           stats,
         };
       },
@@ -198,7 +207,7 @@ export class WarehouseService {
 
         return {
           success: true,
-          warehouse,
+          data: warehouse,
           stats,
         };
       },
@@ -257,9 +266,21 @@ export class WarehouseService {
     await this.cacheService.deleteByPrefix(CACHE_PREFIX.WAREHOUSE);
     this.logger.log(`Warehouse updated successfully: ${id}`);
 
+    // Audit log
+    this.auditMiddleware
+      .logUpdate(
+        'Warehouse',
+        id,
+        warehouse as Record<string, unknown>,
+        updatedWarehouse as Record<string, unknown>,
+      )
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for warehouse update', err);
+      });
+
     return {
       success: true,
-      warehouse: updatedWarehouse,
+      data: updatedWarehouse,
       message: 'Warehouse updated successfully',
     };
   }
@@ -300,6 +321,13 @@ export class WarehouseService {
     // Invalidate warehouse cache
     await this.cacheService.deleteByPrefix(CACHE_PREFIX.WAREHOUSE);
     this.logger.log(`Warehouse deleted successfully: ${id}`);
+
+    // Audit log
+    this.auditMiddleware
+      .logDelete('Warehouse', id, warehouse as Record<string, unknown>)
+      .catch((err) => {
+        this.logger.error('Failed to write audit log for warehouse delete', err);
+      });
 
     return {
       success: true,
