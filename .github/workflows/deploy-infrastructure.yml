@@ -2,32 +2,32 @@ name: Deploy Infrastructure
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - 'iac/**'
+      - "iac/**"
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'iac/**'
+      - "iac/**"
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy'
+        description: "Environment to deploy"
         required: true
-        default: 'staging'
+        default: "staging"
         type: choice
         options:
-        - staging
-        - production
+          - staging
+          - production
       action:
-        description: 'Terraform action'
+        description: "Terraform action"
         required: true
-        default: 'plan'
+        default: "plan"
         type: choice
         options:
-        - plan
-        - apply
-        - destroy
+          - plan
+          - apply
+          - destroy
 
 env:
   ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -50,8 +50,8 @@ jobs:
       TF_VAR_jwt_refresh_secret: ${{ secrets.JWT_REFRESH_SECRET_STAGING }}
       TF_VAR_cors_origin: ${{ secrets.CORS_ORIGIN_STAGING }}
       TF_VAR_alert_email_addresses: '["${{ secrets.ALERT_EMAIL_1 }}"]'
-      TF_VAR_enable_prometheus: ${{ secrets.ENABLE_PROMETHEUS_STAGING || 'false' }}
-      TF_VAR_enable_grafana: ${{ secrets.ENABLE_GRAFANA_STAGING || 'false' }}
+      TF_VAR_enable_prometheus: ${{ secrets.ENABLE_PROMETHEUS_STAGING || false }}
+      TF_VAR_enable_grafana: ${{ secrets.ENABLE_GRAFANA_STAGING || false }}
       TF_VAR_grafana_admin_object_ids: ${{ secrets.GRAFANA_ADMIN_OBJECT_IDS || '[]' }}
       # Docker Registry Credentials for ghcr.io
       TF_VAR_docker_registry_url: "https://ghcr.io"
@@ -60,55 +60,55 @@ jobs:
     defaults:
       run:
         working-directory: ./iac/environments/staging
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Login to Azure
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Register Azure Resource Providers
-      run: |
-        echo "Registering required Azure resource providers..."
-        az provider register --namespace Microsoft.Monitor --wait || true
-        az provider register --namespace Microsoft.Dashboard --wait || true
-        echo "Verifying registration status..."
-        az provider show -n Microsoft.Monitor --query "registrationState" -o tsv
-        az provider show -n Microsoft.Dashboard --query "registrationState" -o tsv
+      - name: Register Azure Resource Providers
+        run: |
+          echo "Registering required Azure resource providers..."
+          az provider register --namespace Microsoft.Monitor --wait || true
+          az provider register --namespace Microsoft.Dashboard --wait || true
+          echo "Verifying registration status..."
+          az provider show -n Microsoft.Monitor --query "registrationState" -o tsv
+          az provider show -n Microsoft.Dashboard --query "registrationState" -o tsv
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: ~1.5
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
 
-    - name: Terraform Init
-      run: terraform init
+      - name: Terraform Init
+        run: terraform init
 
-    - name: Terraform Validate
-      run: terraform validate
+      - name: Terraform Validate
+        run: terraform validate
 
-    - name: Terraform Plan
-      run: terraform plan -out=tfplan
-      
-    - name: Upload Plan Artifact
-      if: github.event_name == 'pull_request'
-      uses: actions/upload-artifact@v4
-      with:
-        name: staging-tfplan
-        path: ./iac/environments/staging/tfplan
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
 
-    - name: Terraform Apply
-      if: |
-        (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
-        (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
-      run: terraform apply -auto-approve tfplan
+      - name: Upload Plan Artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-tfplan
+          path: ./iac/environments/staging/tfplan
 
-    - name: Terraform Destroy
-      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
-      run: terraform destroy -auto-approve
+      - name: Terraform Apply
+        if: |
+          (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+        run: terraform apply -auto-approve tfplan
+
+      - name: Terraform Destroy
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
 
   terraform-production:
     if: |
@@ -123,8 +123,8 @@ jobs:
       TF_VAR_jwt_refresh_secret: ${{ secrets.JWT_REFRESH_SECRET_PRODUCTION }}
       TF_VAR_cors_origin: ${{ secrets.CORS_ORIGIN_PRODUCTION }}
       TF_VAR_alert_email_addresses: '["${{ secrets.ALERT_EMAIL_1 }}"]'
-      TF_VAR_enable_prometheus: ${{ secrets.ENABLE_PROMETHEUS_PRODUCTION || 'true' }}
-      TF_VAR_enable_grafana: ${{ secrets.ENABLE_GRAFANA_PRODUCTION || 'true' }}
+      TF_VAR_enable_prometheus: ${{ secrets.ENABLE_PROMETHEUS_PRODUCTION || true }}
+      TF_VAR_enable_grafana: ${{ secrets.ENABLE_GRAFANA_PRODUCTION || true }}
       TF_VAR_grafana_admin_object_ids: ${{ secrets.GRAFANA_ADMIN_OBJECT_IDS || '[]' }}
       # Docker Registry Credentials for ghcr.io
       TF_VAR_docker_registry_url: "https://ghcr.io"
@@ -133,52 +133,52 @@ jobs:
     defaults:
       run:
         working-directory: ./iac/environments/production
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Login to Azure
-      uses: azure/login@v1
-      with: 
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Register Azure Resource Providers
-      run: |
-        echo "Registering required Azure resource providers..."
-        az provider register --namespace Microsoft.Monitor --wait || true
-        az provider register --namespace Microsoft.Dashboard --wait || true
-        echo "Verifying registration status..."
-        az provider show -n Microsoft.Monitor --query "registrationState" -o tsv
-        az provider show -n Microsoft.Dashboard --query "registrationState" -o tsv
+      - name: Register Azure Resource Providers
+        run: |
+          echo "Registering required Azure resource providers..."
+          az provider register --namespace Microsoft.Monitor --wait || true
+          az provider register --namespace Microsoft.Dashboard --wait || true
+          echo "Verifying registration status..."
+          az provider show -n Microsoft.Monitor --query "registrationState" -o tsv
+          az provider show -n Microsoft.Dashboard --query "registrationState" -o tsv
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: ~1.5
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
 
-    - name: Terraform Init
-      run: terraform init
+      - name: Terraform Init
+        run: terraform init
 
-    - name: Terraform Validate
-      run: terraform validate
+      - name: Terraform Validate
+        run: terraform validate
 
-    - name: Terraform Plan
-      run: terraform plan -out=tfplan
-      
-    - name: Upload Plan Artifact
-      if: github.event_name == 'pull_request'
-      uses: actions/upload-artifact@v4
-      with:
-        name: production-tfplan
-        path: ./iac/environments/production/tfplan
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
 
-    - name: Terraform Apply
-      if: |
-        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
-      run: terraform apply -auto-approve tfplan
+      - name: Upload Plan Artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-tfplan
+          path: ./iac/environments/production/tfplan
 
-    - name: Terraform Destroy
-      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
-      run: terraform destroy -auto-approve
+      - name: Terraform Apply
+        if: |
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+        run: terraform apply -auto-approve tfplan
+
+      - name: Terraform Destroy
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
