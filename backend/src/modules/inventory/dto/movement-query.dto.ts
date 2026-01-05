@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsDateString,
-  IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsPositive,
@@ -11,6 +11,8 @@ import {
 import { Type } from 'class-transformer';
 import { StockMovementType } from '@prisma/client';
 
+const MOVEMENT_TYPE_VALUES = [...Object.values(StockMovementType), 'transfer'];
+
 export class MovementQueryDto {
   @ApiProperty({ example: 'batch-uuid', description: 'Product batch ID to query movements for' })
   @IsUUID()
@@ -18,13 +20,13 @@ export class MovementQueryDto {
 
   @ApiProperty({
     example: 'purchase_receipt',
-    description: 'Filter by movement type',
+    description: "Filter by movement type (supports 'transfer' which groups transfer_in/out)",
     required: false,
-    enum: StockMovementType,
+    enum: MOVEMENT_TYPE_VALUES,
   })
   @IsOptional()
-  @IsEnum(StockMovementType)
-  movementType?: StockMovementType;
+  @IsIn(MOVEMENT_TYPE_VALUES)
+  movementType?: string;
 
   @ApiProperty({ example: 'loc-uuid', description: 'Filter by location', required: false })
   @IsOptional()

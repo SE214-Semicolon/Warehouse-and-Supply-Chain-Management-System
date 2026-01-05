@@ -5,7 +5,8 @@ import { PurchaseOrderService } from '../../services/purchase-order.service';
 import { PurchaseOrderRepository } from '../../repositories/purchase-order.repository';
 import { InventoryService } from '../../../inventory/services/inventory.service';
 import { AuditMiddleware } from '../../../../database/middleware/audit.middleware';
-import { PoStatus } from '@prisma/client';
+import { PrismaService } from '../../../../database/prisma/prisma.service';
+import { PoStatus, StockMovementType } from '@prisma/client';
 
 describe('Purchase Order Service', () => {
   let service: PurchaseOrderService;
@@ -45,6 +46,22 @@ describe('Purchase Order Service', () => {
       address: null,
       createdAt: new Date(),
     },
+  };
+
+  const mockMovement = {
+    id: 'mov-uuid-1',
+    productBatchId: 'batch-uuid-1',
+    productId: null,
+    fromLocationId: null,
+    toLocationId: 'location-uuid-1',
+    quantity: 5,
+    movementType: StockMovementType.purchase_receipt,
+    reference: null,
+    note: null,
+    transferGroupId: null,
+    createdById: 'user-uuid-1',
+    idempotencyKey: null,
+    createdAt: new Date('2024-01-15T10:00:00Z'),
   };
 
   beforeEach(async () => {
@@ -87,6 +104,15 @@ describe('Purchase Order Service', () => {
         {
           provide: InventoryService,
           useValue: mockInventorySvc,
+        },
+        {
+          provide: PrismaService,
+          useValue: {
+            productBatch: {
+              findUnique: jest.fn().mockResolvedValue(null),
+              create: jest.fn().mockResolvedValue({ id: 'pb-auto-1', batchNo: 'BATCH-AUTO-1' }),
+            },
+          },
         },
         {
           provide: AuditMiddleware,
@@ -347,13 +373,17 @@ describe('Purchase Order Service', () => {
     });
 
     // PO-TC12: Missing userId (tested by DTO)
-    it('should throw BadRequestException if userId is missing', async () => {
-      await expect(service.submitPurchaseOrder('po-uuid-1', {} as any, '')).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.submitPurchaseOrder('po-uuid-1', {} as any, '')).rejects.toThrow(
-        'userId is required',
-      );
+    it('should accept missing submittedById (handled by controller layer)', async () => {
+      const submitDto = {};
+      const orderedPo = { ...mockPurchaseOrder, status: PoStatus.ordered };
+      poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(orderedPo);
+      poRepo.submit.mockResolvedValue(orderedPo);
+
+      const result = await service.submitPurchaseOrder('po-uuid-1', submitDto, '');
+
+      expect(result.success).toBe(true);
+      expect(result.data.status).toBe(PoStatus.ordered);
+      expect(poRepo.submit).toHaveBeenCalledWith('po-uuid-1');
     });
 
     // PO-TC13: Submit PO not in draft status
@@ -363,12 +393,12 @@ describe('Purchase Order Service', () => {
       const orderedPo = { ...mockPurchaseOrder, status: PoStatus.ordered };
       poRepo.findById.mockResolvedValue(orderedPo);
 
-      await expect(service.submitPurchaseOrder('po-uuid-1', submitDto, 'user-uuid-1')).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.submitPurchaseOrder('po-uuid-1', submitDto, 'user-uuid-1')).rejects.toThrow(
-        'Only draft can be submitted',
-      );
+      await expect(
+        service.submitPurchaseOrder('po-uuid-1', submitDto, 'user-uuid-1'),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.submitPurchaseOrder('po-uuid-1', submitDto, 'user-uuid-1'),
+      ).rejects.toThrow('Only draft can be submitted');
     });
 
     // PO-TC14: Submit non-existent PO
@@ -377,12 +407,12 @@ describe('Purchase Order Service', () => {
 
       poRepo.findById.mockResolvedValue(null);
 
-      await expect(service.submitPurchaseOrder('invalid-id', submitDto, 'user-uuid-1')).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.submitPurchaseOrder('invalid-id', submitDto, 'user-uuid-1')).rejects.toThrow(
-        'PO not found',
-      );
+      await expect(
+        service.submitPurchaseOrder('invalid-id', submitDto, 'user-uuid-1'),
+      ).rejects.toThrow(NotFoundException);
+      await expect(
+        service.submitPurchaseOrder('invalid-id', submitDto, 'user-uuid-1'),
+      ).rejects.toThrow('PO not found');
     });
 
     // PO-TC15: Permission denied (tested by guard)
@@ -439,7 +469,11 @@ describe('Purchase Order Service', () => {
         .mockResolvedValueOnce(partialPo as any);
       poRepo.findItemsByIds.mockResolvedValue([mockPurchaseOrder.items![0]] as any);
       poRepo.receiveItems.mockResolvedValue(partialPo as any);
-      inventorySvc.receiveInventory.mockResolvedValue(undefined as any);
+      inventorySvc.receiveInventory.mockResolvedValue({
+        success: true,
+        idempotent: false,
+        movement: mockMovement,
+      });
 
       const result = await service.receivePurchaseOrder('po-uuid-1', receiveDto);
 
@@ -475,7 +509,11 @@ describe('Purchase Order Service', () => {
         .mockResolvedValueOnce(receivedPo as any);
       poRepo.findItemsByIds.mockResolvedValue([mockPurchaseOrder.items![0]] as any);
       poRepo.receiveItems.mockResolvedValue(receivedPo as any);
-      inventorySvc.receiveInventory.mockResolvedValue(undefined as any);
+      inventorySvc.receiveInventory.mockResolvedValue({
+        success: true,
+        idempotent: false,
+        movement: mockMovement,
+      });
 
       const result = await service.receivePurchaseOrder('po-uuid-1', receiveDtoFull);
 
@@ -502,7 +540,11 @@ describe('Purchase Order Service', () => {
         .mockResolvedValueOnce(morePartialPo as any);
       poRepo.findItemsByIds.mockResolvedValue([partialPo.items![0]] as any);
       poRepo.receiveItems.mockResolvedValue(morePartialPo as any);
-      inventorySvc.receiveInventory.mockResolvedValue(undefined as any);
+      inventorySvc.receiveInventory.mockResolvedValue({
+        success: true,
+        idempotent: false,
+        movement: mockMovement,
+      });
 
       const result = await service.receivePurchaseOrder('po-uuid-1', {
         items: [{ ...receiveDto.items[0], qtyToReceive: 3 }],
@@ -531,7 +573,11 @@ describe('Purchase Order Service', () => {
         .mockResolvedValueOnce(receivedPo as any);
       poRepo.findItemsByIds.mockResolvedValue([partialPo.items![0]] as any);
       poRepo.receiveItems.mockResolvedValue(receivedPo as any);
-      inventorySvc.receiveInventory.mockResolvedValue(undefined as any);
+      inventorySvc.receiveInventory.mockResolvedValue({
+        success: true,
+        idempotent: false,
+        movement: mockMovement,
+      });
 
       const result = await service.receivePurchaseOrder('po-uuid-1', {
         items: [{ ...receiveDto.items[0], qtyToReceive: 5 }],
@@ -587,7 +633,11 @@ describe('Purchase Order Service', () => {
         .mockResolvedValueOnce(partialPoMultiple as any);
       poRepo.findItemsByIds.mockResolvedValue(poWithMultipleItems.items as any);
       poRepo.receiveItems.mockResolvedValue(partialPoMultiple as any);
-      inventorySvc.receiveInventory.mockResolvedValue(undefined as any);
+      inventorySvc.receiveInventory.mockResolvedValue({
+        success: true,
+        idempotent: false,
+        movement: mockMovement,
+      });
 
       const result = await service.receivePurchaseOrder('po-uuid-1', receiveDtoMultiple);
 
@@ -694,7 +744,13 @@ describe('Purchase Order Service', () => {
         .mockResolvedValueOnce(partialPo as any);
       poRepo.findItemsByIds.mockResolvedValue([mockPurchaseOrder.items![0]] as any);
       poRepo.receiveItems.mockResolvedValue(partialPo as any);
-      inventorySvc.receiveInventory.mockResolvedValue(undefined as any);
+      inventorySvc.receiveInventory
+        .mockResolvedValueOnce({ success: true, idempotent: false, movement: mockMovement })
+        .mockResolvedValueOnce({
+          success: true,
+          idempotent: true,
+          movement: { ...mockMovement, idempotencyKey: 'key-001' },
+        });
 
       // First call with idempotency key
       await service.receivePurchaseOrder('po-uuid-1', receiveDto);
@@ -766,7 +822,11 @@ describe('Purchase Order Service', () => {
         .mockResolvedValueOnce(partialPoMultiple as any);
       poRepo.findItemsByIds.mockResolvedValue(poWithMultipleItems.items as any);
       poRepo.receiveItems.mockResolvedValue(partialPoMultiple as any);
-      inventorySvc.receiveInventory.mockResolvedValue(undefined as any);
+      inventorySvc.receiveInventory.mockResolvedValue({
+        success: true,
+        idempotent: false,
+        movement: mockMovement,
+      });
 
       const result = await service.receivePurchaseOrder('po-uuid-1', receiveDtoMultiple);
 
@@ -787,7 +847,11 @@ describe('Purchase Order Service', () => {
         .mockResolvedValueOnce(partialPo as any);
       poRepo.findItemsByIds.mockResolvedValue([mockPurchaseOrder.items![0]] as any);
       poRepo.receiveItems.mockResolvedValue(partialPo as any);
-      inventorySvc.receiveInventory.mockResolvedValue(undefined as any);
+      inventorySvc.receiveInventory.mockResolvedValue({
+        success: true,
+        idempotent: false,
+        movement: mockMovement,
+      });
 
       await service.receivePurchaseOrder('po-uuid-1', receiveDto);
 
@@ -1232,17 +1296,20 @@ describe('Purchase Order Service', () => {
     it('should throw NotFoundException if PO does not exist', async () => {
       poRepo.findById.mockResolvedValue(null);
 
-      await expect(
-        service.cancelPurchaseOrder('non-existent-id', {}, 'user-1'),
-      ).rejects.toThrow('PO not found');
+      await expect(service.cancelPurchaseOrder('non-existent-id', {}, 'user-1')).rejects.toThrow(
+        'PO not found',
+      );
     });
 
-    it('should throw BadRequestException if userId is missing', async () => {
-      poRepo.findById.mockResolvedValue(mockPurchaseOrder);
+    it('should accept missing cancelledById (handled by controller layer)', async () => {
+      const cancelledPo = { ...mockPurchaseOrder, status: PoStatus.cancelled };
+      poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(cancelledPo);
+      poRepo.cancel.mockResolvedValue(mockPurchaseOrder as any);
 
-      await expect(service.cancelPurchaseOrder('po-uuid-1', {}, '')).rejects.toThrow(
-        'userId is required',
-      );
+      const result = await service.cancelPurchaseOrder('po-uuid-1', {}, '');
+
+      expect(result).toEqual(cancelledPo);
+      expect(poRepo.cancel).toHaveBeenCalledWith('po-uuid-1');
     });
 
     it('should throw BadRequestException if PO is already received', async () => {

@@ -78,6 +78,7 @@ describe('InventoryService', () => {
     orderId: null,
     note: null,
     reference: null,
+    transferGroupId: null,
     createdById: null,
     createdAt: new Date(),
   };
@@ -111,7 +112,7 @@ describe('InventoryService', () => {
       set: jest.fn(),
       getOrSet: jest.fn(),
       delete: jest.fn(),
-      deleteByPrefix: jest.fn(),
+      deleteByPrefix: jest.fn().mockResolvedValue(undefined),
       reset: jest.fn(),
     };
 
@@ -328,6 +329,27 @@ describe('InventoryService', () => {
       expect(inventoryRepo.findUser).not.toHaveBeenCalled();
     });
 
+    it('should map LocationCapacityExceeded to BadRequestException on receive', async () => {
+      const receiveDto = {
+        productBatchId: 'batch-uuid-1',
+        locationId: 'location-uuid-1',
+        quantity: 20,
+      };
+
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue({ ...mockLocation, capacity: 100 });
+      // Simulate repository throwing capacity error
+      const { LocationCapacityExceeded } = jest.requireActual(
+        '../../errors/location-capacity.error',
+      );
+      inventoryRepo.receiveInventoryTx.mockRejectedValue(new LocationCapacityExceeded(100, 90, 20));
+
+      await expect(service.receiveInventory(receiveDto)).rejects.toThrow(BadRequestException);
+      await expect(service.receiveInventory(receiveDto)).rejects.toThrow(
+        /Location capacity exceeded: capacity=100, currentStored=90, requested=20/,
+      );
+    });
+
     // Edge case: Receive without idempotency key
     it('should receive inventory without idempotency key', async () => {
       const receiveDto = {
@@ -375,6 +397,7 @@ describe('InventoryService', () => {
       expect(result.success).toBe(true);
       expect(result.inventory).toBeDefined();
       expect(result.movement).toBeDefined();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC11: Product batch not found
@@ -571,6 +594,7 @@ describe('InventoryService', () => {
       expect(result.success).toBe(true);
       expect(result.inventory).toBeDefined();
       expect(result.movement).toBeDefined();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC21: Adjust with negative quantity
@@ -844,6 +868,7 @@ describe('InventoryService', () => {
       expect(result.toInventory).toBeDefined();
       expect((result as any).transferOutMovement).toBeDefined();
       expect((result as any).transferInMovement).toBeDefined();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC32: Product batch not found
@@ -1116,6 +1141,7 @@ describe('InventoryService', () => {
       expect(result.success).toBe(true);
       expect(result.inventory).toBeDefined();
       expect(result.movement).toBeDefined();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC44: Product batch not found
@@ -1343,6 +1369,7 @@ describe('InventoryService', () => {
       expect(result.success).toBe(true);
       expect(result.inventory).toBeDefined();
       expect(result.movement).toBeDefined();
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC55: Product batch not found
@@ -1898,6 +1925,7 @@ describe('InventoryService', () => {
       expect(result.inventory).toBeDefined();
       expect(result.inventory.availableQty).toBe(150);
       expect(result.inventory.reservedQty).toBe(10);
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC82: Product batch not found
@@ -2079,6 +2107,27 @@ describe('InventoryService', () => {
       expect(result.success).toBe(true);
       expect(result.inventory.availableQty).toBe(999999999);
     });
+
+    it('should map LocationCapacityExceeded to BadRequest on update quantities', async () => {
+      const updateDto = { availableQty: 200 };
+      inventoryRepo.findProductBatch.mockResolvedValue(mockProductBatch);
+      inventoryRepo.findLocation.mockResolvedValue({ ...mockLocation, capacity: 150 });
+      const { LocationCapacityExceeded } = jest.requireActual(
+        '../../errors/location-capacity.error',
+      );
+      inventoryRepo.updateInventoryQuantities.mockRejectedValue(
+        new LocationCapacityExceeded(150, 140, 200),
+      );
+
+      await expect(
+        service.updateInventoryQuantity('batch-uuid-1', 'location-uuid-1', updateDto),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.updateInventoryQuantity('batch-uuid-1', 'location-uuid-1', updateDto),
+      ).rejects.toThrow(
+        /Location capacity exceeded: capacity=150, currentStored=140, requested=200/,
+      );
+    });
   });
 
   describe('softDeleteInventory', () => {
@@ -2096,6 +2145,7 @@ describe('InventoryService', () => {
       expect(result.success).toBe(true);
       expect(result.inventory).toBeDefined();
       expect(result.message).toBe('Inventory soft deleted successfully');
+      expect(cacheService.deleteByPrefix).toHaveBeenCalled();
     });
 
     // INV-TC91: Product batch not found

@@ -46,10 +46,9 @@ services:
     container_name: warehouse-nginx-prod
     restart: always
     ports:
-      - "443:443"
+      - "80:80"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - backend
       - frontend

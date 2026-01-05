@@ -1,26 +1,26 @@
 export const columns = [
-  { id: 'stt', label: 'STT' },
-  { id: 'code', label: 'Mã NCC' },
-  { id: 'name', label: 'Tên NCC' },
+  { id: 'stt', label: 'No' },
+  { id: 'code', label: 'Code' },
+  { id: 'name', label: 'Name' },
   {
     id: 'contactInfo.phone',
-    label: 'Số điện thoại',
-    render: (_value, row) => row.contactInfo?.phone || '—',
+    label: 'Phone',
+    render: (value) => value || '—',
   },
   {
     id: 'contactInfo.email',
     label: 'Email',
-    render: (_value, row) => row.contactInfo?.email || '—',
+    render: (value) => value || '—',
   },
   {
     id: 'contactInfo.contactPerson',
-    label: 'Người liên hệ',
-    render: (_value, row) => row.contactInfo?.contactPerson || '—',
+    label: 'Contact person',
+    render: (value) => value || '—',
   },
-  { id: 'address', label: 'Địa chỉ' },
+  { id: 'address', label: 'Addess' },
   {
     id: 'createdAt',
-    label: 'Ngày tạo',
+    label: 'Created at',
     render: (value) =>
       value ? new Date(value).toLocaleDateString('vi-VN') : '—',
   },

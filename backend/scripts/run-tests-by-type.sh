@@ -6,11 +6,18 @@
 #   ./run-tests-by-type.sh --list-modules     List all modules as JSON
 #   ./run-tests-by-type.sh --list-types       List all test types as JSON
 #   ./run-tests-by-type.sh --matrix           Output module × type matrix as JSON for GitHub Actions
+#
+# Test Structure:
+#   - Module tests: src/modules/<module>/tests/{unit-test,integration-test,sanity-test}/
+#   - Smoke tests:  src/tests/smoke/ (centralized, not per-module)
 
 set -e
 
 # Change to backend directory
 cd "$(dirname "$0")/.."
+
+# Centralized smoke test directory
+SMOKE_TEST_DIR="src/tests/smoke"
 
 # Discover all modules (handles both tests/ and test/ directories)
 get_modules() {
@@ -37,14 +44,32 @@ get_test_dir() {
   fi
 }
 
-# Map test type to directory name
+# Map test type to directory name (for module-level tests)
 get_type_dir() {
   local type=$1
   case "$type" in
     unit) echo "unit-test" ;;
-    smoke) echo "smoke-test" ;;
     sanity) echo "sanity-test" ;;
     e2e|integration) echo "integration-test" ;;
+    smoke) echo "" ;; # Smoke tests are centralized, not per-module
+    *) echo "" ;;
+  esac
+}
+
+# Check if test type is centralized (not per-module)
+is_centralized_test() {
+  local type=$1
+  case "$type" in
+    smoke) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Get centralized test directory for a type
+get_centralized_test_dir() {
+  local type=$1
+  case "$type" in
+    smoke) echo "$SMOKE_TEST_DIR" ;;
     *) echo "" ;;
   esac
 }
@@ -53,7 +78,7 @@ get_type_dir() {
 get_jest_config() {
   local type=$1
   case "$type" in
-    e2e|integration) echo "test/jest-e2e.json" ;;
+    e2e|integration|smoke) echo "test/jest-e2e.json" ;;
     *) echo "jest.config.ts" ;;
   esac
 }
@@ -77,16 +102,17 @@ list_modules_json() {
 
 # List test types as JSON array
 list_types_json() {
-  echo '["unit","smoke","sanity","integration"]'
+  echo '["unit","sanity","integration","smoke"]'
 }
 
 # Generate matrix JSON for GitHub Actions
 generate_matrix_json() {
   local modules=($(get_modules))
-  local types=("unit" "smoke" "sanity" "integration")
+  local types=("unit" "sanity" "integration")
   local includes="["
   local first=true
   
+  # Add module-level tests (unit, sanity, integration)
   for module in "${modules[@]}"; do
     local test_dir=$(get_test_dir "$module")
     if [ -z "$test_dir" ]; then
@@ -108,6 +134,16 @@ generate_matrix_json() {
       fi
     done
   done
+  
+  # Add centralized smoke tests (no module, just type)
+  if [ -d "$SMOKE_TEST_DIR" ]; then
+    if [ "$first" = true ]; then
+      first=false
+    else
+      includes+=","
+    fi
+    includes+="{\"module\":\"_system\",\"type\":\"smoke\"}"
+  fi
   
   includes+="]"
   echo "{\"include\":$includes}"
@@ -145,12 +181,36 @@ run_tests() {
     shift
   done
   
-  local type_dir=$(get_type_dir "$type")
   local jest_config=$(get_jest_config "$type")
+  
+  # Handle centralized tests (e.g., smoke)
+  if is_centralized_test "$type"; then
+    local centralized_dir=$(get_centralized_test_dir "$type")
+    
+    if [ -n "$module" ] && [ "$module" != "_system" ]; then
+      echo "Warning: $type tests are centralized and not module-specific."
+      echo "Running all $type tests instead..."
+    fi
+    
+    if [ ! -d "$centralized_dir" ]; then
+      echo "Warning: No $type tests found (path: $centralized_dir)"
+      echo "Skipping..."
+      exit 0
+    fi
+    
+    echo "Running centralized $type tests..."
+    echo "Test directory: $centralized_dir"
+    echo "Jest args: ${jest_args[*]}"
+    npx jest "$centralized_dir" --config "$jest_config" "${jest_args[@]}"
+    return
+  fi
+  
+  # Handle module-level tests (unit, sanity, integration)
+  local type_dir=$(get_type_dir "$type")
   
   if [ -z "$type_dir" ]; then
     echo "Error: Unknown test type '$type'"
-    echo "Valid types: unit, smoke, sanity, e2e, integration"
+    echo "Valid types: unit, sanity, e2e, integration, smoke"
     exit 2
   fi
   
@@ -218,12 +278,18 @@ case "$1" in
     echo "       $0 --list-types      List all test types as JSON"
     echo "       $0 --matrix          Output matrix JSON for GitHub Actions"
     echo ""
-    echo "Test types: unit, smoke, sanity, e2e (or integration)"
+    echo "Test types:"
+    echo "  unit        - Unit tests (per-module: src/modules/<mod>/tests/unit-test/)"
+    echo "  sanity      - Sanity tests (per-module: src/modules/<mod>/tests/sanity-test/)"
+    echo "  integration - Integration tests (per-module: src/modules/<mod>/tests/integration-test/)"
+    echo "  e2e         - Alias for integration"
+    echo "  smoke       - Smoke tests (centralized: src/tests/smoke/)"
     echo ""
     echo "Examples:"
     echo "  $0 unit                   Run unit tests for all modules"
     echo "  $0 unit order             Run unit tests for order module only"
     echo "  $0 integration product    Run integration tests for product module"
+    echo "  $0 smoke                  Run centralized smoke tests"
     echo "  $0 integration -- --testTimeout=120000   Pass extra args to Jest"
     echo "  $0 --matrix               Generate GitHub Actions matrix"
     exit 0

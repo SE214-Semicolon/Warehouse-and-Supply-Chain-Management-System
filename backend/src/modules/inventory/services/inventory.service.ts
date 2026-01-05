@@ -20,6 +20,7 @@ import { CacheService } from 'src/cache/cache.service';
 import { CACHE_PREFIX, CACHE_TTL } from 'src/cache/cache.constants';
 import { AlertGenerationService } from '../../alerts/services/alert-generation.service';
 import { AuditMiddleware } from '../../../database/middleware/audit.middleware';
+import { LocationCapacityExceeded } from '../errors/location-capacity.error';
 
 @Injectable()
 export class InventoryService {
@@ -127,6 +128,11 @@ export class InventoryService {
 
       return { success: true, inventory, movement };
     } catch (err) {
+      if (err instanceof LocationCapacityExceeded) {
+        const message = `Location capacity exceeded: capacity=${err.capacity}, currentStored=${err.currentStored}, requested=${err.requested}`;
+        throw new BadRequestException(message);
+      }
+
       // If movement creation failed due to unique constraint on idempotencyKey, return existing movement
       if (
         dto.idempotencyKey &&
@@ -136,6 +142,7 @@ export class InventoryService {
         const existing = await this.inventoryRepo.findMovementByKey(dto.idempotencyKey);
         if (existing) return { success: true, idempotent: true, movement: existing };
       }
+
       throw err;
     }
   }
@@ -226,6 +233,9 @@ export class InventoryService {
         .catch((err) => {
           this.logger.error('Failed to write audit log for inventory update', err);
         });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
       return { success: true, inventory, movement };
     } catch (err) {
@@ -348,8 +358,16 @@ export class InventoryService {
           this.logger.error('Failed to write audit log for inventory update', err);
         });
 
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
       return { success: true, inventory, movement };
     } catch (err) {
+      if (err instanceof LocationCapacityExceeded) {
+        const message = `Location capacity exceeded: capacity=${err.capacity}, currentStored=${err.currentStored}, requested=${err.requested}`;
+        throw new BadRequestException(message);
+      }
+
       // If unique constraint on idempotencyKey occurred concurrently, return existing movement
       if (
         dto.idempotencyKey &&
@@ -454,6 +472,9 @@ export class InventoryService {
           this.logger.error('Failed to write audit log for to inventory update', err);
         });
 
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
       return {
         success: true,
         fromInventory,
@@ -462,6 +483,11 @@ export class InventoryService {
         transferInMovement,
       };
     } catch (err) {
+      if (err instanceof LocationCapacityExceeded) {
+        const message = `Location capacity exceeded: capacity=${err.capacity}, currentStored=${err.currentStored}, requested=${err.requested}`;
+        throw new BadRequestException(message);
+      }
+
       if (err instanceof Error && err.message === 'NotEnoughStock') {
         throw new BadRequestException('Not enough stock available for transfer');
       }
@@ -560,6 +586,9 @@ export class InventoryService {
           this.logger.error('Failed to write audit log for inventory update', err);
         });
 
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
+
       return { success: true, inventory, movement };
     } catch (err) {
       if (err instanceof Error && err.message === 'NotEnoughStock') {
@@ -647,6 +676,9 @@ export class InventoryService {
         .catch((err) => {
           this.logger.error('Failed to write audit log for inventory update', err);
         });
+
+      // Invalidate inventory caches
+      await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
       return { success: true, inventory, movement };
     } catch (err) {
@@ -832,12 +864,24 @@ export class InventoryService {
       throw new BadRequestException('Reserved quantity cannot be negative');
     }
 
-    const updatedInventory = await this.inventoryRepo.updateInventoryQuantities(
-      productBatchId,
-      locationId,
-      dto.availableQty,
-      dto.reservedQty,
-    );
+    let updatedInventory;
+    try {
+      updatedInventory = await this.inventoryRepo.updateInventoryQuantities(
+        productBatchId,
+        locationId,
+        dto.availableQty,
+        dto.reservedQty,
+      );
+    } catch (err) {
+      if (err instanceof LocationCapacityExceeded) {
+        const message = `Location capacity exceeded: capacity=${err.capacity}, currentStored=${err.currentStored}, requested=${err.requested}`;
+        throw new BadRequestException(message);
+      }
+      throw err;
+    }
+
+    // Invalidate inventory caches
+    await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
     return {
       success: true,
@@ -872,6 +916,9 @@ export class InventoryService {
       productBatchId,
       locationId,
     );
+
+    // Invalidate inventory caches
+    await this.cacheService.deleteByPrefix(CACHE_PREFIX.INVENTORY);
 
     return {
       success: true,

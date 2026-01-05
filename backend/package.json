@@ -28,7 +28,7 @@
     "test:full": "npm run test:unit && npm run test:smoke && npm run test:sanity && npm run test:integration",
     "test:ci": "npm run test:unit && npm run test:smoke",
     "test:nightly": "npm run test:full",
-    "ci": "npm run format:check && npm run lint && npm run build && npm test",
+    "ci": "npm run format:check && npm run lint && npm run build && npm run test:full",
     "tokens": "node scripts/generate-tokens.js",
     "rbac:test": "powershell -ExecutionPolicy Bypass -File ./scripts/rbac-tests.ps1",
     "rbac:full": "powershell -ExecutionPolicy Bypass -File ./scripts/rbac-comprehensive.ps1",

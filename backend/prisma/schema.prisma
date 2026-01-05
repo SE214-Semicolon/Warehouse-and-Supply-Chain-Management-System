@@ -164,11 +164,15 @@ model StockMovement {
   createdById    String?           @db.Uuid
   createdAt      DateTime          @default(now())
   idempotencyKey String?           @unique
+  // Group identifier for transfers: set for both transfer_out and transfer_in when created as part of a single transfer
+  transferGroupId String?           @db.Uuid
   createdBy      User?             @relation("UserStockMovements", fields: [createdById], references: [id])
   fromLocation   Location?         @relation("FromLoc", fields: [fromLocationId], references: [id])
   productBatch   ProductBatch?     @relation(fields: [productBatchId], references: [id])
   product        Product?          @relation(fields: [productId], references: [id])
   toLocation     Location?         @relation("ToLoc", fields: [toLocationId], references: [id])
+
+  @@index([transferGroupId], map: "idx_stockmovement_transfer_group")
 }
 
 model Supplier {
