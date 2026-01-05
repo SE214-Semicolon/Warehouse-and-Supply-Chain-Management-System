@@ -120,6 +120,9 @@ describe('Inventory Module - Sanity Tests', () => {
 
   describe('SANITY-INV-01: Basic Operations', () => {
     it('should RECEIVE inventory', async () => {
+      const adminUser = await prisma.user.findFirst({
+        where: { email: { contains: TEST_SUITE_ID } },
+      });
       const response = await request(app.getHttpServer())
         .post('/inventory/receive')
         .set('Authorization', adminToken)
@@ -127,6 +130,7 @@ describe('Inventory Module - Sanity Tests', () => {
           productBatchId: productBatchId,
           locationId: locationId,
           quantity: 100,
+          createdById: adminUser!.id,
           idempotencyKey: 'sanity-receive-001',
         })
         .expect(201);
@@ -145,6 +149,9 @@ describe('Inventory Module - Sanity Tests', () => {
     });
 
     it('should DISPATCH inventory', async () => {
+      const adminUser = await prisma.user.findFirst({
+        where: { email: { contains: TEST_SUITE_ID } },
+      });
       const response = await request(app.getHttpServer())
         .post('/inventory/dispatch')
         .set('Authorization', adminToken)
@@ -152,6 +159,7 @@ describe('Inventory Module - Sanity Tests', () => {
           productBatchId: productBatchId,
           locationId: locationId,
           quantity: 50,
+          createdById: adminUser!.id,
           idempotencyKey: 'sanity-dispatch-001',
         })
         .expect(201);
@@ -160,6 +168,9 @@ describe('Inventory Module - Sanity Tests', () => {
     });
 
     it('should ADJUST inventory', async () => {
+      const adminUser = await prisma.user.findFirst({
+        where: { email: { contains: TEST_SUITE_ID } },
+      });
       const response = await request(app.getHttpServer())
         .post('/inventory/adjust')
         .set('Authorization', adminToken)
@@ -168,6 +179,7 @@ describe('Inventory Module - Sanity Tests', () => {
           locationId: locationId,
           adjustmentQuantity: 10,
           reason: 'count_error',
+          createdById: adminUser!.id,
           idempotencyKey: 'sanity-adjust-001',
         })
         .expect(201);

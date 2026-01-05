@@ -73,21 +73,21 @@ output "frontend_staging_slot_url" {
   value       = module.app_service.frontend_staging_slot_url
 }
 
-# CDN outputs
-output "cdn_profile_name" {
-  description = "Name of the CDN profile"
-  value       = azurerm_cdn_profile.main.name
-}
+# # CDN outputs
+# output "cdn_profile_name" {
+#   description = "Name of the CDN profile"
+#   value       = azurerm_cdn_profile.main.name
+# }
 
-output "cdn_endpoint_url" {
-  description = "URL of the CDN endpoint"
-  value       = "https://${azurerm_cdn_endpoint.frontend.fqdn}"
-}
+# output "cdn_endpoint_url" {
+#   description = "URL of the CDN endpoint"
+#   value       = "https://${azurerm_cdn_endpoint.frontend.fqdn}"
+# }
 
-output "cdn_endpoint_fqdn" {
-  description = "FQDN of the CDN endpoint"
-  value       = azurerm_cdn_endpoint.frontend.fqdn
-}
+# output "cdn_endpoint_fqdn" {
+#   description = "FQDN of the CDN endpoint"
+#   value       = azurerm_cdn_endpoint.frontend.fqdn
+# }
 
 # Monitoring outputs
 output "application_insights_name" {
