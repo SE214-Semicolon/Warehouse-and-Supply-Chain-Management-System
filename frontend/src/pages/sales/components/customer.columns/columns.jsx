@@ -12,11 +12,6 @@ export const columns = [
     label: 'Email',
     render: (value) => value || '—',
   },
-  {
-    id: 'contactInfo.contactPerson',
-    label: 'Contact person',
-    render: (value) => value || '—',
-  },
   { id: 'address', label: 'Addess' },
   {
     id: 'createdAt',

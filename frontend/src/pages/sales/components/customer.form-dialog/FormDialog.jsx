@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, Box } from '@mui/material';
 import DialogButtons from '@/components/DialogButtons';
 import FormInput from '@/components/FormInput';
-import SupplierService from '../../../services/supplier.service';
+import CustomerService from '../../../../services/customer.service';
 import { showToast } from '@/utils/toast';
 import { onlyNumber, onlyLetter, noVietnamese } from '@/utils/inputFilter';
 
 const fields = [
-  { id: 'code', label: 'Supplier code', required: true },
-  { id: 'name', label: 'Supplier name', required: true },
-  { id: 'contactPerson', label: 'Contact person name' },
+  { id: 'code', label: 'Customer code', required: true },
+  { id: 'name', label: 'Customer name', required: true },
   { id: 'phone', label: 'Phone number' },
   { id: 'email', label: 'Email', type: 'email' },
   { id: 'address', label: 'Address' },
@@ -39,7 +38,6 @@ export default function FormDialog({
   const [formValues, setFormValues] = useState({
     code: '',
     name: '',
-    contactPerson: '',
     phone: '',
     email: '',
     address: '',
@@ -57,7 +55,6 @@ export default function FormDialog({
       setFormValues({
         code: selectedRow.code || '',
         name: selectedRow.name || '',
-        contactPerson: ci.contactPerson || '',
         phone: ci.phone || '',
         email: ci.email || '',
         address: selectedRow.address || '',
@@ -67,7 +64,6 @@ export default function FormDialog({
       setFormValues({
         code: '',
         name: '',
-        contactPerson: '',
         phone: '',
         email: '',
         address: '',
@@ -95,7 +91,7 @@ export default function FormDialog({
       }
     }
 
-    if (id === 'name' || id === 'contactPerson') {
+    if (id === 'name') {
       if (/[0-9]/.test(e.key)) {
         e.preventDefault();
       }
@@ -107,7 +103,6 @@ export default function FormDialog({
 
     switch (id) {
       case 'name':
-      case 'contactPerson':
         v = noVietnamese(v);
         v = onlyLetter(v);
         break;
@@ -140,10 +135,10 @@ export default function FormDialog({
     const newErrors = {};
 
     if (!formValues.code.trim()) {
-      newErrors.code = 'Supplier code is required';
+      newErrors.code = 'Customer code is required';
     }
     if (!formValues.name.trim()) {
-      newErrors.name = 'Supplier name is required';
+      newErrors.name = 'Customer name is required';
     }
 
     if (formValues?.email && !validateEmail(formValues?.email)) {
@@ -168,7 +163,6 @@ export default function FormDialog({
       name: formValues.name.trim(),
       address: formValues.address.trim() || null,
       contactInfo: {
-        contactPerson: formValues.contactPerson.trim() || null,
         phone: formValues.phone.trim() || null,
         email: formValues.email.trim() || null,
       },
@@ -177,17 +171,17 @@ export default function FormDialog({
     try {
       let result;
       if (isEdit) {
-        result = await SupplierService.update(selectedRow.id, payload);
+        result = await CustomerService.update(selectedRow.id, payload);
       } else {
-        result = await SupplierService.create(payload);
+        result = await CustomerService.create(payload);
       }
       console.log(result.data);
       if (onSuccess) {
         onSuccess();
         showToast.success(
           isEdit
-            ? 'Update supplier successfully!'
-            : 'Add new supplier successfully!'
+            ? 'Update customer successfully!'
+            : 'Add new customer successfully!'
         );
       }
 

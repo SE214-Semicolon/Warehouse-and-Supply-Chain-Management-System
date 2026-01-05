@@ -1,15 +1,15 @@
 import api from '../utils/axiosInstance';
 import { handleError } from '../utils/handleError';
 
-const API_URI = '/suppliers';
+const API_URI = '/customers';
 
-const SupplierService = {
+const CustomerService = {
   create: async (data) => {
     try {
       const response = await api.post(API_URI, data);
       return response.data;
     } catch (error) {
-      console.error('Error creating supplier:', error);
+      console.error('Error creating customer:', error);
       handleError(error);
     }
   },
@@ -24,7 +24,7 @@ const SupplierService = {
       console.log(response.data);
       return response.data;
     } catch (error) {
-      console.error('Error fetching suppliers:', error);
+      console.error('Error fetching customers:', error);
       handleError(error);
     }
   },
@@ -34,7 +34,7 @@ const SupplierService = {
       const response = await api.get(`${API_URI}/${id}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching supplier by ID:', error);
+      console.error('Error fetching customer by ID:', error);
       handleError(error);
     }
   },
@@ -45,7 +45,7 @@ const SupplierService = {
       console.log(response.data);
       return response;
     } catch (error) {
-      console.error('Error updating supplier:', error);
+      console.error('Error updating customer:', error);
       handleError(error);
     }
   },
@@ -55,10 +55,10 @@ const SupplierService = {
       const response = await api.delete(`${API_URI}/${id}`);
       return response.data;
     } catch (error) {
-      console.error('Error deleting supplier:', error);
+      console.error('Error deleting customer:', error);
       handleError(error);
     }
   },
 };
 
-export default SupplierService;
+export default CustomerService;

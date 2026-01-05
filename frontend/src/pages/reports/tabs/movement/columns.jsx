@@ -4,7 +4,7 @@ import { ArrowRight, Package } from 'lucide-react';
 const columns = [
   {
     id: 'time',
-    label: 'Thời gian',
+    label: 'Time',
     align: 'left',
     width: '12%',
     render: (m) => (
@@ -23,7 +23,7 @@ const columns = [
   },
   {
     id: 'product',
-    label: 'Sản phẩm / SKU',
+    label: 'Product / SKU',
     align: 'left',
     width: '25%',
     render: (m) => (
@@ -36,7 +36,11 @@ const columns = [
             {m.productBatch.product.name}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            SKU: {m.productBatch.product.sku} • {m.productBatch.batchNo}
+            SKU: {m.productBatch.product.sku}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            <br />
+            Batch: {m.productBatch.batchNo}
           </Typography>
         </Box>
       </Stack>
@@ -44,7 +48,7 @@ const columns = [
   },
   {
     id: 'type',
-    label: 'Loại giao dịch',
+    label: 'Transaction Type',
     align: 'left',
     width: '13%',
     render: (_, config) => (
@@ -60,7 +64,7 @@ const columns = [
   },
   {
     id: 'route',
-    label: 'Lộ trình (Từ → Đến)',
+    label: 'Route (From → To)',
     align: 'center',
     width: '18%',
     render: (m) => (
@@ -75,7 +79,7 @@ const columns = [
             {m.fromLocation?.code || '---'}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Nguồn
+            Source
           </Typography>
         </Box>
         <ArrowRight size={16} color="#94a3b8" />
@@ -84,7 +88,7 @@ const columns = [
             {m.toLocation?.code || '---'}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Đích
+            Destination
           </Typography>
         </Box>
       </Stack>
@@ -92,7 +96,7 @@ const columns = [
   },
   {
     id: 'quantity',
-    label: 'Số lượng',
+    label: 'Quantity',
     align: 'right',
     width: '10%',
     render: (m, config) => (
@@ -109,7 +113,7 @@ const columns = [
   },
   {
     id: 'user',
-    label: 'Người thực hiện',
+    label: 'Performed By',
     align: 'right',
     width: '15%',
     render: (m) => (
@@ -121,10 +125,10 @@ const columns = [
       >
         <Box sx={{ textAlign: 'right' }}>
           <Typography variant="body2" fontWeight="600">
-            {m.createdBy?.fullName || m.createdBy?.email || 'Auto'}
+            {m.createdBy?.fullName || m.createdBy?.email || 'System'}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {m.createdBy?.role || 'Nhân viên'}
+            {m.createdBy?.role || 'Staff'}
           </Typography>
         </Box>
         <Avatar
@@ -136,7 +140,7 @@ const columns = [
             color: '#475569',
           }}
         >
-          {(m.createdBy?.fullName || 'H').charAt(0).toUpperCase()}
+          {(m.createdBy?.fullName || 'S').charAt(0).toUpperCase()}
         </Avatar>
       </Stack>
     ),
