@@ -18,7 +18,6 @@ describe('Sales Order Module - Sanity Tests', () => {
   let prisma: PrismaService;
   let jwtService: JwtService;
   let adminToken: string;
-  let adminUserId: string;
   let customerId: string;
 
   beforeAll(async () => {
