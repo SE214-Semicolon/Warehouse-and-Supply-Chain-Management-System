@@ -26,6 +26,7 @@ import Sales from '@/pages/sales';
 import CustomerDetail from '@/pages/sales/CustomerDetail';
 import SODetail from '../pages/sales/SODetail';
 import AuditLog from '../pages/audit-log';
+import UserManagement from '../pages/user/UserManagement';
 
 export default function MainRoutes() {
   return (
@@ -58,6 +59,7 @@ export default function MainRoutes() {
           <Route path="/customer/detail" element={<CustomerDetail />} />
           <Route path="/sales-order/detail" element={<SODetail />} />
           <Route path="/audit-logs" element={<AuditLog />} />
+          <Route path="/users" element={<UserManagement />} />
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
