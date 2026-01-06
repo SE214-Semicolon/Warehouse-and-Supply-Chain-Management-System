@@ -528,15 +528,19 @@ export class SalesOrderService {
 
     // Validate batch expiry dates for all items before fulfilling
     for (const r of dto.items) {
-      if (r.productBatchId) {
+      const soItem = existing.find((e) => e.id === r.soItemId)!;
+      // Use batch from DTO if provided, otherwise from SO item
+      const productBatchId = r.productBatchId || soItem.productBatchId;
+
+      if (productBatchId) {
         const batch = await this.prisma.productBatch.findUnique({
-          where: { id: r.productBatchId },
+          where: { id: productBatchId },
           select: { id: true, batchNo: true, expiryDate: true },
         });
 
         if (!batch) {
           throw new BadRequestException(
-            `ProductBatch ${r.productBatchId} not found for fulfillment`,
+            `ProductBatch ${productBatchId} not found for fulfillment`,
           );
         }
 
@@ -557,8 +561,19 @@ export class SalesOrderService {
     for (const r of dto.items) {
       const soItem = existing.find((e) => e.id === r.soItemId)!;
 
+      // Use batch/location from DTO if provided, otherwise fallback to SO item (reservation)
+      const productBatchId = r.productBatchId || soItem.productBatchId;
+      const locationId = r.locationId || soItem.locationId;
+
       // Determine if this item has a reservation (indicated by batch/location in SO item)
       const hasReservation = !!(soItem.productBatchId && soItem.locationId);
+
+      // If neither DTO nor SO item has batch/location, throw error
+      if (!productBatchId || !locationId) {
+        throw new BadRequestException(
+          `ProductBatchId and LocationId are required for fulfillment. Either provide them in the request or ensure the SO item has a reservation.`,
+        );
+      }
 
       if (hasReservation) {
         this.logger.log(
@@ -572,8 +587,8 @@ export class SalesOrderService {
       // If hasReservation=true: dispatch will decrement BOTH availableQty AND reservedQty
       // If hasReservation=false: dispatch will decrement ONLY availableQty
       const payload: DispatchInventoryDto = {
-        productBatchId: r.productBatchId,
-        locationId: r.locationId,
+        productBatchId: productBatchId,
+        locationId: locationId,
         quantity: r.qtyToFulfill,
         createdById: r.createdById,
         idempotencyKey: r.idempotencyKey,

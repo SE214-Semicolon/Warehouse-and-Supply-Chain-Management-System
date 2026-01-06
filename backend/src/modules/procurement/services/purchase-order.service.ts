@@ -279,8 +279,10 @@ export class PurchaseOrderService {
       // If productBatchId not provided or batch doesn't exist, create new batch
       if (!batch) {
         if (!productBatchId) {
-          // Auto-generate batchNo: BATCH-PO-{PO_NO}-{ITEM_ID}
-          const batchNo = `BATCH-PO-${poBefore.poNo}-${r.poItemId.substring(0, 8).toUpperCase()}`;
+          // Auto-generate batchNo: BATCH-PO-{PO_NO}-{ITEM_ID}-{TIMESTAMP}
+          // Add timestamp to ensure uniqueness when receiving the same PO item multiple times
+          const timestamp = Date.now();
+          const batchNo = `BATCH-PO-${poBefore.poNo}-${r.poItemId.substring(0, 8).toUpperCase()}-${timestamp}`;
           productBatchId = randomUUID();
 
           this.logger.log(
