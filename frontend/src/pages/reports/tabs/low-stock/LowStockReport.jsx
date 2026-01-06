@@ -9,19 +9,12 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Button,
   TextField,
   InputAdornment,
   Grid,
   Alert,
 } from '@mui/material';
-import {
-  Search,
-  AlertTriangle,
-  Package,
-  ShoppingCart,
-  Filter,
-} from 'lucide-react';
+import { Search, AlertTriangle, Package, Filter } from 'lucide-react';
 import { InventoryReportService } from '../../../../services/report.service';
 import StatsCard from '../../components/stats-card/StatsCard';
 import ReportHeader from '../../components/header/ReportHeader';
@@ -86,19 +79,6 @@ export default function LowStockReport() {
         showExport={true}
         onExport={() => console.log('Xuất Excel')}
         onRefresh={() => window.location.reload()}
-        extraActions={
-          <Button
-            variant="contained"
-            startIcon={<ShoppingCart size={18} />}
-            sx={{
-              borderRadius: 2.5,
-              bgcolor: '#2563eb',
-              textTransform: 'none',
-            }}
-          >
-            Quick order
-          </Button>
-        }
       />
 
       <Grid container spacing={3} sx={{ mb: 4 }}>

@@ -37,9 +37,16 @@ const AuthService = {
   },
 
   logout: async () => {
-    useAuthStore.getState().logout();
-    localStorage.clear();
-    window.location.href = '/login';
+    const { refreshToken } = useAuthStore.getState();
+    try {
+      await axios.post(`${API_URL}/logout`, { refreshToken });
+    } catch (error) {
+      console.error('Logout API failed:', error);
+    } finally {
+      useAuthStore.getState().logout();
+      localStorage.clear();
+      window.location.href = '/login';
+    }
   },
 
   getAccessToken: () => localStorage.getItem('accessToken'),

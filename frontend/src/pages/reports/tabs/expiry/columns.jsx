@@ -1,12 +1,5 @@
-import {
-  Box,
-  Typography,
-  Chip,
-  IconButton,
-  LinearProgress,
-  Stack,
-} from '@mui/material';
-import { Package, MapPin, ChevronRight } from 'lucide-react';
+import { Box, Typography, Chip, LinearProgress, Stack } from '@mui/material';
+import { Package, MapPin } from 'lucide-react';
 
 const columns = [
   {
@@ -124,17 +117,6 @@ const columns = [
           {item.productBatch.product.unit}
         </Typography>
       </Box>
-    ),
-  },
-  {
-    id: 'action',
-    label: 'Action',
-    align: 'right',
-    width: '5%',
-    render: () => (
-      <IconButton size="small">
-        <ChevronRight size={18} />
-      </IconButton>
     ),
   },
 ];
