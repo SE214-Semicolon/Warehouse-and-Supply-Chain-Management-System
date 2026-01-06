@@ -1,6 +1,6 @@
 # 🔄 ROLLBACK PLAYBOOK - Warehouse Management System
 
-Hướng dẫn rollback khi xảy ra sự cố với hệ thống.
+Hướng dẫn rollback khi xảy ra sự cố.
 
 ## 📋 Mục lục
 
