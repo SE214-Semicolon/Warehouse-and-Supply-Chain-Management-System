@@ -76,9 +76,17 @@ const InventoryReportService = {
 };
 
 const ProductReportService = {
-  getPerformance: async () => {
+  getPerformance: async ({ startDate, endDate, page = 1, limit = 20 } = {}) => {
     try {
-      const response = await api.get(API_URI + '/product/performance');
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/product/performance?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err product performance:', error);
@@ -88,9 +96,15 @@ const ProductReportService = {
 };
 
 const WarehouseReportService = {
-  getUtilization: async () => {
+  getUtilization: async ({ page = 1, limit = 20 } = {}) => {
     try {
-      const response = await api.get(API_URI + '/warehouse/utilization');
+      const params = new URLSearchParams();
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/warehouse/utilization?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err warehouse utilization:', error);
@@ -100,9 +114,15 @@ const WarehouseReportService = {
 };
 
 const DemandPlanReportService = {
-  getAccuracy: async () => {
+  getAccuracy: async ({ page = 1, limit = 20 } = {}) => {
     try {
-      const response = await api.get(API_URI + '/demand-planning/accuracy');
+      const params = new URLSearchParams();
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/demand-planning/accuracy?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err demand plan accuracy:', error);

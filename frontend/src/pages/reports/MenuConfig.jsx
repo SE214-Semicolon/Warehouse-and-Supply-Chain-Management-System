@@ -3,6 +3,9 @@ import ExpiryReport from './tabs/expiry';
 import StockLevelReport from './tabs/stock-level';
 import MovementReport from './tabs/movement';
 import ValuationReport from './tabs/valuation';
+import ProductPerformanceReport from './tabs/product-performance';
+import WarehouseUtilizationReport from './tabs/warehouse-utilization';
+import DemandAccuracyReport from './tabs/demand-accuracy';
 
 export const menuItems = [
   {
@@ -29,5 +32,20 @@ export const menuItems = [
     id: 'valuation',
     label: 'Valuation',
     ReportComponent: ValuationReport,
+  },
+  {
+    id: 'product-performance',
+    label: 'Product Performance',
+    ReportComponent: ProductPerformanceReport,
+  },
+  {
+    id: 'warehouse-utilization',
+    label: 'Warehouse Utilization',
+    ReportComponent: WarehouseUtilizationReport,
+  },
+  {
+    id: 'demand-accuracy',
+    label: 'Demand Accuracy',
+    ReportComponent: DemandAccuracyReport,
   },
 ];
