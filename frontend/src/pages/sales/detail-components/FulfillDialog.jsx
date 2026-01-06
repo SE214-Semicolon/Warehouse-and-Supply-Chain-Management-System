@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { showToast } from '@/utils/toast';
 import SOService from '../../../services/so.service';
+import UserService from '../../../services/user.service';
 
 export default function FulfillDialog({ open, onClose, item, onSuccess }) {
   const remaining = item.qty - item.qtyFulfilled;
@@ -30,12 +31,16 @@ export default function FulfillDialog({ open, onClose, item, onSuccess }) {
 
     setLoading(true);
 
+    const user = await UserService.getCurrentUser();
+    console.log('user: ', user);
+
     const payload = {
       items: [
         {
           soItemId: item.id,
           qtyToFulfill,
           idempotencyKey: crypto.randomUUID(),
+          createdById: user.userId,
         },
       ],
       note: note.trim() || null,

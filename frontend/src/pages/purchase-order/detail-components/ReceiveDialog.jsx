@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { showToast } from '@/utils/toast';
 import POService from '../../../services/po.service';
+import UserService from '../../../services/user.service';
 
 export default function ReceiveDialog({ open, onClose, item, onSuccess }) {
   const remaining = item.qtyOrdered - item.qtyReceived;
@@ -27,8 +28,10 @@ export default function ReceiveDialog({ open, onClose, item, onSuccess }) {
       );
       return;
     }
-
     setLoading(true);
+
+    const user = await UserService.getCurrentUser();
+    console.log('user: ', user);
 
     const payload = {
       items: [
@@ -36,6 +39,7 @@ export default function ReceiveDialog({ open, onClose, item, onSuccess }) {
           poItemId: item.id,
           qtyToReceive,
           idempotencyKey: crypto.randomUUID(),
+          createdById: user.userId,
         },
       ],
       note: note.trim() || null,
