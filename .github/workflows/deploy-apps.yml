@@ -170,6 +170,17 @@ jobs:
           app-name: warehouse-mgmt-production-frontend
           images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
 
+      - name: Run Database Migrations
+        if: |
+          needs.build-and-test.outputs.backend-changed == 'true' ||
+          github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_backend == 'true'
+        run: |
+          # Run Prisma migrations using Azure CLI
+          az webapp config appsettings set \
+            --resource-group warehouse-mgmt-production-rg \
+            --name warehouse-mgmt-production-backend \
+            --settings RUN_MIGRATIONS=true
+
       # Health check on production (after direct deployment)
       - name: Final Health Check
         run: |

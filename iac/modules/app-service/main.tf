@@ -61,8 +61,8 @@ resource "azurerm_linux_web_app" "backend" {
       CORS_ORIGIN = var.cors_origin
 
       # Docker Configuration
-      DOCKER_ENABLE_CI   = "true"
-      MIGRATE_ON_STARTUP = "true"
+      DOCKER_ENABLE_CI = "true"
+      RUN_MIGRATIONS   = "true"
 
       # Azure App Service Configuration
       APPLICATIONINSIGHTS_CONNECTION_STRING = var.application_insights_connection_string
