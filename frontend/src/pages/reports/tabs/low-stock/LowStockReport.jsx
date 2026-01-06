@@ -13,7 +13,6 @@ import {
   TextField,
   InputAdornment,
   Grid,
-  IconButton,
   Alert,
 } from '@mui/material';
 import {
@@ -164,10 +163,6 @@ export default function LowStockReport() {
               sx: { borderRadius: 2 },
             }}
           />
-          <Box sx={{ flexGrow: 1 }} />
-          <IconButton sx={{ border: '1px solid #e2e8f0', borderRadius: 2 }}>
-            <Filter size={18} />
-          </IconButton>
         </Box>
 
         <TableContainer>
@@ -208,7 +203,7 @@ export default function LowStockReport() {
                     sx={{ py: 8 }}
                   >
                     <Typography variant="body1" color="text.secondary">
-                      Không tìm thấy sản phẩm nào cần báo hàng.
+                      No records found.
                     </Typography>
                   </TableCell>
                 </TableRow>

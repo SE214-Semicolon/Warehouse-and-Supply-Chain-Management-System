@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -12,36 +12,32 @@ import {
   TableRow,
   Paper,
   Chip,
-  Button,
   TextField,
   InputAdornment,
   Grid,
   IconButton,
   Collapse,
-  Tooltip,
   Stack,
   LinearProgress,
-  Tab,
   Tabs,
+  Tab,
+  Pagination,
+  CircularProgress,
   styled,
 } from '@mui/material';
 import {
   Search,
-  Download,
   Layers,
-  Box as BoxIcon,
   ChevronDown,
   ChevronUp,
-  Map,
-  Filter,
   BarChart3,
-  Archive,
   AlertCircle,
-  TrendingUp,
   LayoutGrid,
   MapPin,
 } from 'lucide-react';
 import { InventoryReportService } from '../../../../services/report.service';
+import ReportHeader from '../../components/header/ReportHeader';
+import { Warehouse } from 'lucide-react';
 
 const StyledProgress = styled(LinearProgress)(({ value }) => ({
   height: 10,
@@ -54,98 +50,31 @@ const StyledProgress = styled(LinearProgress)(({ value }) => ({
   },
 }));
 
-const apiResponse = {
-  success: true,
-  groupedData: [
-    {
-      groupName: 'Aisle A, Rack 01, Level 01',
-      totalAvailableQty: 10722,
-      capacity: 15000,
-      totalValue: 150000000,
-      items: [
-        {
-          id: 'item-1',
-          availableQty: 97,
-          productBatch: {
-            batchNo: 'BATCH-2024-001',
-            expiryDate: '2025-12-26T17:00:00.000Z',
-            product: {
-              sku: 'SKU-PRO-01',
-              name: 'Màn hình Dell UltraSharp',
-              unit: 'pcs',
-            },
-          },
-          location: { code: 'A-01-01', capacity: 500 },
-        },
-        {
-          id: 'item-2',
-          availableQty: 10189,
-          productBatch: {
-            batchNo: '1234567890123',
-            expiryDate: '2025-12-25T17:00:00.000Z',
-            product: {
-              sku: 'SKU-00123',
-              name: 'Laptop Dell XPS 15',
-              unit: 'pcs',
-            },
-          },
-          location: { code: 'A-01-02', capacity: 12000 },
-        },
-      ],
-    },
-    {
-      groupName: 'Aisle B, Rack 05, Level 02',
-      totalAvailableQty: 4800,
-      capacity: 5000,
-      totalValue: 85000000,
-      items: [
-        {
-          id: 'item-3',
-          availableQty: 4800,
-          productBatch: {
-            batchNo: 'BATCH-999',
-            product: { sku: 'FIN-2025', name: 'Bàn phím cơ Logi', unit: 'pcs' },
-          },
-          location: { code: 'B-05-01', capacity: 5000 },
-        },
-      ],
-    },
-    {
-      groupName: 'Dãy C - Khu vực thực phẩm',
-      totalAvailableQty: 150,
-      capacity: 2000,
-      totalValue: 12000000,
-      items: [
-        {
-          id: 'item-4',
-          availableQty: 150,
-          productBatch: {
-            batchNo: 'F-2024',
-            product: { sku: 'FOOD-01', name: 'Sữa bột Vinamilk', unit: 'lon' },
-          },
-          location: { code: 'C-01-01', capacity: 2000 },
-        },
-      ],
-    },
-  ],
-  total: 3,
-};
-
 const RowGroup = ({ group, searchTerm }) => {
   const [open, setOpen] = useState(true);
-  const occupancyRate = Math.round(
-    (group.totalAvailableQty / group.capacity) * 100
-  );
 
-  const filteredItems = group.items.filter(
-    (item) =>
-      item.productBatch.product.name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      item.productBatch.product.sku
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
-  );
+  const groupCapacity = useMemo(() => {
+    return group.items.reduce(
+      (sum, item) => sum + (item.location?.capacity || 0),
+      0
+    );
+  }, [group.items]);
+
+  const occupancyRate =
+    groupCapacity > 0
+      ? Math.round((group.totalAvailableQty / groupCapacity) * 100)
+      : 0;
+
+  const filteredItems = useMemo(() => {
+    if (!searchTerm) return group.items;
+    const lower = searchTerm.toLowerCase();
+    return group.items.filter(
+      (item) =>
+        item.productBatch?.product?.name?.toLowerCase().includes(lower) ||
+        item.productBatch?.product?.sku?.toLowerCase().includes(lower) ||
+        item.productBatch?.batchNo?.toLowerCase().includes(lower)
+    );
+  }, [group.items, searchTerm]);
 
   if (searchTerm && filteredItems.length === 0) return null;
 
@@ -180,7 +109,7 @@ const RowGroup = ({ group, searchTerm }) => {
                 {group.groupName}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Sức chứa: {group.capacity.toLocaleString()}
+                Capacity: {groupCapacity.toLocaleString()}
               </Typography>
             </Box>
           </Stack>
@@ -193,7 +122,7 @@ const RowGroup = ({ group, searchTerm }) => {
                 fontWeight="600"
                 color="text.secondary"
               >
-                Tỉ lệ lấp đầy
+                Occupancy Rate
               </Typography>
               <Typography
                 variant="caption"
@@ -211,7 +140,7 @@ const RowGroup = ({ group, searchTerm }) => {
         </TableCell>
         <TableCell align="right">
           <Typography variant="caption" color="text.secondary">
-            Hiện có
+            Available Qty
           </Typography>
           <Typography variant="subtitle2" fontWeight="700">
             {group.totalAvailableQty.toLocaleString()}
@@ -221,10 +150,10 @@ const RowGroup = ({ group, searchTerm }) => {
           <Chip
             label={
               occupancyRate >= 100
-                ? 'Hết chỗ'
+                ? 'Full'
                 : occupancyRate > 85
-                ? 'Sắp đầy'
-                : 'Còn trống'
+                ? 'Nearly Full'
+                : 'Available'
             }
             size="small"
             color={getStatusColor(occupancyRate)}
@@ -233,6 +162,7 @@ const RowGroup = ({ group, searchTerm }) => {
           />
         </TableCell>
       </TableRow>
+
       <TableRow>
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
           <Collapse in={open} timeout="auto" unmountOnExit>
@@ -241,44 +171,56 @@ const RowGroup = ({ group, searchTerm }) => {
                 <TableHead>
                   <TableRow>
                     <TableCell sx={{ color: '#64748b', fontWeight: 600 }}>
-                      SKU / Sản phẩm
+                      Product / SKU
                     </TableCell>
                     <TableCell sx={{ color: '#64748b', fontWeight: 600 }}>
-                      Vị trí
+                      Batch
+                    </TableCell>
+                    <TableCell sx={{ color: '#64748b', fontWeight: 600 }}>
+                      Location
                     </TableCell>
                     <TableCell
                       align="center"
                       sx={{ color: '#64748b', fontWeight: 600 }}
                     >
-                      Tỉ lệ vị trí
+                      Location Rate
                     </TableCell>
                     <TableCell
                       align="right"
                       sx={{ color: '#64748b', fontWeight: 600 }}
                     >
-                      Số lượng tồn
+                      Stock Qty
                     </TableCell>
                     <TableCell
                       align="right"
                       sx={{ color: '#64748b', fontWeight: 600 }}
                     >
-                      Trạng thái
+                      Status
                     </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredItems.map((item) => {
-                    const itemRate = Math.round(
-                      (item.availableQty / item.location.capacity) * 100
-                    );
+                    const itemCapacity = item.location?.capacity || 0;
+                    const itemRate =
+                      itemCapacity > 0
+                        ? Math.round((item.availableQty / itemCapacity) * 100)
+                        : 0;
+
                     return (
                       <TableRow key={item.id} hover>
                         <TableCell>
                           <Typography variant="body2" fontWeight="600">
-                            {item.productBatch.product.name}
+                            {item.productBatch?.product?.name ||
+                              'Unknown Product'}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {item.productBatch.product.sku}
+                            {item.productBatch?.product?.sku || '---'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" color="text.secondary">
+                            {item.productBatch?.batchNo || '---'}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -292,7 +234,7 @@ const RowGroup = ({ group, searchTerm }) => {
                               variant="body2"
                               sx={{ fontFamily: 'monospace' }}
                             >
-                              {item.location.code}
+                              {item.location?.code || '---'}
                             </Typography>
                           </Stack>
                         </TableCell>
@@ -307,7 +249,7 @@ const RowGroup = ({ group, searchTerm }) => {
                             <Box sx={{ flex: 1 }}>
                               <StyledProgress
                                 variant="determinate"
-                                value={itemRate}
+                                value={Math.min(itemRate, 100)}
                                 sx={{ height: 6 }}
                               />
                             </Box>
@@ -321,12 +263,12 @@ const RowGroup = ({ group, searchTerm }) => {
                             {item.availableQty.toLocaleString()}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            Sức chứa: {item.location.capacity}
+                            Capacity: {itemCapacity.toLocaleString()}
                           </Typography>
                         </TableCell>
                         <TableCell align="right">
                           <Chip
-                            label={itemRate > 90 ? 'Đầy' : 'OK'}
+                            label={itemRate > 90 ? 'Full' : 'OK'}
                             size="small"
                             variant="outlined"
                             color={getStatusColor(itemRate)}
@@ -348,79 +290,89 @@ const RowGroup = ({ group, searchTerm }) => {
 
 export default function StockLevelReport() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeAisle, setActiveAisle] = useState(0);
   const [groupedData, setGroupedData] = useState([]);
+  const [totalGroups, setTotalGroups] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
 
-  const stats = useMemo(() => {
-    const totalQty = apiResponse.groupedData.reduce(
-      (acc, curr) => acc + curr.totalAvailableQty,
-      0
-    );
-    const totalCap = groupedData.reduce((acc, curr) => acc + curr.capacity, 0);
-    const avgOcc = Math.round((totalQty / totalCap) * 100);
-    return { totalQty, totalCap, avgOcc };
-  }, []);
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await InventoryReportService.getStockLevel({
+        page,
+        limit: 20,
+      });
+      setGroupedData(res.data.groupedData || []);
+      setTotalGroups(res.data.total || 0);
+    } catch (err) {
+      console.error(err);
+      setGroupedData([]);
+      setTotalGroups(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
 
   useEffect(() => {
-    const getStockLevel = async () => {
-      const res = await InventoryReportService.getStockLevel();
-      console.log(res);
-      setGroupedData(res.data.groupedData);
-    };
+    fetchData();
+  }, [fetchData]);
 
-    getStockLevel();
-  }, []);
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
+  const stats = useMemo(() => {
+    if (groupedData.length === 0) {
+      return {
+        totalQty: 0,
+        totalCap: 0,
+        avgOcc: 0,
+        overloadCount: 0,
+        availableSpace: 0,
+      };
+    }
+
+    let totalQty = 0;
+    let totalCap = 0;
+    let overloadCount = 0;
+
+    groupedData.forEach((group) => {
+      const groupCap = group.items.reduce(
+        (sum, item) => sum + (item.location?.capacity || 0),
+        0
+      );
+      totalQty += group.totalAvailableQty;
+      totalCap += groupCap;
+
+      const rate =
+        groupCap > 0 ? (group.totalAvailableQty / groupCap) * 100 : 0;
+      if (rate > 90) overloadCount++;
+    });
+
+    const avgOcc = totalCap > 0 ? Math.round((totalQty / totalCap) * 100) : 0;
+    const availableSpace = totalCap - totalQty;
+
+    return { totalQty, totalCap, avgOcc, overloadCount, availableSpace };
+  }, [groupedData]);
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: '#f8fafc', minHeight: '100vh' }}>
-      {/* Header */}
-      <Box
-        sx={{
-          mb: 4,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <TrendingUp size={28} color="#2563eb" />
-            <Typography variant="h4" fontWeight="900" color="#1e293b">
-              Quản lý không gian kho
-            </Typography>
-          </Stack>
-          <Typography variant="body2" color="text.secondary">
-            Theo dõi tỉ lệ lấp đầy và tối ưu hóa vị trí lưu trữ hàng hóa
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            startIcon={<Download size={18} />}
-            sx={{ borderRadius: 2, px: 3 }}
-          >
-            Xuất file
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<Map size={18} />}
-            sx={{ borderRadius: 2, bgcolor: '#2563eb', px: 3 }}
-          >
-            Sơ đồ kho 2D
-          </Button>
-        </Box>
-      </Box>
+      <ReportHeader
+        title="Stock Level"
+        subtitle="Monitor warehouse space utilization and optimize storage"
+        icon={Warehouse}
+        onRefresh={fetchData}
+        onExport={() => console.log('Export CSV')}
+      />
 
-      {/* Top Stats - Focused on Space */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Card
             sx={{
               borderRadius: 4,
               boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
               border: '1px solid #e2e8f0',
+              height: '100%',
             }}
           >
             <CardContent>
@@ -435,7 +387,7 @@ export default function StockLevelReport() {
                   color="text.secondary"
                   fontWeight="600"
                 >
-                  Tổng tỉ lệ lấp đầy
+                  Overall Occupancy Rate
                 </Typography>
                 <Box
                   sx={{
@@ -461,18 +413,20 @@ export default function StockLevelReport() {
                 color="text.secondary"
                 sx={{ mt: 1, display: 'block' }}
               >
-                Đã sử dụng {stats.totalQty.toLocaleString()} /{' '}
-                {stats.totalCap.toLocaleString()} vị trí
+                Used {stats.totalQty.toLocaleString()} /{' '}
+                {stats.totalCap.toLocaleString()} slots
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+
+        <Grid size={{ xs: 12, md: 4 }}>
           <Card
             sx={{
               borderRadius: 4,
               boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
               border: '1px solid #e2e8f0',
+              height: '100%',
             }}
           >
             <CardContent>
@@ -487,7 +441,7 @@ export default function StockLevelReport() {
                   color="text.secondary"
                   fontWeight="600"
                 >
-                  Vị trí quá tải ({'>'}90%)
+                  Overloaded Locations (>90%)
                 </Typography>
                 <Box
                   sx={{
@@ -501,20 +455,22 @@ export default function StockLevelReport() {
                 </Box>
               </Stack>
               <Typography variant="h3" fontWeight="900" color="#e11d48">
-                02
+                {stats.overloadCount}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Cần luân chuyển hàng hóa sớm để tránh tắc nghẽn
+                Require relocation to avoid congestion
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+
+        <Grid size={{ xs: 12, md: 4 }}>
           <Card
             sx={{
               borderRadius: 4,
               boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
               border: '1px solid #e2e8f0',
+              height: '100%',
             }}
           >
             <CardContent>
@@ -529,7 +485,7 @@ export default function StockLevelReport() {
                   color="text.secondary"
                   fontWeight="600"
                 >
-                  Sức chứa khả dụng
+                  Available Capacity
                 </Typography>
                 <Box
                   sx={{
@@ -543,17 +499,16 @@ export default function StockLevelReport() {
                 </Box>
               </Stack>
               <Typography variant="h3" fontWeight="900" color="#16a34a">
-                {(stats.totalCap - stats.totalQty).toLocaleString()}
+                {stats.availableSpace.toLocaleString()}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Có thể nhập thêm khoảng 15 container hàng
+                Room for additional inventory
               </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Interactive Table Area */}
       <Paper
         sx={{
           borderRadius: 4,
@@ -573,81 +528,96 @@ export default function StockLevelReport() {
             justifyContent: 'space-between',
           }}
         >
-          <Tabs
-            value={activeAisle}
-            onChange={(e, v) => setActiveAisle(v)}
-            sx={{ minHeight: 48 }}
-          >
+          <Tabs value={0} sx={{ minHeight: 48 }}>
             <Tab
-              label="Tất cả khu vực"
-              sx={{ textTransform: 'none', fontWeight: 700 }}
-            />
-            <Tab
-              label="Dãy A"
-              sx={{ textTransform: 'none', fontWeight: 700 }}
-            />
-            <Tab
-              label="Dãy B"
-              sx={{ textTransform: 'none', fontWeight: 700 }}
-            />
-            <Tab
-              label="Khu thực phẩm"
+              label="All Areas"
               sx={{ textTransform: 'none', fontWeight: 700 }}
             />
           </Tabs>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <TextField
-              placeholder="Tìm SKU hoặc tên hàng..."
-              size="small"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search size={16} />
-                  </InputAdornment>
-                ),
-                sx: { borderRadius: 2, width: 250, bgcolor: '#f8fafc' },
-              }}
-            />
-          </Box>
+          <TextField
+            placeholder="Search by product name, SKU or batch..."
+            size="small"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search size={16} />
+                </InputAdornment>
+              ),
+              sx: { borderRadius: 2, width: 300, bgcolor: '#f8fafc' },
+            }}
+          />
         </Box>
 
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                <TableCell />
-                <TableCell sx={{ fontWeight: 700, color: '#64748b' }}>
-                  Khu vực / Dãy kệ
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700, color: '#64748b' }}>
-                  Tình trạng lấp đầy
-                </TableCell>
-                <TableCell
-                  align="right"
-                  sx={{ fontWeight: 700, color: '#64748b' }}
-                >
-                  Số lượng tồn
-                </TableCell>
-                <TableCell
-                  align="right"
-                  sx={{ fontWeight: 700, color: '#64748b' }}
-                >
-                  Phân loại
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {apiResponse.groupedData.map((group, index) => (
-                <RowGroup key={index} group={group} searchTerm={searchTerm} />
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <>
+            <TableContainer sx={{ maxHeight: '70vh' }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                    <TableCell />
+                    <TableCell sx={{ fontWeight: 700, color: '#64748b' }}>
+                      Zone / Rack
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: '#64748b' }}>
+                      Occupancy Status
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontWeight: 700, color: '#64748b' }}
+                    >
+                      Stock Quantity
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontWeight: 700, color: '#64748b' }}
+                    >
+                      Category
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {groupedData.map((group, index) => (
+                    <RowGroup
+                      key={group.groupName || index}
+                      group={group}
+                      searchTerm={searchTerm}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {groupedData.length === 0 && (
+              <Box sx={{ p: 10, textAlign: 'center' }}>
+                <Typography variant="h6" color="text.secondary">
+                  No stock level data available
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Try adjusting your search or filters
+                </Typography>
+              </Box>
+            )}
+
+            {totalGroups > 20 && (
+              <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+                <Pagination
+                  count={Math.ceil(totalGroups / 20)}
+                  page={page}
+                  onChange={(_e, v) => setPage(v)}
+                  color="primary"
+                />
+              </Box>
+            )}
+          </>
+        )}
       </Paper>
 
-      {/* Legend Footer */}
       <Stack direction="row" spacing={3} sx={{ mt: 3, px: 1 }}>
         <Stack direction="row" alignItems="center" spacing={1}>
           <Box
@@ -659,7 +629,7 @@ export default function StockLevelReport() {
             }}
           />
           <Typography variant="caption" color="text.secondary">
-            Trống thoáng (0-70%)
+            Available (0-70%)
           </Typography>
         </Stack>
         <Stack direction="row" alignItems="center" spacing={1}>
@@ -672,7 +642,7 @@ export default function StockLevelReport() {
             }}
           />
           <Typography variant="caption" color="text.secondary">
-            Sắp đầy (70-90%)
+            Nearly Full (70-90%)
           </Typography>
         </Stack>
         <Stack direction="row" alignItems="center" spacing={1}>
@@ -685,7 +655,7 @@ export default function StockLevelReport() {
             }}
           />
           <Typography variant="caption" color="text.secondary">
-            Quá tải ({'>'}90%)
+            Overloaded (>90%)
           </Typography>
         </Stack>
       </Stack>

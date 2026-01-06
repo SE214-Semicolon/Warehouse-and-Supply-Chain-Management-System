@@ -12,7 +12,6 @@ import {
   TextField,
   InputAdornment,
   Grid,
-  IconButton,
   Alert,
 } from '@mui/material';
 import {
@@ -20,7 +19,6 @@ import {
   AlertCircle,
   Clock,
   Calendar,
-  Filter,
   ShieldAlert,
   CheckCircle2,
 } from 'lucide-react';
@@ -187,10 +185,6 @@ export default function LowStockReport() {
               sx: { borderRadius: 2 },
             }}
           />
-          <Box sx={{ flexGrow: 1 }} />
-          <IconButton sx={{ border: '1px solid #e2e8f0', borderRadius: 2 }}>
-            <Filter size={18} />
-          </IconButton>
         </Box>
 
         <TableContainer>

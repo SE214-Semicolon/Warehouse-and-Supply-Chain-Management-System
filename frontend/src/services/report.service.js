@@ -1,4 +1,5 @@
 import api from '../utils/axiosInstance';
+import { handleError } from '../utils/handleError';
 
 const API_URI = '/reports';
 
@@ -9,7 +10,7 @@ const InventoryReportService = {
       return response;
     } catch (error) {
       console.error('Err low stock:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
@@ -19,27 +20,41 @@ const InventoryReportService = {
       return response;
     } catch (error) {
       console.error('Err expiry:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
-  getStockLevel: async () => {
+  getStockLevel: async ({ page = 1, limit = 20 } = {}) => {
     try {
-      const response = await api.get(API_URI + '/inventory/stock-levels');
+      const params = new URLSearchParams();
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/inventory/stock-levels?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err stock level:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
-  getMovement: async () => {
+  getMovement: async ({ startDate, endDate, page = 1, limit = 20 } = {}) => {
     try {
-      const response = await api.get(API_URI + '/inventory/movements');
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/inventory/movements?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err movement:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
@@ -49,7 +64,7 @@ const InventoryReportService = {
       return response;
     } catch (error) {
       console.error('Err valuation:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 };
@@ -61,7 +76,7 @@ const ProductReportService = {
       return response;
     } catch (error) {
       console.error('Err product performance:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 };
@@ -73,7 +88,7 @@ const WarehouseReportService = {
       return response;
     } catch (error) {
       console.error('Err warehouse utilization:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 };
@@ -85,7 +100,7 @@ const DemandPlanReportService = {
       return response;
     } catch (error) {
       console.error('Err demand plan accuracy:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 };
@@ -97,7 +112,7 @@ const ProcurementReportService = {
       return response;
     } catch (error) {
       console.error('Err po performance:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
@@ -109,7 +124,7 @@ const ProcurementReportService = {
       return response;
     } catch (error) {
       console.error('Err supplier performance:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 };
@@ -121,7 +136,7 @@ const SalesReportService = {
       return response;
     } catch (error) {
       console.error('Err so performance:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
   getSalesTrend: async () => {
@@ -130,7 +145,7 @@ const SalesReportService = {
       return response;
     } catch (error) {
       console.error('Err sales trend:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 };

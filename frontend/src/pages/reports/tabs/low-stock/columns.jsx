@@ -1,12 +1,5 @@
-import {
-  Box,
-  Typography,
-  Chip,
-  IconButton,
-  Tooltip,
-  LinearProgress,
-} from '@mui/material';
-import { MapPin, ShoppingCart } from 'lucide-react';
+import { Box, Typography, Chip, LinearProgress } from '@mui/material';
+import { MapPin } from 'lucide-react';
 
 const columns = [
   {
@@ -115,19 +108,6 @@ const columns = [
         size="small"
         sx={{ fontWeight: '600', minWidth: 100 }}
       />
-    ),
-  },
-  {
-    id: 'action',
-    label: 'Action',
-    align: 'center',
-    width: '8%',
-    render: () => (
-      <Tooltip title="Order now">
-        <IconButton size="small" color="primary">
-          <ShoppingCart size={18} />
-        </IconButton>
-      </Tooltip>
     ),
   },
 ];
