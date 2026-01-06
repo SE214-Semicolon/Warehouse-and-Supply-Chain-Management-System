@@ -349,7 +349,7 @@ describe('Sales Order Module (e2e)', () => {
       const createDto = {
         items: [
           {
-            productId: 'invalid-uuid',
+            productId: '00000000-0000-0000-0000-000000000000',
             qty: 10,
           },
         ],
@@ -1306,7 +1306,7 @@ describe('Sales Order Module (e2e)', () => {
         .send({
           items: [
             {
-              productId: 'invalid-uuid',
+              productId: '00000000-0000-0000-0000-000000000000',
               qty: 10,
             },
           ],
