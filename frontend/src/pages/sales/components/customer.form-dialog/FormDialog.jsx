@@ -177,7 +177,7 @@ export default function FormDialog({
       }
       console.log(result.data);
       if (onSuccess) {
-        onSuccess();
+        onSuccess(result.data);
         showToast.success(
           isEdit
             ? 'Update customer successfully!'

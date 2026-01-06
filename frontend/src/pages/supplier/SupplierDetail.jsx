@@ -7,6 +7,7 @@ import BasicInfoSection from './detail-components/BasicInfoSection';
 import PerformaceSection from './detail-components/PerformaceSection';
 import StatCard from './detail-components/StatCard';
 import RecentPOs from './detail-components/RecentPOs';
+import SupplierService from '../../services/supplier.service';
 
 export default function SupplierDetail() {
   const location = useLocation();
@@ -17,9 +18,18 @@ export default function SupplierDetail() {
   const recentOrders = mockSupplierData.recentOrders;
 
   useEffect(() => {
-    // setSupplierData(data);
-    console.log(row);
-  }, [row]);
+    if (_id) {
+      SupplierService.getById(_id).then((data) => {
+        setSupplierData(data);
+      });
+    } else if (row) {
+      setSupplierData(row);
+    }
+  }, [_id, row]);
+
+  const handleUpdateSuccess = (updatedSupplier) => {
+    setSupplierData(updatedSupplier.data);
+  };
 
   return (
     <Box
@@ -37,7 +47,7 @@ export default function SupplierDetail() {
       >
         <SupplierHeader
           supplier={supplierData}
-          onSuccess={(sup) => setSupplierData(sup)}
+          onSuccess={handleUpdateSuccess}
         />
 
         <Grid container spacing={4}>

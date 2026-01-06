@@ -1492,4 +1492,54 @@ export class InventoryRepository implements IInventoryRepository {
       throw error;
     }
   }
+
+  /**
+   * Find available inventory for a product sorted by FEFO (First Expired First Out)
+   * Returns inventory with availableQty > 0, sorted by expiryDate ascending (nearest expiry first)
+   * Used for automatic inventory allocation in Sales Order submission
+   */
+  async findAvailableInventoryForFEFO(productId: string): Promise<InventoryWithRelations[]> {
+    try {
+      this.logger.debug(
+        `Finding available inventory for product ${productId} sorted by FEFO (expiry date)`,
+      );
+      const now = new Date();
+      return this.prisma.inventory.findMany({
+        where: {
+          productBatch: {
+            productId: productId,
+            // Only non-expired batches
+            OR: [{ expiryDate: null }, { expiryDate: { gte: now } }],
+          },
+          availableQty: { gt: 0 },
+          deletedAt: null,
+        },
+        include: {
+          productBatch: {
+            include: {
+              product: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
+          location: true,
+        },
+        orderBy: [
+          // FEFO: Sort by expiry date ascending (nearest expiry first)
+          // Null expiry dates go last (NULLS LAST behavior)
+          { productBatch: { expiryDate: 'asc' } },
+          // Secondary sort by locationId for deterministic ordering
+          { locationId: 'asc' },
+        ],
+      });
+    } catch (error) {
+      this.logger.error(
+        `Error finding available inventory for FEFO allocation for product ${productId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
 }

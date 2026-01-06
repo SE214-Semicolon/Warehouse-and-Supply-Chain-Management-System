@@ -12,7 +12,6 @@ import {
   TextField,
   InputAdornment,
   Grid,
-  IconButton,
   Alert,
 } from '@mui/material';
 import {
@@ -20,7 +19,6 @@ import {
   AlertCircle,
   Clock,
   Calendar,
-  Filter,
   ShieldAlert,
   CheckCircle2,
 } from 'lucide-react';
@@ -29,10 +27,9 @@ import StatsCard from '../../components/stats-card/StatsCard';
 import ReportHeader from '../../components/header/ReportHeader';
 import columns from './columns';
 
-export default function LowStockReport() {
+export default function ExpiryReport() {
   const [searchTerm, setSearchTerm] = useState('');
   const [inventories, setInventories] = useState([]);
-  const today = new Date('2025-12-23');
 
   const processedData = useMemo(() => {
     return inventories
@@ -40,6 +37,7 @@ export default function LowStockReport() {
         const expiryDate = new Date(item.productBatch.expiryDate);
         const mfgDate = new Date(item.productBatch.manufactureDate);
 
+        const today = new Date();
         const diffTime = expiryDate - today;
         const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -187,10 +185,6 @@ export default function LowStockReport() {
               sx: { borderRadius: 2 },
             }}
           />
-          <Box sx={{ flexGrow: 1 }} />
-          <IconButton sx={{ border: '1px solid #e2e8f0', borderRadius: 2 }}>
-            <Filter size={18} />
-          </IconButton>
         </Box>
 
         <TableContainer>
