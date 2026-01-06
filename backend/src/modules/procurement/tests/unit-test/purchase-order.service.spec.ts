@@ -161,6 +161,37 @@ describe('Purchase Order Service', () => {
     prisma = module.get(PrismaService);
   });
 
+  afterEach(() => {
+    // Reset all mocks to default values after each test
+    jest.clearAllMocks();
+
+    // Reset Prisma mocks to default values
+    const mockDefaultBatch = {
+      id: 'batch-uuid-1',
+      batchNo: 'BATCH-DEFAULT-001',
+      productId: 'product-uuid-1',
+      quantity: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const mockDefaultLocation = {
+      id: 'location-uuid-1',
+      code: 'DEFAULT',
+      name: 'Default Location',
+      warehouseId: 'warehouse-uuid-1',
+      capacity: null,
+      type: null,
+      properties: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    (prisma.location.findFirst as jest.Mock).mockResolvedValue(mockDefaultLocation);
+    (prisma.productBatch.findUnique as jest.Mock).mockResolvedValue(mockDefaultBatch);
+    (prisma.productBatch.create as jest.Mock).mockResolvedValue(mockDefaultBatch);
+  });
+
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
