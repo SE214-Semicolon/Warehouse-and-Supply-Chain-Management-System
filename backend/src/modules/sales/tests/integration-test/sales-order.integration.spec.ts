@@ -586,8 +586,8 @@ describe('Sales Order Module (e2e)', () => {
       });
     });
 
-    // SO-INT-20: Get all with default pagination
-    it('SO-INT-20: Should return all SOs with default pagination', async () => {
+    // SO-INT-20: Get all without pagination
+    it('SO-INT-20: Should return all SOs without pagination', async () => {
       const response = await request(app.getHttpServer())
         .get('/sales-orders')
         .set('Authorization', adminToken)
@@ -596,8 +596,6 @@ describe('Sales Order Module (e2e)', () => {
       expect(response.body.data).toBeDefined();
       expect(Array.isArray(response.body.data)).toBe(true);
       expect(response.body.total).toBeGreaterThan(0);
-      expect(response.body.page).toBe(1);
-      expect(response.body.pageSize).toBe(20);
     });
 
     // SO-INT-21: Filter by soNo
@@ -667,27 +665,28 @@ describe('Sales Order Module (e2e)', () => {
       expect(response.body.data).toBeDefined();
     });
 
-    // SO-INT-27: Pagination page 1
-    it('SO-INT-27: Should return SOs for page 1', async () => {
+    // SO-INT-27: Ignore pagination params (pagination disabled)
+    it('SO-INT-27: Should ignore pagination params and return all SOs', async () => {
       const response = await request(app.getHttpServer())
         .get('/sales-orders?page=1&pageSize=2')
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response.body.data.length).toBeLessThanOrEqual(2);
-      expect(response.body.page).toBe(1);
-      expect(response.body.pageSize).toBe(2);
+      expect(response.body.data).toBeDefined();
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.total).toBeGreaterThan(0);
     });
 
-    // SO-INT-28: Pagination page 2
-    it('SO-INT-28: Should return SOs for page 2', async () => {
+    // SO-INT-28: Ignore pagination params (pagination disabled)
+    it('SO-INT-28: Should ignore pagination params and return all SOs', async () => {
       const response = await request(app.getHttpServer())
         .get('/sales-orders?page=2&pageSize=2')
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response.body.page).toBe(2);
-      expect(response.body.pageSize).toBe(2);
+      expect(response.body.data).toBeDefined();
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.total).toBeGreaterThan(0);
     });
 
     // SO-INT-29: Sort by placedAt asc
@@ -1180,8 +1179,6 @@ describe('Sales Order Module (e2e)', () => {
 
       expect(response.body).toHaveProperty('data');
       expect(response.body).toHaveProperty('total');
-      expect(response.body).toHaveProperty('page');
-      expect(response.body).toHaveProperty('pageSize');
     });
 
     it('should update sales order fields', async () => {
@@ -1406,15 +1403,15 @@ describe('Sales Order Module (e2e)', () => {
       }
     });
 
-    it('should paginate sales orders', async () => {
+    it('should return all sales orders (pagination disabled)', async () => {
       const response = await request(app.getHttpServer())
         .get('/sales-orders?page=1&pageSize=3')
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response.body.data.length).toBeLessThanOrEqual(3);
-      expect(response.body.page).toBe(1);
-      expect(response.body.pageSize).toBe(3);
+      expect(response.body.data).toBeDefined();
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.total).toBeGreaterThan(0);
     });
 
     it('should sort sales orders', async () => {

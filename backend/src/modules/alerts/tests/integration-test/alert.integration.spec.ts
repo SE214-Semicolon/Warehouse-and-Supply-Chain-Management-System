@@ -154,7 +154,7 @@ describe('Alert Module - Integration Tests', () => {
 
     it('should return 404 for non-existent alert', async () => {
       await request(app.getHttpServer())
-        .get('/alerts/non-existent-id')
+        .get('/alerts/00000000-0000-0000-0000-000000000000')
         .set('Authorization', adminToken)
         .expect(404);
     });

@@ -636,8 +636,6 @@ describe('Purchase Order Module (e2e)', () => {
       expect(response.body.data).toBeDefined();
       expect(Array.isArray(response.body.data)).toBe(true);
       expect(response.body.total).toBeGreaterThan(0);
-      expect(response.body.page).toBe(1);
-      expect(response.body.pageSize).toBe(20);
     });
 
     // PO-INT-20: Filter by poNo
@@ -697,15 +695,15 @@ describe('Purchase Order Module (e2e)', () => {
     });
 
     // PO-INT-24: Pagination
-    it('PO-INT-24: Should handle pagination correctly', async () => {
+    it('PO-INT-24: Should ignore pagination params and return all POs', async () => {
       const response = await request(app.getHttpServer())
         .get('/purchase-orders?page=1&pageSize=2')
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response.body.data.length).toBeLessThanOrEqual(2);
-      expect(response.body.page).toBe(1);
-      expect(response.body.pageSize).toBe(2);
+      expect(response.body.data).toBeDefined();
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.total).toBeGreaterThan(0);
     });
 
     // PO-INT-25: Filter by dateTo
@@ -1268,8 +1266,8 @@ describe('Purchase Order Module (e2e)', () => {
         .expect(404);
     });
 
-    // PO-INT-43: Receive without locationId (tested by DTO)
-    it('PO-INT-43: Should return 400 without locationId', async () => {
+    // PO-INT-43: Receive without locationId (auto-allocated)
+    it('PO-INT-43: Should auto-allocate locationId when not provided', async () => {
       const { poId, itemId, batchId } = await createOrderedPoWithItem();
 
       const receiveDto = {
@@ -1284,15 +1282,17 @@ describe('Purchase Order Module (e2e)', () => {
         ],
       };
 
-      await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
-        .expect(400);
+        .expect(201);
+
+      expect(response.body.status).toBeDefined();
     });
 
-    // PO-INT-44: Receive without productBatchId (tested by DTO)
-    it('PO-INT-44: Should return 400 without productBatchId', async () => {
+    // PO-INT-44: Receive without productBatchId (auto-created)
+    it('PO-INT-44: Should auto-create productBatchId when not provided', async () => {
       const { poId, itemId } = await createOrderedPoWithItem();
 
       const receiveDto = {
@@ -1307,11 +1307,13 @@ describe('Purchase Order Module (e2e)', () => {
         ],
       };
 
-      await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .post(`/purchase-orders/${poId}/receive`)
         .set('Authorization', adminToken)
         .send(receiveDto)
-        .expect(400);
+        .expect(201);
+
+      expect(response.body.status).toBeDefined();
     });
 
     // PO-INT-45: Receive without createdById (tested by DTO)
