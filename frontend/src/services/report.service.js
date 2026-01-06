@@ -132,9 +132,22 @@ const DemandPlanReportService = {
 };
 
 const ProcurementReportService = {
-  getPOPerformance: async () => {
+  getPOPerformance: async ({
+    startDate,
+    endDate,
+    page = 1,
+    limit = 20,
+  } = {}) => {
     try {
-      const response = await api.get(API_URI + '/procurement/po-performance');
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/procurement/po-performance?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err po performance:', error);
@@ -142,10 +155,21 @@ const ProcurementReportService = {
     }
   },
 
-  getSupplierPerformance: async () => {
+  getSupplierPerformance: async ({
+    startDate,
+    endDate,
+    page = 1,
+    limit = 20,
+  } = {}) => {
     try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      params.append('page', page);
+      params.append('limit', limit);
+
       const response = await api.get(
-        API_URI + '/procurement/supplier-performance'
+        `${API_URI}/procurement/supplier-performance?${params.toString()}`
       );
       return response;
     } catch (error) {

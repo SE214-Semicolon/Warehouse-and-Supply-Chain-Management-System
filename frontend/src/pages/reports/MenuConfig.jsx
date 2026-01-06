@@ -6,6 +6,8 @@ import ValuationReport from './tabs/valuation';
 import ProductPerformanceReport from './tabs/product-performance';
 import WarehouseUtilizationReport from './tabs/warehouse-utilization';
 import DemandAccuracyReport from './tabs/demand-accuracy';
+import SupplierPerformanceReport from './tabs/supplier-performance';
+import POPerformanceReport from './tabs/po-performance';
 
 export const menuItems = [
   {
@@ -47,5 +49,15 @@ export const menuItems = [
     id: 'demand-accuracy',
     label: 'Demand Accuracy',
     ReportComponent: DemandAccuracyReport,
+  },
+  {
+    id: 'supplier-performance',
+    label: 'Supplier Performance',
+    ReportComponent: SupplierPerformanceReport,
+  },
+  {
+    id: 'po-performance',
+    label: 'PO Performance',
+    ReportComponent: POPerformanceReport,
   },
 ];
