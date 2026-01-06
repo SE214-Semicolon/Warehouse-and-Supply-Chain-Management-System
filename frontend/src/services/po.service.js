@@ -25,13 +25,12 @@ const POService = {
     }
   },
 
-  getAll: async (page = 1, pageSize = 10, sort = 'createdAt:desc') => {
+  getAll: async (supplierId, sort = 'createdAt:desc') => {
     try {
       const response = await api.get(API_URI, {
         params: {
-          page,
-          pageSize,
           sort,
+          supplierId,
         },
       });
       console.log(response.data);

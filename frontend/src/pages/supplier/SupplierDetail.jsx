@@ -1,31 +1,54 @@
 import { useLocation } from 'react-router-dom';
-import mockSupplierData from './detail-components/mockData';
+// import mockSupplierData from './detail-components/mockData';
 import { useEffect, useState } from 'react';
 import { Box, Container, Grid } from '@mui/material';
 import SupplierHeader from './detail-components/SupplierHeader';
 import BasicInfoSection from './detail-components/BasicInfoSection';
-import PerformaceSection from './detail-components/PerformaceSection';
-import StatCard from './detail-components/StatCard';
+// import PerformaceSection from './detail-components/PerformaceSection';
+// import StatCard from './detail-components/StatCard';
 import RecentPOs from './detail-components/RecentPOs';
 import SupplierService from '../../services/supplier.service';
+import POService from '../../services/po.service';
 
 export default function SupplierDetail() {
   const location = useLocation();
-  const { _id, row } = location.state;
+  const { id, row } = location.state || {};
   const [supplierData, setSupplierData] = useState(row);
-  const stats = mockSupplierData.stats;
-  const performance = mockSupplierData.performance;
-  const recentOrders = mockSupplierData.recentOrders;
+  // const stats = mockSupplierData.stats;
+  // const performance = mockSupplierData.performance;
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [loadingPOs, setLoadingPOs] = useState(true);
 
   useEffect(() => {
-    if (_id) {
-      SupplierService.getById(_id).then((data) => {
-        setSupplierData(data);
+    if (id) {
+      SupplierService.getById(id).then((res) => {
+        setSupplierData(res.data);
       });
     } else if (row) {
       setSupplierData(row);
     }
-  }, [_id, row]);
+  }, [id, row]);
+
+  useEffect(() => {
+    if (!supplierData?.id) return;
+
+    setLoadingPOs(true);
+    POService.getAll(supplierData.id)
+      .then((response) => {
+        if (Array.isArray(response.data)) {
+          console.log('Recent POs response:', response);
+          setRecentOrders(response.data);
+        } else {
+          setRecentOrders([]);
+        }
+      })
+      .catch(() => {
+        setRecentOrders([]);
+      })
+      .finally(() => {
+        setLoadingPOs(false);
+      });
+  }, [supplierData?.id]);
 
   const handleUpdateSuccess = (updatedSupplier) => {
     setSupplierData(updatedSupplier.data);
@@ -63,7 +86,7 @@ export default function SupplierDetail() {
               }}
             >
               <BasicInfoSection data={supplierData} />
-              <PerformaceSection performance={performance} />
+              {/* <PerformaceSection performance={performance} /> */}
             </Box>
           </Grid>
 
@@ -78,15 +101,15 @@ export default function SupplierDetail() {
                 },
               }}
             >
-              <Grid container spacing={4}>
+              {/* <Grid container spacing={4}>
                 {stats.map((stat, index) => (
                   <Grid size={{ xs: 6, md: 3 }} key={index}>
                     <StatCard stat={stat} />
                   </Grid>
                 ))}
-              </Grid>
+              </Grid> */}
 
-              <RecentPOs orders={recentOrders} />
+              <RecentPOs orders={recentOrders} loading={loadingPOs} />
             </Box>
           </Grid>
         </Grid>
