@@ -158,9 +158,7 @@ describe('Sales Order Module - Sanity Tests', () => {
       const submitResponse = await request(app.getHttpServer())
         .post(`/sales-orders/${soId}/submit`)
         .set('Authorization', adminToken)
-        .send({
-          userId: adminUserId,
-        })
+        .send({})
         .expect(201);
 
       expect(submitResponse.body.status).toBe('approved');
