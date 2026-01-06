@@ -6,11 +6,13 @@ import ActionButtons from '@/components/ActionButton';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 
 import { customerConfig } from './tabs/customer.config';
+import { soConfig } from './tabs/so.config';
 import { useNavigate } from 'react-router-dom';
 import { showToast } from '@/utils/toast';
 
 const configMap = {
   customer: customerConfig,
+  'sales-order': soConfig,
 };
 
 export default function ProcurementContent({ menuId }) {
