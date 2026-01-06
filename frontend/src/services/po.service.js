@@ -63,20 +63,20 @@ const POService = {
 
   receive: async (id, data) => {
     try {
-      const response = await api.patch(`${API_URI}/${id}/receive`, data);
+      const response = await api.post(`${API_URI}/${id}/receive`, data);
       return response.data;
     } catch (error) {
-      console.error('Error updating po:', error);
+      console.error('Error receiving po:', error);
       handleError(error);
     }
   },
 
   cancel: async (id, data) => {
     try {
-      const response = await api.patch(`${API_URI}/${id}/cancel`, data);
+      const response = await api.post(`${API_URI}/${id}/cancel`, data);
       return response.data;
     } catch (error) {
-      console.error('Error updating po:', error);
+      console.error('Error cancelling po:', error);
       handleError(error);
     }
   },

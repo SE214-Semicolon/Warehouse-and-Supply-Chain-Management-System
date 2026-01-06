@@ -1,15 +1,34 @@
 import { useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { Box, Container, Grid } from '@mui/material';
-import { mockPOData } from './detail-components/mockData';
-import { useState } from 'react';
 import PODetailHeader from './detail-components/PODetailHeader';
 import POTable from './detail-components/POTable';
 import BasicInfoSection from './detail-components/BasicInfoSection';
+import POService from '../../services/po.service';
 
 export default function PODetail() {
   const location = useLocation();
-  const _data = location.state;
-  const [poData, _setPOData] = useState(mockPOData);
+  const { id, row } = location.state || {};
+  const [poData, setPOData] = useState(row);
+
+  useEffect(() => {
+    if (id) {
+      POService.getById(id).then((res) => {
+        console.log('PO Data:', res.data);
+        setPOData(res.data);
+      });
+    } else if (row) {
+      setPOData(row);
+    }
+  }, [id, row]);
+
+  const handleCancelSuccess = () => {
+    if (id) {
+      POService.getById(id).then((res) => {
+        setPOData(res.data);
+      });
+    }
+  };
 
   return (
     <Box
@@ -25,9 +44,17 @@ export default function PODetail() {
           paddingX: { xs: 2, sm: 4 },
         }}
       >
-        <PODetailHeader poNo={poData.poNo} createdAt={poData.createdAt} />
+        <PODetailHeader
+          poNo={poData.poNo}
+          createdAt={poData.createdAt}
+          poId={id || poData.id}
+          onCancelSuccess={handleCancelSuccess}
+          canCancel={
+            poData.status !== 'received' && poData.status !== 'cancelled'
+          }
+        />
         <Grid container spacing={4}>
-          <Grid size={{ xs: 12, lg: 9 }}>
+          <Grid size={{ xs: 12 }}>
             <Box
               sx={{
                 '& > *': {
@@ -40,28 +67,17 @@ export default function PODetail() {
             >
               <BasicInfoSection
                 status={poData.status}
-                statusColor={poData.statusColor}
                 updatedAt={poData.updatedAt}
                 placedAt={poData.placedAt}
                 expectedArrival={poData.expectedArrival}
                 supplier={poData.supplier}
               />
-              <POTable products={poData.products} />
-            </Box>
-          </Grid>
-
-          <Grid size={{ xs: 12, lg: 3 }}>
-            <Box
-              sx={{
-                '& > *': {
-                  marginBottom: 3,
-                },
-                '& > *:last-child': {
-                  marginBottom: 0,
-                },
-              }}
-            >
-              History
+              <POTable
+                items={poData.items}
+                canReceive={
+                  poData.status !== 'draft' && poData.status !== 'cancelled'
+                }
+              />
             </Box>
           </Grid>
         </Grid>
