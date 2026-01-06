@@ -18,19 +18,23 @@ const ForecastRunDialog = ({ open, onClose, onSubmit }) => {
   });
 
   const [products, setProducts] = useState([]);
+
   const [apiError, setApiError] = useState("");
   const [serverErrorField, setServerErrorField] = useState(null);
 
   const detectFieldFromError = (msg) => {
     if (!msg) return null;
+
     const msgStr = typeof msg === "string" ? msg : msg.message || String(msg);
     const lowerMsg = msgStr.toLowerCase();
 
     if (lowerMsg.includes("product")) return "productId";
     if (lowerMsg.includes("algorithm")) return "algorithm";
-    if (lowerMsg.includes("window")) return "windowDays";
-    if (lowerMsg.includes("forecast")) return "forecastDays";
-    if (lowerMsg.includes("start")) return "startDate";
+    if (lowerMsg.includes("window") || lowerMsg.includes("history")) return "windowDays";
+    if (lowerMsg.includes("forecast") || lowerMsg.includes("future"))
+      return "forecastDays";
+    if (lowerMsg.includes("start") || lowerMsg.includes("date")) return "startDate";
+
     return null;
   };
 
@@ -83,17 +87,14 @@ const ForecastRunDialog = ({ open, onClose, onSubmit }) => {
       setServerErrorField("productId");
       return;
     }
-
     if (!formData.windowDays || Number(formData.windowDays) <= 0) {
       setServerErrorField("windowDays");
       return;
     }
-
     if (!formData.forecastDays || Number(formData.forecastDays) <= 0) {
       setServerErrorField("forecastDays");
       return;
     }
-
     if (!formData.startDate) {
       setServerErrorField("startDate");
       return;
@@ -179,7 +180,7 @@ const ForecastRunDialog = ({ open, onClose, onSubmit }) => {
                 error={serverErrorField === "windowDays"}
                 helperText={
                   serverErrorField === "windowDays"
-                    ? "Must be > 0"
+                    ? "Invalid window days"
                     : "Days of history to analyze"
                 }
                 onKeyDown={handleNumberKeyDown}
@@ -196,7 +197,7 @@ const ForecastRunDialog = ({ open, onClose, onSubmit }) => {
                 error={serverErrorField === "forecastDays"}
                 helperText={
                   serverErrorField === "forecastDays"
-                    ? "Must be > 0"
+                    ? "Invalid forecast days"
                     : "Days to predict ahead"
                 }
                 onKeyDown={handleNumberKeyDown}

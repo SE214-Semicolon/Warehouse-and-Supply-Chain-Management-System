@@ -1,50 +1,75 @@
 import { formatDate } from "@/utils/formatDate";
-import { Chip, Typography, Stack, Tooltip } from "@mui/material";
+import { Chip, Typography, Stack, Tooltip, Box } from "@mui/material";
+
+const RenderWrapText = ({ value, align = "left", color = "text.primary" }) => (
+  <Typography
+    variant="body2"
+    align={align}
+    color={color}
+    sx={{
+      whiteSpace: "normal",
+      wordBreak: "break-word",
+      lineHeight: 1.4,
+    }}
+  >
+    {value || "-"}
+  </Typography>
+);
 
 export const shipmentColumns = [
-  { id: "stt", label: "No", filterable: false, width: 50, align: "center" },
+  { id: "stt", label: "No", filterable: false, width: 10, align: "center" },
 
   {
     id: "shipmentNo",
     label: "Shipment No",
     filterable: true,
-    minWidth: 160,
-    render: (val) => (
-      <Typography variant="body2" fontWeight="bold">
-        {val}
-      </Typography>
-    ),
+    width: 100,
+    render: (val) => <RenderWrapText value={val} />,
   },
 
   {
     id: "salesOrderId",
     label: "Sales Order",
     filterable: true,
-    minWidth: 150,
-    render: (_, row) => (
-      <Typography variant="body2" color="primary" sx={{ cursor: "pointer" }}>
-        {row.salesOrder?.soNo || "Unknown"}
-      </Typography>
-    ),
+    width: 100,
+    align: "left",
+    valueGetter: (row) => row.salesOrder?.soNo || "Unknown",
+    render: (_, row) => <RenderWrapText value={row.salesOrder?.soNo || "Unknown"} />,
   },
 
   {
     id: "warehouseId",
     label: "Warehouse",
     filterable: true,
-    minWidth: 180,
-    render: (_, row) => row.warehouse?.name || "-",
+    width: 100,
+    align: "left",
+    valueGetter: (row) => row.warehouse?.name || "-",
+    render: (_, row) => <RenderWrapText value={row.warehouse?.name} />,
   },
 
-  { id: "carrier", label: "Carrier", filterable: true },
+  {
+    id: "carrier",
+    label: "Carrier",
+    filterable: true,
+    width: 120,
+    render: (val) => <RenderWrapText value={val} />,
+  },
 
-  { id: "trackingCode", label: "Tracking Code", filterable: true },
+  {
+    id: "trackingCode",
+    label: "Tracking Code",
+    filterable: true,
+    width: 150,
+    render: (val) => <RenderWrapText value={val} />,
+  },
 
   {
     id: "status",
     label: "Status",
     filterable: true,
     width: 120,
+    align: "center",
+    valueGetter: (row) => row.status,
     render: (_, row) => {
       const statusMap = {
         delivered: { color: "success", label: "DELIVERED" },
@@ -62,7 +87,12 @@ export const shipmentColumns = [
           color={config.color}
           size="small"
           variant="filled"
-          sx={{ fontWeight: "bold", minWidth: 90 }}
+          sx={{
+            fontWeight: 500,
+            minWidth: 90,
+            fontSize: "0.75rem",
+            height: 24,
+          }}
         />
       );
     },
@@ -71,55 +101,66 @@ export const shipmentColumns = [
   {
     id: "estimatedDelivery",
     label: "Est. Delivery",
-    minWidth: 120,
-    render: (val) => formatDate(val),
+    width: 110,
+    valueGetter: (row) => formatDate(row.estimatedDelivery),
+    render: (val) => (
+      <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
+        {formatDate(val)}
+      </Typography>
+    ),
   },
 ];
 
 export const shipmentItemColumns = [
-  { id: "stt", label: "No", filterable: false, width: 60, align: "center" },
-
   {
-    id: "productId",
-    label: "Product Info",
-    minWidth: 250,
-    render: (_, row) => (
-      <Stack>
-        <Typography variant="body2" fontWeight="600">
-          {row.product?.name || "Unknown Product"}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          SKU: {row.product?.sku || row.productId}
-        </Typography>
-      </Stack>
-    ),
+    id: "productInfo",
+    label: "Product / SKU",
+    align: "left",
+    render: (_, row) => {
+      const product = row?.product || {};
+      return (
+        <Box>
+          <Typography variant="h6" fontWeight="bold" color="text.primary">
+            {product.name || "Unknown Product"}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+            SKU: {product.sku || "N/A"}
+          </Typography>
+        </Box>
+      );
+    },
   },
-
   {
-    id: "productBatchId",
-    label: "Batch ID",
-    width: 200,
-    render: (val) => <Typography variant="caption">{val || "-"}</Typography>,
-  },
+    id: "batchInfo",
+    label: "Batch Details",
+    render: (_, row) => {
+      const batch = row?.productBatch;
+      if (!batch)
+        return (
+          <Typography variant="caption" color="text.secondary">
+            -
+          </Typography>
+        );
 
-  {
-    id: "salesOrderId",
-    label: "SO ID (Item)",
-    width: 150,
-    render: (val) => (
-      <Tooltip title={val}>
-        <Typography variant="caption">{val?.substring(0, 8)}...</Typography>
-      </Tooltip>
-    ),
+      return (
+        <Box>
+          <Typography variant="body1">{batch.batchNo}</Typography>
+          {batch.expiryDate && (
+            <Typography variant="caption" color="error.main">
+              Exp: {formatDate(batch.expiryDate)}
+            </Typography>
+          )}
+        </Box>
+      );
+    },
   },
-
   {
     id: "qty",
-    label: "Qty",
-    align: "right",
-    width: 100,
-    render: (val) => (
-      <Typography fontWeight="bold">{Number(val).toLocaleString()}</Typography>
+    label: "Quantity",
+    render: (val, row) => (
+      <Typography fontWeight="bold" color="primary.main">
+        {val || 0} {row?.product?.unit || ""}
+      </Typography>
     ),
   },
 ];
