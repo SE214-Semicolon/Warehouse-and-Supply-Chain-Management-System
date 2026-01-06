@@ -1,10 +1,12 @@
 import MainRoutes from '@routes/MainRoutes.jsx';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 export default function App() {
   return (
-    <>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="vi">
       <MainRoutes />
 
       <ToastContainer
@@ -15,6 +17,6 @@ export default function App() {
         pauseOnHover
         draggable
       />
-    </>
+    </LocalizationProvider>
   );
 }
