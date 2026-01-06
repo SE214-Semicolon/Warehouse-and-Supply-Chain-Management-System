@@ -101,13 +101,35 @@ describe('Purchase Order Service', () => {
       logOperation: jest.fn().mockResolvedValue(undefined),
     };
 
+    // Mock default batch for existing tests
+    const mockDefaultBatch = {
+      id: 'batch-uuid-1',
+      batchNo: 'BATCH-DEFAULT-001',
+      productId: 'product-uuid-1',
+      quantity: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const mockDefaultLocation = {
+      id: 'location-uuid-1',
+      code: 'DEFAULT',
+      name: 'Default Location',
+      warehouseId: 'warehouse-uuid-1',
+      capacity: null,
+      type: null,
+      properties: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
     const mockPrisma = {
       location: {
-        findFirst: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue(mockDefaultLocation),
       },
       productBatch: {
-        findUnique: jest.fn(),
-        create: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue(mockDefaultBatch),
+        create: jest.fn().mockResolvedValue(mockDefaultBatch),
       },
     };
 

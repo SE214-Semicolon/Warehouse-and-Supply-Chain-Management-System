@@ -296,6 +296,9 @@ export class PurchaseOrderService {
                 // manufactureDate and expiryDate can be added later if needed
               },
             });
+            if (!batch) {
+              throw new BadRequestException('Failed to create product batch: create returned null');
+            }
             this.logger.log(`Created new ProductBatch: ${batch.id} (${batch.batchNo})`);
           } catch (error) {
             this.logger.error(`Failed to create ProductBatch:`, error);
@@ -318,6 +321,9 @@ export class PurchaseOrderService {
                 // manufactureDate and expiryDate can be added later if needed
               },
             });
+            if (!batch) {
+              throw new BadRequestException('Failed to create product batch: create returned null');
+            }
             this.logger.log(`Created new ProductBatch: ${batch.id} (${batch.batchNo})`);
           } catch (error) {
             this.logger.error(`Failed to create ProductBatch ${productBatchId}:`, error);
