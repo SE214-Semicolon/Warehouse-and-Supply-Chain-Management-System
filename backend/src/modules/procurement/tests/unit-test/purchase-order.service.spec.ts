@@ -1011,9 +1011,11 @@ describe('Purchase Order Service', () => {
       const orderedPo = { ...mockPurchaseOrder, status: PoStatus.ordered, poNo: 'PO-2025-001' };
       const partialPo = { ...mockPurchaseOrder, status: PoStatus.partial };
 
+      // batchNo format: BATCH-PO-{PO_NO}-{ITEM_ID}-{TIMESTAMP}
+      // Note: Actual batchNo will have timestamp, but mock can use any string since test only checks contains
       const mockCreatedBatch = {
         id: expect.any(String),
-        batchNo: 'BATCH-PO-PO-2025-001-PO-ITEM',
+        batchNo: 'BATCH-PO-PO-2025-001-PO-ITEM-1234567890', // Mock value with timestamp format
         productId: 'product-uuid-1',
         quantity: 0,
         createdAt: new Date(),
@@ -1078,9 +1080,11 @@ describe('Purchase Order Service', () => {
         updatedAt: new Date(),
       };
 
+      // batchNo format: BATCH-PO-{PO_NO}-{ITEM_ID}-{TIMESTAMP}
+      // Note: Actual batchNo will have timestamp, but mock can use any string since test only checks contains
       const mockCreatedBatch = {
         id: expect.any(String),
-        batchNo: 'BATCH-PO-PO-2025-001-PO-ITEM',
+        batchNo: 'BATCH-PO-PO-2025-001-PO-ITEM-1234567890', // Mock value with timestamp format
         productId: 'product-uuid-1',
         quantity: 0,
         createdAt: new Date(),

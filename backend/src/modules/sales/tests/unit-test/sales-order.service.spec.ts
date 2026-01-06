@@ -817,6 +817,94 @@ describe('SalesOrderService', () => {
         'SO not found',
       );
     });
+
+    // SO-TC57: Fulfill with optional productBatchId/locationId (fallback from SO item)
+    it('should use productBatchId and locationId from SO item when not provided in DTO', async () => {
+      const soItemWithReservation = {
+        ...mockSalesOrder.items[0],
+        productBatchId: 'batch-from-so-item',
+        locationId: 'location-from-so-item',
+      };
+      const approvedSo = {
+        ...mockSalesOrder,
+        status: OrderStatus.approved,
+        items: [soItemWithReservation],
+      };
+      const itemWithFulfillment = { ...soItemWithReservation, qtyFulfilled: 5 };
+      const processingSo = { ...approvedSo, status: OrderStatus.processing };
+
+      const fulfillDto = {
+        items: [
+          {
+            soItemId: 'so-item-uuid-1',
+            // productBatchId and locationId not provided - should use from SO item
+            qtyToFulfill: 5,
+            createdById: 'user-uuid-1',
+            idempotencyKey: 'idem-key-fallback',
+          },
+        ],
+      };
+
+      soRepo.findById.mockResolvedValueOnce(approvedSo);
+      soRepo.findItemsByIds.mockResolvedValueOnce([soItemWithReservation]);
+      (prisma.productBatch.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'batch-from-so-item',
+        batchNo: 'BATCH-001',
+        expiryDate: new Date('2026-12-31'),
+      } as any);
+      inventorySvc.dispatchInventory.mockResolvedValue(undefined as any);
+      soRepo.updateItemFulfilled.mockResolvedValue(itemWithFulfillment);
+      soRepo.findItemsByIds.mockResolvedValueOnce([itemWithFulfillment]);
+      soRepo.updateStatus.mockResolvedValue(processingSo);
+      soRepo.findById.mockResolvedValueOnce(processingSo);
+
+      const result = await service.fulfillSalesOrder('so-uuid-1', fulfillDto);
+
+      expect(result.status).toBe(OrderStatus.processing);
+      expect(inventorySvc.dispatchInventory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          productBatchId: 'batch-from-so-item',
+          locationId: 'location-from-so-item',
+        }),
+        expect.any(Object),
+      );
+    });
+
+    // SO-TC58: Fulfill without productBatchId/locationId and SO item also doesn't have them
+    it('should throw BadRequestException when neither DTO nor SO item has productBatchId/locationId', async () => {
+      const soItemWithoutReservation = {
+        ...mockSalesOrder.items[0],
+        productBatchId: null,
+        locationId: null,
+      };
+      const approvedSo = {
+        ...mockSalesOrder,
+        status: OrderStatus.approved,
+        items: [soItemWithoutReservation],
+      };
+
+      const fulfillDto = {
+        items: [
+          {
+            soItemId: 'so-item-uuid-1',
+            // productBatchId and locationId not provided
+            qtyToFulfill: 5,
+            createdById: 'user-uuid-1',
+            idempotencyKey: 'idem-key-error',
+          },
+        ],
+      };
+
+      soRepo.findById.mockResolvedValueOnce(approvedSo);
+      soRepo.findItemsByIds.mockResolvedValueOnce([soItemWithoutReservation]);
+
+      await expect(service.fulfillSalesOrder('so-uuid-1', fulfillDto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.fulfillSalesOrder('so-uuid-1', fulfillDto)).rejects.toThrow(
+        'ProductBatchId and LocationId are required',
+      );
+    });
   });
 
   describe('cancelSalesOrder', () => {
