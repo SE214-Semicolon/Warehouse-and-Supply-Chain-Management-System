@@ -98,7 +98,7 @@ export default function SOTable({
               <TableRow>
                 {[
                   'No',
-                  'Product Code',
+                  'Product SKU',
                   'Product Name',
                   'Order Quantity',
                   'Fulfilled Quantity',
@@ -160,7 +160,7 @@ export default function SOTable({
                         color: 'primary.main',
                       }}
                     >
-                      {item?.product?.code || item.productId}
+                      {item?.product?.sku || item.productId}
                     </TableCell>
                     <TableCell
                       sx={{

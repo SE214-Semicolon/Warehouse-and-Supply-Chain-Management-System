@@ -65,8 +65,7 @@ export default function ReceiveDialog({ open, onClose, item, onSuccess }) {
       <DialogContent dividers>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           <Typography>
-            Product code:{' '}
-            <strong>{item?.product?.code || item.productId}</strong>
+            Product SKU: <strong>{item?.product?.sku || item.productId}</strong>
           </Typography>
           <Typography>
             Ordered: <strong>{item.qtyOrdered}</strong> | Received:{' '}
