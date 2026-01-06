@@ -29,17 +29,19 @@ const ForecastFormDialog = ({ open, onClose, onSubmit, initialData }) => {
 
   const [products, setProducts] = useState([]);
   const [apiError, setApiError] = useState("");
-
   const [serverErrorField, setServerErrorField] = useState(null);
 
   const detectFieldFromError = (msg) => {
     if (!msg) return null;
+
     const msgStr = typeof msg === "string" ? msg : msg.message || String(msg);
     const lowerMsg = msgStr.toLowerCase();
+
     if (lowerMsg.includes("product")) return "productId";
     if (lowerMsg.includes("date")) return "forecastDate";
     if (lowerMsg.includes("quantity")) return "forecastedQuantity";
     if (lowerMsg.includes("algorithm")) return "algorithmUsed";
+
     return null;
   };
 
@@ -83,7 +85,6 @@ const ForecastFormDialog = ({ open, onClose, onSubmit, initialData }) => {
     }
   }, [open, initialData]);
 
-  // chặn ký tự
   const handleNumberKeyDown = (e) => {
     if (["e", "E", "+", "-"].includes(e.key)) {
       e.preventDefault();
@@ -133,6 +134,7 @@ const ForecastFormDialog = ({ open, onClose, onSubmit, initialData }) => {
     } catch (error) {
       const errorMsg = typeof error === "string" ? error : error.message || String(error);
       setApiError(errorMsg);
+
       setServerErrorField(detectFieldFromError(error));
     }
   };
@@ -199,7 +201,6 @@ const ForecastFormDialog = ({ open, onClose, onSubmit, initialData }) => {
                     ? "Required & positive number"
                     : ""
                 }
-                // --- CHẶN KÝ TỰ & CHẶN SỐ ÂM ---
                 onKeyDown={handleNumberKeyDown}
                 inputProps={{
                   type: "number",

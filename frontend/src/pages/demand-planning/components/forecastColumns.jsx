@@ -30,7 +30,7 @@ export const getForecastColumns = () => [
 
   {
     id: "forecastedQuantity",
-    label: "Qty",
+    label: "Forecasted Quantity",
     render: (val) => (
       <Typography fontWeight="bold" color="primary">
         {Number(val).toLocaleString()}

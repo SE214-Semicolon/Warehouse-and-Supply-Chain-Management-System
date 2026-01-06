@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Paper, Button, Typography, Divider } from "@mui/material";
 
@@ -7,224 +7,228 @@ import WarehouseService from "@/services/warehouse.service";
 import ProductService from "@/services/product.service";
 import BatchService from "@/services/batch.service";
 import LocationService from "@/services/location.service";
+import SOService from "@/services/so.service";
 
 import FormInput from "@/components/FormInput";
 import DataTable from "@/components/DataTable";
+import { HeightOutlined } from "@mui/icons-material";
 
 const ShipmentCreate = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   const [warehouses, setWarehouses] = useState([]);
+  const [allSalesOrders, setAllSalesOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [batches, setBatches] = useState([]);
   const [locations, setLocations] = useState([]);
 
+  const [selectedSODetails, setSelectedSODetails] = useState(null);
+
   const [formData, setFormData] = useState({
+    warehouseId: "",
+    salesOrderId: "",
     carrier: "",
     trackingCode: "",
     estimatedDelivery: null,
-    warehouseId: "",
-    salesOrderId: "",
     notes: "",
   });
 
   const [items, setItems] = useState([
-    { tempId: Date.now(), productId: "", productBatchId: "", qty: 1 },
+    {
+      tempId: Date.now(),
+      salesOrderItemId: "",
+      productId: "",
+      productBatchId: "",
+      qty: 1,
+      maxQty: 0,
+    },
   ]);
 
-  useEffect(() => {
-    const loadMasterData = async () => {
-      try {
-        const extractData = (res) => {
-          if (!res) return [];
-          if (Array.isArray(res)) return res;
-          if (res.data && Array.isArray(res.data)) return res.data;
-          if (res.data?.data && Array.isArray(res.data.data)) return res.data.data;
-          return [];
-        };
+  const [errors, setErrors] = useState({});
 
-        const [resWarehouse, resProduct, resBatch, resLocation] = await Promise.all([
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const extract = (res) => res?.data?.data || res?.data || res || [];
+
+        const [resWh, resProd, resBatch, resLoc, resSO] = await Promise.all([
           WarehouseService.getAll(),
           ProductService.getAll(),
           BatchService.getAll(),
           LocationService.getAll(),
+          SOService.getAll(),
         ]);
 
-        const rawWarehouses = extractData(resWarehouse);
-        const rawProducts = extractData(resProduct);
-        const rawBatches = extractData(resBatch);
-        const rawLocations = extractData(resLocation);
-
-        // ktra dữ liệu
-        console.group("DEBUG 1: API RESPONSE");
-        console.log("Warehouses:", rawWarehouses.length, rawWarehouses);
-        console.log("Locations:", rawLocations.length, rawLocations);
-        if (rawLocations.length > 0) console.log("Sample Location:", rawLocations[0]);
-        console.log("Batches:", rawBatches.length, rawBatches);
-        if (rawBatches.length > 0) console.log("Sample Batch:", rawBatches[0]);
-        console.log("Products:", rawProducts.length);
-        console.groupEnd();
-
-        setWarehouses(rawWarehouses);
-        setProducts(rawProducts);
-        setBatches(rawBatches);
-        setLocations(rawLocations);
+        setWarehouses(extract(resWh));
+        setProducts(extract(resProd));
+        setBatches(extract(resBatch));
+        setLocations(extract(resLoc));
+        setAllSalesOrders(extract(resSO));
       } catch (e) {
-        console.error("Load master data error:", e);
+        console.error(e);
       }
     };
-    loadMasterData();
+    loadData();
   }, []);
 
-  const validLocationIds = useMemo(() => {
-    if (!formData.warehouseId) return [];
+  useEffect(() => {
+    const fetchSODetails = async () => {
+      if (!formData.salesOrderId) {
+        setSelectedSODetails(null);
+        setFormData((prev) => ({ ...prev, warehouseId: "" }));
+        return;
+      }
 
-    const selectedWhId = String(formData.warehouseId);
+      try {
+        const res = await SOService.getById(formData.salesOrderId);
+        const data = res.data || res;
 
-    console.group("DEBUG 2: FILTER LOCATIONS");
-    console.log("Đang chọn Warehouse ID:", selectedWhId);
+        if (data) {
+          setSelectedSODetails(data);
+          setItems([
+            {
+              tempId: Date.now(),
+              salesOrderItemId: "",
+              productId: "",
+              productBatchId: "",
+              qty: 1,
+              maxQty: 0,
+            },
+          ]);
+          setErrors({});
 
-    const matchedLocations = locations.filter((l) => {
-      const whIdInLoc = String(l.warehouseId || l.warehouse_id || "");
-      return whIdInLoc === selectedWhId;
-    });
+          if (data.items && data.items.length > 0) {
+            const firstItemWithLocation = data.items.find((i) => i.locationId);
+            if (firstItemWithLocation) {
+              const foundLoc = locations.find(
+                (l) => l.id === firstItemWithLocation.locationId
+              );
+              if (foundLoc && foundLoc.warehouseId) {
+                setFormData((prev) => ({
+                  ...prev,
+                  warehouseId: foundLoc.warehouseId,
+                }));
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
 
-    console.log(`Tìm thấy ${matchedLocations.length} locations thuộc kho này.`);
-    console.log("Danh sách location:", matchedLocations);
-    console.groupEnd();
-
-    return matchedLocations.map((l) => l.id);
-  }, [locations, formData.warehouseId]);
-
-  const batchesInWarehouse = useMemo(() => {
-    if (validLocationIds.length === 0) {
-      console.log("DEBUG 3: Không có Location nào -> Không có Batch.");
-      return [];
+    if (locations.length > 0) {
+      fetchSODetails();
     }
-
-    console.group("DEBUG 3: FILTER BATCHES");
-    console.log("Danh sách Location IDs hợp lệ:", validLocationIds);
-
-    const matchedBatches = batches.filter((b) => {
-      const batchLocId = b.locationId || b.location_id;
-      // check location trong batch
-      const finalBatchLocId =
-        typeof batchLocId === "object" && batchLocId !== null
-          ? batchLocId.id
-          : batchLocId;
-
-      return validLocationIds.includes(finalBatchLocId);
-    });
-
-    console.log(`Tìm thấy ${matchedBatches.length} batches nằm trong các location trên.`);
-    console.groupEnd();
-
-    return matchedBatches;
-  }, [batches, validLocationIds]);
-
-  // tìm product từ batch
-  const productsInWarehouseOptions = useMemo(() => {
-    if (!formData.warehouseId) return [];
-
-    const availableProductIds = new Set(
-      batchesInWarehouse.map((b) => b.productId || b.product_id)
-    );
-
-    console.group("DEBUG 4: FILTER PRODUCTS");
-    console.log("Các Product ID có trong Batch:", [...availableProductIds]);
-
-    const finalProducts = products
-      .filter((p) => availableProductIds.has(p.id))
-      .map((p) => ({ label: p.name, value: p.id }));
-
-    console.log("Kết quả List Product hiển thị:", finalProducts);
-    console.groupEnd();
-
-    return finalProducts;
-  }, [products, batchesInWarehouse, formData.warehouseId]);
-
-  const warehouseOptions = useMemo(
-    () => warehouses.map((w) => ({ label: w.name, value: w.id })),
-    [warehouses]
-  );
+  }, [formData.salesOrderId, locations]);
 
   const handleFormChange = (field, value) => {
-    setFormData((prev) => {
-      if (field === "warehouseId" && prev.warehouseId !== value) {
-        setItems([{ tempId: Date.now(), productId: "", productBatchId: "", qty: 1 }]);
-        return { ...prev, [field]: value };
-      }
-      return { ...prev, [field]: value };
-    });
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleItemChange = (tempId, field, value) => {
-    setItems((prevItems) =>
-      prevItems.map((item) => {
-        if (item.tempId !== tempId) return item;
-        if (field === "productId") {
-          return { ...item, [field]: value, productBatchId: "" };
-        }
-        return { ...item, [field]: value };
-      })
-    );
-  };
+  const handleRowChange = useCallback(
+    (tempId, field, value) => {
+      setItems((prevItems) =>
+        prevItems.map((item) => {
+          if (item.tempId !== tempId) return item;
+
+          if (field === "salesOrderItemId") {
+            const soItem = selectedSODetails?.items?.find((i) => i.id === value);
+            if (!soItem) return item;
+
+            const remaining = soItem.qty - (soItem.qtyFulfilled || 0);
+
+            setErrors((prev) => {
+              const newErrors = { ...prev };
+              delete newErrors[`items.${tempId}.qty`];
+              return newErrors;
+            });
+
+            return {
+              ...item,
+              salesOrderItemId: value,
+              productId: soItem.productId,
+              productBatchId: soItem.productBatchId,
+              maxQty: remaining,
+              qty: remaining > 0 ? remaining : 0,
+            };
+          }
+
+          if (field === "qty") {
+            const val = Number(value);
+            const isError = val > item.maxQty;
+            setErrors((prev) => ({
+              ...prev,
+              [`items.${tempId}.qty`]: isError
+                ? `Max available: ${item.maxQty}`
+                : val <= 0
+                ? "Must > 0"
+                : null,
+            }));
+          }
+
+          return { ...item, [field]: value };
+        })
+      );
+    },
+    [selectedSODetails]
+  );
 
   const handleAddItem = () => {
-    if (!formData.warehouseId) {
-      alert("Vui lòng chọn Kho trước!");
-      return;
-    }
+    if (!formData.salesOrderId) return;
     setItems([
       ...items,
-      { tempId: Date.now(), productId: "", productBatchId: "", qty: 1 },
+      {
+        tempId: Date.now(),
+        salesOrderItemId: "",
+        productId: "",
+        productBatchId: "",
+        qty: 1,
+        maxQty: 0,
+      },
     ]);
   };
 
   const handleDeleteItem = (row) => {
-    if (items.length <= 1) return;
-    setItems(items.filter((item) => item.tempId !== row.tempId));
+    if (items.length > 1) {
+      setItems(items.filter((i) => i.tempId !== row.tempId));
+    }
   };
 
   const handleSubmit = async () => {
-    if (!formData.salesOrderId) {
-      alert("Vui lòng nhập Sales Order ID!");
-      return;
-    }
-    if (!formData.warehouseId) {
-      alert("Vui lòng chọn Kho!");
+    if (!formData.salesOrderId || !formData.warehouseId) {
+      alert("Missing Sales Order or Warehouse information.");
       return;
     }
 
-    const validItems = items.filter((i) => i.productId && i.qty > 0);
-    if (validItems.length === 0) {
-      alert("Cần ít nhất một sản phẩm hợp lệ");
+    const hasError = items.some(
+      (i) => !i.productBatchId || i.qty <= 0 || i.qty > i.maxQty
+    );
+    if (hasError) {
+      alert("Please check item errors.");
       return;
     }
 
+    setLoading(true);
     try {
-      setLoading(true);
       const payload = {
-        salesOrderId: formData.salesOrderId,
-        warehouseId: formData.warehouseId,
-        carrier: formData.carrier,
-        trackingCode: formData.trackingCode,
-        notes: formData.notes || "",
+        ...formData,
         estimatedDelivery: formData.estimatedDelivery
           ? new Date(formData.estimatedDelivery).toISOString()
           : null,
-        items: validItems.map((item) => ({
+        items: items.map((i) => ({
           salesOrderId: formData.salesOrderId,
-          productId: item.productId,
-          productBatchId: item.productBatchId,
-          qty: Number(item.qty),
+          productId: i.productId,
+          productBatchId: i.productBatchId,
+          qty: Number(i.qty),
         })),
       };
+
       await ShipmentService.create(payload);
       navigate("/shipments");
-    } catch (error) {
-      alert(error.message || "Lỗi tạo shipment");
+    } catch (e) {
+      alert(e.message || "Failed to create shipment");
     } finally {
       setLoading(false);
     }
@@ -232,47 +236,50 @@ const ShipmentCreate = () => {
 
   const columns = useMemo(
     () => [
-      { id: "stt", label: "No", render: (val, row, index) => index + 1 },
+      { id: "stt", label: "No", search: false },
       {
-        id: "productId",
-        label: "Product",
-        render: (value, row) => (
-          <FormInput
-            type="select"
-            options={productsInWarehouseOptions}
-            value={value}
-            onChange={(val) => handleItemChange(row.tempId, "productId", val)}
-            size="small"
-            placeholder={
-              formData.warehouseId ? "Select Product" : "Select Warehouse First"
-            }
-            disabled={!formData.warehouseId}
-            sx={{ minWidth: 200, mb: 0 }}
-          />
-        ),
-      },
-      {
-        id: "productBatchId",
-        label: "Batch",
+        id: "salesOrderItemId",
+        label: "Select Item to Ship",
         render: (value, row) => {
-          const currentProdId = String(row.productId || "");
-          const batchOptionsForRow = batchesInWarehouse
-            .filter((b) => String(b.productId || b.product_id) === currentProdId)
-            .map((b) => ({
-              label: b.batchNo || b.name || `Batch #${b.id.substring(0, 6)}`,
-              value: b.id,
-            }));
+          const options =
+            selectedSODetails?.items?.map((i) => {
+              const pName = products.find((p) => p.id === i.productId)?.name || "Unknown";
+              const remaining = i.qty - (i.qtyFulfilled || 0);
+              return {
+                label: `${pName} (Ordered: ${i.qty}, Rem: ${remaining})`,
+                value: i.id,
+                disabled: remaining <= 0,
+              };
+            }) || [];
 
           return (
             <FormInput
               type="select"
-              disabled={!row.productId}
-              options={batchOptionsForRow}
+              options={options}
               value={value}
-              onChange={(val) => handleItemChange(row.tempId, "productBatchId", val)}
-              placeholder="Select Batch"
+              onChange={(val) => handleRowChange(row.tempId, "salesOrderItemId", val)}
+              placeholder={!selectedSODetails ? "Select SO First" : "Select Product..."}
+              disabled={!selectedSODetails}
               size="small"
-              sx={{ minWidth: 150, mb: 0 }}
+              sx={{ minWidth: 250 }}
+            />
+          );
+        },
+      },
+      {
+        id: "productBatchId",
+        label: "Batch",
+        render: (value) => {
+          const batchInfo = batches.find((b) => b.id === value);
+          const displayLabel = batchInfo ? batchInfo.batchNo : value || "Auto-fill";
+
+          return (
+            <FormInput
+              value={displayLabel}
+              disabled={true}
+              placeholder="Auto-fill from SO"
+              size="small"
+              sx={{ minWidth: 150, bgcolor: "#f5f5f5" }}
             />
           );
         },
@@ -284,67 +291,103 @@ const ShipmentCreate = () => {
           <FormInput
             type="number"
             value={value}
-            onChange={(val) => handleItemChange(row.tempId, "qty", val)}
+            onChange={(val) => handleRowChange(row.tempId, "qty", val)}
             size="small"
-            sx={{ maxWidth: 100, mb: 0 }}
+            error={!!errors[`items.${row.tempId}.qty`]}
+            helperText={errors[`items.${row.tempId}.qty`]}
+            sx={{ maxWidth: 150 }}
           />
         ),
       },
     ],
-    [productsInWarehouseOptions, batchesInWarehouse, formData.warehouseId]
+    [selectedSODetails, products, batches, errors, handleRowChange]
+  );
+
+  const salesOrderOptions = useMemo(
+    () =>
+      allSalesOrders.map((so) => ({
+        label: `${so.soNo} (${so.customer?.name || "Unknown"})`,
+        value: so.id,
+      })),
+    [allSalesOrders]
+  );
+
+  const warehouseOptions = useMemo(
+    () => warehouses.map((w) => ({ label: w.name, value: w.id })),
+    [warehouses]
   );
 
   return (
     <Box sx={{ maxWidth: "1200px", mx: "auto", py: 3, px: 2 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
         <Typography variant="h5" fontWeight="bold">
-          Create New Shipment (Debug Mode)
+          Create Shipment
         </Typography>
-        <Button onClick={() => navigate("/shipments")}>Back to List</Button>
+        <Button onClick={() => navigate("/shipments")}>Back</Button>
       </Box>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
         <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" mb={2}>
-            General Info
+          <Typography variant="h6" mb={2} color="primary">
+            1. Select Order
           </Typography>
-          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
-            <Box sx={{ flex: 1 }}>
-              <FormInput
-                type="text"
-                label="Sales Order ID (UUID)"
-                required
-                value={formData.salesOrderId}
-                onChange={(v) => handleFormChange("salesOrderId", v)}
-                placeholder="Paste Sales Order UUID here..."
-              />
-            </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              gap: 2,
+              flexDirection: { xs: "column", md: "row" },
+              mb: 2,
+            }}
+          >
             <Box sx={{ flex: 1 }}>
               <FormInput
                 type="select"
-                label="Warehouse"
+                label="Sales Order"
+                required
+                options={salesOrderOptions}
+                value={formData.salesOrderId}
+                onChange={(v) => handleFormChange("salesOrderId", v)}
+                placeholder="Select Sales Order..."
+              />
+            </Box>
+
+            <Box sx={{ flex: 1 }}>
+              <FormInput
+                type="select"
+                label="Warehouse (Auto-Detected)"
                 required
                 options={warehouseOptions}
                 value={formData.warehouseId}
-                onChange={(v) => handleFormChange("warehouseId", v)}
-                placeholder="Chọn kho xuất..."
+                disabled={true}
+                placeholder="Auto-detected from SO Items..."
+                sx={{ bgcolor: "#f5f5f5" }}
               />
             </Box>
           </Box>
+
           <Divider sx={{ my: 2 }} />
-          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
-            <Box sx={{ flex: 1 }}>
-              <FormInput
-                label="Tracking Code"
-                value={formData.trackingCode}
-                onChange={(v) => handleFormChange("trackingCode", v)}
-              />
-            </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              gap: 2,
+              flexDirection: { xs: "column", md: "row" },
+              mb: 2,
+            }}
+          >
             <Box sx={{ flex: 1 }}>
               <FormInput
                 label="Carrier"
                 value={formData.carrier}
                 onChange={(v) => handleFormChange("carrier", v)}
+              />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <FormInput
+                label="Tracking Code"
+                value={formData.trackingCode}
+                onChange={(v) => handleFormChange("trackingCode", v)}
               />
             </Box>
             <Box sx={{ flex: 1 }}>
@@ -356,6 +399,7 @@ const ShipmentCreate = () => {
               />
             </Box>
           </Box>
+
           <Box>
             <FormInput
               label="Notes"
@@ -369,12 +413,28 @@ const ShipmentCreate = () => {
 
         <Paper sx={{ p: 3 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-            <Typography variant="h6">Shipment Items</Typography>
-            <Button variant="outlined" onClick={handleAddItem}>
+            <Typography variant="h6" color="primary">
+              2. Confirm Items
+            </Typography>
+            <Button
+              variant="outlined"
+              onClick={handleAddItem}
+              disabled={!formData.salesOrderId}
+            >
               + Add Item
             </Button>
           </Box>
+
           <DataTable columns={columns} data={items} onDelete={handleDeleteItem} />
+
+          {!formData.salesOrderId && (
+            <Typography
+              align="center"
+              sx={{ mt: 2, fontStyle: "italic", color: "text.secondary" }}
+            >
+              Please select a Sales Order first.
+            </Typography>
+          )}
         </Paper>
 
         <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
@@ -382,7 +442,7 @@ const ShipmentCreate = () => {
             Cancel
           </Button>
           <Button variant="contained" onClick={handleSubmit} disabled={loading}>
-            Create Shipment
+            {loading ? "Creating..." : "Create Shipment"}
           </Button>
         </Box>
       </Box>

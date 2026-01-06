@@ -22,7 +22,14 @@ import {
 import { Visibility, Edit, Delete, FilterList } from "@mui/icons-material";
 import React from "react";
 
-export default function DataTable({ columns, data = [], onEdit, onView, onDelete }) {
+export default function DataTable({
+  columns,
+  data = [],
+  onEdit,
+  onView,
+  onDelete,
+  hideDelete,
+}) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [orderBy, setOrderBy] = useState("");
@@ -263,7 +270,7 @@ export default function DataTable({ columns, data = [], onEdit, onView, onDelete
                           <Edit />
                         </IconButton>
                       )}
-                      {onDelete && (
+                      {onDelete && (!hideDelete || !hideDelete(row._original)) && (
                         <IconButton
                           size="small"
                           color="error"
