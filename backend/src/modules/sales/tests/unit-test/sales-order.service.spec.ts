@@ -351,9 +351,7 @@ describe('SalesOrderService', () => {
       ];
 
       soRepo.findById.mockResolvedValueOnce(mockSalesOrder);
-      inventorySvc.getAvailableInventoryForFEFO = jest
-        .fn()
-        .mockResolvedValue(mockFEFOInventory);
+      inventorySvc.getAvailableInventoryForFEFO = jest.fn().mockResolvedValue(mockFEFOInventory);
       inventorySvc.reserveInventory.mockResolvedValue({
         success: true,
         inventory: {} as any,
@@ -424,9 +422,7 @@ describe('SalesOrderService', () => {
       ];
 
       soRepo.findById.mockResolvedValue(mockSalesOrder); // Changed to mockResolvedValue (not Once)
-      inventorySvc.getAvailableInventoryForFEFO = jest
-        .fn()
-        .mockResolvedValue(mockFEFOInventory);
+      inventorySvc.getAvailableInventoryForFEFO = jest.fn().mockResolvedValue(mockFEFOInventory);
       inventorySvc.getGlobalInventoryByProduct.mockResolvedValue({
         productId: 'product-uuid-1',
         productName: 'Product A',

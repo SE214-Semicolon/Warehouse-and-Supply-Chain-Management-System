@@ -287,7 +287,7 @@ export class SalesReportingService {
     orders.forEach((so) => {
       if (!so.placedAt) return;
 
-      const date = new Date(so.submittedAt);
+      const date = new Date(so.placedAt);
       let key: string;
 
       if (groupBy === 'day') {
