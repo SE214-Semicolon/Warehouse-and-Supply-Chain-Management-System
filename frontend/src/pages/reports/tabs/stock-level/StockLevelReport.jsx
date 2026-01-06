@@ -441,7 +441,7 @@ export default function StockLevelReport() {
                   color="text.secondary"
                   fontWeight="600"
                 >
-                  Overloaded Locations (>90%)
+                  Overloaded Locations (&gt;90%)
                 </Typography>
                 <Box
                   sx={{
@@ -655,7 +655,7 @@ export default function StockLevelReport() {
             }}
           />
           <Typography variant="caption" color="text.secondary">
-            Overloaded (>90%)
+            Overloaded (&gt;90%)
           </Typography>
         </Stack>
       </Stack>

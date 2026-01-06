@@ -27,10 +27,9 @@ import StatsCard from '../../components/stats-card/StatsCard';
 import ReportHeader from '../../components/header/ReportHeader';
 import columns from './columns';
 
-export default function LowStockReport() {
+export default function ExpiryReport() {
   const [searchTerm, setSearchTerm] = useState('');
   const [inventories, setInventories] = useState([]);
-  const today = new Date('2025-12-23');
 
   const processedData = useMemo(() => {
     return inventories
@@ -38,6 +37,7 @@ export default function LowStockReport() {
         const expiryDate = new Date(item.productBatch.expiryDate);
         const mfgDate = new Date(item.productBatch.manufactureDate);
 
+        const today = new Date();
         const diffTime = expiryDate - today;
         const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
