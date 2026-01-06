@@ -22,6 +22,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 dayjs.locale('vi');
+import { showToast } from '../../../utils/toast';
 
 export default function FormDialog({
   open,
@@ -66,17 +67,13 @@ export default function FormDialog({
       }
       onSuccess?.(res.data || res.data?.data);
       onClose();
-    } catch (err) {
-      alert(err?.message || 'Lưu nháp thất bại!');
+    } catch (msg) {
+      showToast.error(msg || 'Fail to save draft!');
     }
   };
 
   const handleSubmitOrder = async () => {
     if (!validate()) return;
-    if (formValues.items.length === 0) {
-      alert('Phải có ít nhất 1 sản phẩm');
-      return;
-    }
 
     try {
       let po;
@@ -93,8 +90,8 @@ export default function FormDialog({
 
       onSuccess?.(po.data || po.data?.data);
       onClose();
-    } catch (err) {
-      alert(err?.message || 'Đặt hàng thất bại!');
+    } catch (msg) {
+      showToast.error(msg || 'Fail to submit order!');
     }
   };
 
@@ -210,7 +207,7 @@ export default function FormDialog({
                           productId: product?.id,
                           productName: product?.name,
                           sku: product?.sku || product?.code || '',
-                          unit: product?.unit || 'Cái',
+                          unit: product?.unit || 'unit',
                           unitPrice:
                             product?.purchasePrice || product?.price || 0,
                         })
@@ -264,9 +261,9 @@ export default function FormDialog({
       </DialogContent>
 
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2, gap: 2 }}>
-        {isDraft && isEdit && (
+        {isDraft && (
           <Button onClick={onClose} variant="outlined">
-            Hủy
+            Cancel
           </Button>
         )}
 
@@ -276,7 +273,7 @@ export default function FormDialog({
               variant="contained"
               color="inherit"
               onClick={handleSaveDraft}
-              disabled={formValues.items.length === 0}
+              disabled={formValues.items.length === 0 && !isEdit}
             >
               {isEdit ? 'Update Draft' : 'Save as Draft'}
             </Button>
@@ -285,7 +282,7 @@ export default function FormDialog({
               variant="contained"
               color="primary"
               onClick={handleSubmitOrder}
-              disabled={formValues.items.length === 0}
+              disabled={formValues.items.length === 0 && !isEdit}
             >
               Order
             </Button>
@@ -294,7 +291,7 @@ export default function FormDialog({
 
         {!isDraft && (
           <Button onClick={onClose} variant="contained">
-            Đóng
+            Close
           </Button>
         )}
       </Box>

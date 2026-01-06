@@ -35,7 +35,7 @@ export default function POItemRow({
           renderInput={(params) => (
             <TextField
               {...params}
-              placeholder="Chọn sản phẩm"
+              placeholder="Select Product"
               size="small"
               error={!!error}
               helperText={error}
