@@ -25,13 +25,12 @@ const SOService = {
     }
   },
 
-  getAll: async (page = 1, pageSize = 10, sort = 'createdAt:desc') => {
+  getAll: async (customerId, sort = 'createdAt:desc') => {
     try {
       const response = await api.get(API_URI, {
         params: {
-          page,
-          pageSize,
           sort,
+          customerId,
         },
       });
       console.log(response.data);

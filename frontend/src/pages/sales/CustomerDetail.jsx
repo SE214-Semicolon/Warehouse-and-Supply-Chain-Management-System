@@ -1,42 +1,37 @@
 import { useLocation } from 'react-router-dom';
-// import mockSupplierData from './detail-components/mockData';
 import { useEffect, useState } from 'react';
 import { Box, Container, Grid } from '@mui/material';
-import SupplierHeader from './detail-components/SupplierHeader';
-import BasicInfoSection from './detail-components/BasicInfoSection';
-// import PerformaceSection from './detail-components/PerformaceSection';
-// import StatCard from './detail-components/StatCard';
-import RecentPOs from './detail-components/RecentPOs';
-import SupplierService from '../../services/supplier.service';
-import POService from '../../services/po.service';
+import CustomerHeader from './detail-components/CustomerHeader';
+import CustomerInfo from './detail-components/CustomerInfo';
+import CustomerSOs from './detail-components/CustomerSOs';
+import CustomerService from '../../services/customer.service';
+import SOService from '../../services/so.service';
 
-export default function SupplierDetail() {
+export default function CustomerDetail() {
   const location = useLocation();
   const { id, row } = location.state || {};
-  const [supplierData, setSupplierData] = useState(row);
-  // const stats = mockSupplierData.stats;
-  // const performance = mockSupplierData.performance;
+  const [customerData, setCustomerData] = useState(row);
   const [recentOrders, setRecentOrders] = useState([]);
-  const [loadingPOs, setLoadingPOs] = useState(true);
+  const [loadingSOs, setLoadingSOs] = useState(true);
 
   useEffect(() => {
     if (id) {
-      SupplierService.getById(id).then((res) => {
-        setSupplierData(res.data);
+      CustomerService.getById(id).then((res) => {
+        setCustomerData(res.data);
       });
     } else if (row) {
-      setSupplierData(row);
+      setCustomerData(row);
     }
   }, [id, row]);
 
   useEffect(() => {
-    if (!supplierData?.id) return;
+    if (!customerData?.id) return;
 
-    setLoadingPOs(true);
-    POService.getAll(supplierData.id)
+    setLoadingSOs(true);
+    SOService.getAll(customerData.id)
       .then((response) => {
         if (Array.isArray(response.data)) {
-          console.log('Recent POs response:', response);
+          console.log('Recent SOs response:', response);
           setRecentOrders(response.data);
         } else {
           setRecentOrders([]);
@@ -46,12 +41,12 @@ export default function SupplierDetail() {
         setRecentOrders([]);
       })
       .finally(() => {
-        setLoadingPOs(false);
+        setLoadingSOs(false);
       });
-  }, [supplierData?.id]);
+  }, [customerData?.id]);
 
-  const handleUpdateSuccess = (updatedSupplier) => {
-    setSupplierData(updatedSupplier.data);
+  const handleUpdateSuccess = (updatedCustomer) => {
+    setCustomerData(updatedCustomer.data);
   };
 
   return (
@@ -68,8 +63,8 @@ export default function SupplierDetail() {
           paddingX: { xs: 2, sm: 4 },
         }}
       >
-        <SupplierHeader
-          supplier={supplierData}
+        <CustomerHeader
+          customer={customerData}
           onSuccess={handleUpdateSuccess}
         />
 
@@ -85,8 +80,7 @@ export default function SupplierDetail() {
                 },
               }}
             >
-              <BasicInfoSection data={supplierData} />
-              {/* <PerformaceSection performance={performance} /> */}
+              <CustomerInfo data={customerData} />
             </Box>
           </Grid>
 
@@ -101,15 +95,7 @@ export default function SupplierDetail() {
                 },
               }}
             >
-              {/* <Grid container spacing={4}>
-                {stats.map((stat, index) => (
-                  <Grid size={{ xs: 6, md: 3 }} key={index}>
-                    <StatCard stat={stat} />
-                  </Grid>
-                ))}
-              </Grid> */}
-
-              <RecentPOs orders={recentOrders} loading={loadingPOs} />
+              <CustomerSOs orders={recentOrders} loading={loadingSOs} />
             </Box>
           </Grid>
         </Grid>

@@ -14,9 +14,9 @@ import ArticleIcon from '@mui/icons-material/Article';
 import { formatDate } from '../../../utils/formatDate';
 import { Link as RouterLink } from 'react-router-dom';
 
-const uri = '/purchase-order/detail';
+const uri = '/sales-order/detail';
 
-export default function RecentPOs({ orders, isLoading }) {
+export default function CustomerSOs({ orders, isLoading }) {
   const getStatusChip = (status, color) => {
     const colorStyles = {
       success: {
@@ -56,13 +56,13 @@ export default function RecentPOs({ orders, isLoading }) {
 
   const getStatusInfo = (status) => {
     switch (status) {
-      case 'ordered':
+      case 'approved':
         return { label: 'Ordered', color: 'success' };
-      case 'draft':
+      case 'pending':
         return { label: 'Draft', color: 'info' };
-      case 'partial':
+      case 'processing':
         return { label: 'Partial', color: 'warning' };
-      case 'received':
+      case 'shipped':
         return { label: 'Recieved', color: 'success' };
       case 'cancelled':
         return { label: 'Canceled', color: 'error' };
@@ -108,7 +108,7 @@ export default function RecentPOs({ orders, isLoading }) {
               height: 20,
             }}
           />
-          Purchase Order List
+          Order List
         </Typography>
       </Box>
       <TableContainer>
@@ -118,7 +118,7 @@ export default function RecentPOs({ orders, isLoading }) {
           </Box>
         ) : orders.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
-            <Typography>Haven't order any POs yet</Typography>
+            <Typography>Haven't order any products yet</Typography>
           </Box>
         ) : (
           <Table size="medium">
@@ -168,7 +168,7 @@ export default function RecentPOs({ orders, isLoading }) {
                         color: 'primary.main',
                       }}
                     >
-                      {order.poNo}
+                      {order.soNo}
                     </TableCell>
                     <TableCell
                       sx={{
