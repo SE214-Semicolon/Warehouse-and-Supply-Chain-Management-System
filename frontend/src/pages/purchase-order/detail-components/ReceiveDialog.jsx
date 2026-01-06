@@ -45,13 +45,11 @@ export default function ReceiveDialog({ open, onClose, item, onSuccess }) {
       const response = await POService.receive(item.purchaseOrderId, payload);
       console.log('Receive response:', response);
       showToast.success('Items received successfully');
-      onSuccess && onSuccess(response);
+      onSuccess && onSuccess(response.data);
       onClose();
-    } catch (error) {
-      console.error('Error receiving items:', error);
-      showToast.error(
-        error.response?.data?.message || 'Failed to receive items'
-      );
+    } catch (msg) {
+      console.error('Error receiving items:', msg);
+      showToast.error(msg || 'Failed to receive items');
     } finally {
       setLoading(false);
     }

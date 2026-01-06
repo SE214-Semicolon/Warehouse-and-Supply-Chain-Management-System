@@ -22,7 +22,7 @@ export default function PODetail() {
     }
   }, [id, row]);
 
-  const handleCancelSuccess = () => {
+  const handleSuccess = () => {
     if (id) {
       POService.getById(id).then((res) => {
         setPOData(res.data);
@@ -48,7 +48,7 @@ export default function PODetail() {
           poNo={poData.poNo}
           createdAt={poData.createdAt}
           poId={id || poData.id}
-          onCancelSuccess={handleCancelSuccess}
+          onCancelSuccess={handleSuccess}
           canCancel={
             poData.status !== 'received' && poData.status !== 'cancelled'
           }
@@ -77,6 +77,7 @@ export default function PODetail() {
                 canReceive={
                   poData.status !== 'draft' && poData.status !== 'cancelled'
                 }
+                onPOUpdated={handleSuccess}
               />
             </Box>
           </Grid>
