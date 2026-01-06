@@ -212,4 +212,7 @@ export interface IInventoryRepository {
   findProductBatch(productBatchId: string): Promise<ProductBatch | null>;
   findLocation(locationId: string): Promise<Location | null>;
   findUser(userId: string): Promise<User | null>;
+
+  // FEFO allocation support
+  findAvailableInventoryForFEFO(productId: string): Promise<any[]>;
 }

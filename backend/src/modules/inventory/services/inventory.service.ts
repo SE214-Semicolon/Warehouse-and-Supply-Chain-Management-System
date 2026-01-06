@@ -1200,4 +1200,37 @@ export class InventoryService {
       batchCount,
     };
   }
+
+  /**
+   * Get available inventory for FEFO (First Expired First Out) allocation
+   * Returns inventory records sorted by expiry date (nearest expiry first)
+   * Only includes non-expired batches with availableQty > 0
+   *
+   * Used for automatic inventory allocation in Sales Order submission
+   */
+  async getAvailableInventoryForFEFO(productId: string): Promise<
+    Array<{
+      productBatchId: string;
+      locationId: string;
+      availableQty: number;
+      reservedQty: number;
+      expiryDate: Date | null;
+      batchNo: string | null;
+      locationName: string | null;
+    }>
+  > {
+    this.logger.log(`Finding available inventory for FEFO allocation: ${productId}`);
+
+    const inventories = await this.inventoryRepo.findAvailableInventoryForFEFO(productId);
+
+    return inventories.map((inv) => ({
+      productBatchId: inv.productBatchId,
+      locationId: inv.locationId,
+      availableQty: inv.availableQty,
+      reservedQty: inv.reservedQty,
+      expiryDate: inv.productBatch?.expiryDate || null,
+      batchNo: inv.productBatch?.batchNo || null,
+      locationName: inv.location?.name || null,
+    }));
+  }
 }
