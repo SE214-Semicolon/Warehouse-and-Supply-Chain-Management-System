@@ -1,4 +1,5 @@
 import api from '../utils/axiosInstance';
+import { handleError } from '../utils/handleError';
 
 const API_URI = '/reports';
 
@@ -9,7 +10,7 @@ const InventoryReportService = {
       return response;
     } catch (error) {
       console.error('Err low stock:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
@@ -19,97 +20,161 @@ const InventoryReportService = {
       return response;
     } catch (error) {
       console.error('Err expiry:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
-  getStockLevel: async () => {
+  getStockLevel: async ({ page = 1, limit = 20 } = {}) => {
     try {
-      const response = await api.get(API_URI + '/inventory/stock-levels');
+      const params = new URLSearchParams();
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/inventory/stock-levels?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err stock level:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
-  getMovement: async () => {
+  getMovement: async ({ startDate, endDate, page = 1, limit = 20 } = {}) => {
     try {
-      const response = await api.get(API_URI + '/inventory/movements');
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/inventory/movements?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err movement:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
-  getValuation: async () => {
+  getValuation: async ({ page = 1, limit = 20 } = {}) => {
     try {
-      const response = await api.get(API_URI + '/inventory/valuation');
+      const params = new URLSearchParams();
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/inventory/valuation?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err valuation:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 };
 
 const ProductReportService = {
-  getPerformance: async () => {
+  getPerformance: async ({ startDate, endDate, page = 1, limit = 20 } = {}) => {
     try {
-      const response = await api.get(API_URI + '/product/performance');
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/product/performance?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err product performance:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 };
 
 const WarehouseReportService = {
-  getUtilization: async () => {
+  getUtilization: async ({ page = 1, limit = 20 } = {}) => {
     try {
-      const response = await api.get(API_URI + '/warehouse/utilization');
+      const params = new URLSearchParams();
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/warehouse/utilization?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err warehouse utilization:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 };
 
 const DemandPlanReportService = {
-  getAccuracy: async () => {
+  getAccuracy: async ({ page = 1, limit = 20 } = {}) => {
     try {
-      const response = await api.get(API_URI + '/demand-planning/accuracy');
+      const params = new URLSearchParams();
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/demand-planning/accuracy?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err demand plan accuracy:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 };
 
 const ProcurementReportService = {
-  getPOPerformance: async () => {
+  getPOPerformance: async ({
+    startDate,
+    endDate,
+    page = 1,
+    limit = 20,
+  } = {}) => {
     try {
-      const response = await api.get(API_URI + '/procurement/po-performance');
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/procurement/po-performance?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err po performance:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 
-  getSupplierPerformance: async () => {
+  getSupplierPerformance: async ({
+    startDate,
+    endDate,
+    page = 1,
+    limit = 20,
+  } = {}) => {
     try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      params.append('page', page);
+      params.append('limit', limit);
+
       const response = await api.get(
-        API_URI + '/procurement/supplier-performance'
+        `${API_URI}/procurement/supplier-performance?${params.toString()}`
       );
       return response;
     } catch (error) {
       console.error('Err supplier performance:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 };
@@ -121,7 +186,7 @@ const SalesReportService = {
       return response;
     } catch (error) {
       console.error('Err so performance:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
   getSalesTrend: async () => {
@@ -130,7 +195,7 @@ const SalesReportService = {
       return response;
     } catch (error) {
       console.error('Err sales trend:', error);
-      throw error.response?.data || error.message;
+      handleError(error);
     }
   },
 };
