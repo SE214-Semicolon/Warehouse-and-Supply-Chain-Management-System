@@ -57,15 +57,15 @@ export default function CustomerSOs({ orders, isLoading }) {
   const getStatusInfo = (status) => {
     switch (status) {
       case 'approved':
-        return { label: 'Ordered', color: 'success' };
+        return { label: 'Approved', color: 'success' };
       case 'pending':
-        return { label: 'Draft', color: 'info' };
+        return { label: 'Pending', color: 'info' };
       case 'processing':
-        return { label: 'Partial', color: 'warning' };
+        return { label: 'Processing', color: 'warning' };
       case 'shipped':
-        return { label: 'Recieved', color: 'success' };
+        return { label: 'Shipped', color: 'success' };
       case 'cancelled':
-        return { label: 'Canceled', color: 'error' };
+        return { label: 'Cancelled', color: 'error' };
       default:
         return { label: status, color: 'warning' };
     }
