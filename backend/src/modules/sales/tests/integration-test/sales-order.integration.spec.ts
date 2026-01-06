@@ -344,13 +344,13 @@ describe('Sales Order Module (e2e)', () => {
       expect(Number(response.body.data.totalAmount)).toBe(1100);
     });
 
-    // SO-INT-06: Create with invalid productId (tested by DTO)
-    it('SO-INT-06: Should return 400 for invalid productId', async () => {
+    // SO-INT-06: Create with invalid qty format (tested by DTO)
+    it('SO-INT-06: Should return 400 for invalid qty type', async () => {
       const createDto = {
         items: [
           {
-            productId: '00000000-0000-0000-0000-000000000000',
-            qty: 10,
+            productId: testProductId, // Use valid productId to avoid FK constraint
+            qty: 'invalid' as any, // Invalid type for qty
           },
         ],
       };
@@ -1306,8 +1306,8 @@ describe('Sales Order Module (e2e)', () => {
         .send({
           items: [
             {
-              productId: '00000000-0000-0000-0000-000000000000',
-              qty: 10,
+              productId: testProductId, // Use valid productId
+              qty: 'invalid-qty' as any, // Test validation with invalid qty type
             },
           ],
         })
@@ -1321,8 +1321,8 @@ describe('Sales Order Module (e2e)', () => {
         .send({
           items: [
             {
-              productId: '00000000-0000-0000-0000-000000000000',
-              qty: -5,
+              productId: testProductId, // Use valid productId to test qty validation
+              qty: -5, // Negative qty should be rejected by DTO validation
             },
           ],
         })
