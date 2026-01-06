@@ -1,35 +1,32 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Paper, Button, Typography, Divider } from "@mui/material";
 
-// Import Services
 import ShipmentService from "@/services/shipment.service";
 import WarehouseService from "@/services/warehouse.service";
 import ProductService from "@/services/product.service";
-import BatchService from "@/services/batch.service"; // Đổi tên thành ProductBatchService nếu file export default tên đó
+import BatchService from "@/services/batch.service";
 import LocationService from "@/services/location.service";
 import SOService from "@/services/so.service";
 
 import FormInput from "@/components/FormInput";
 import DataTable from "@/components/DataTable";
+import { HeightOutlined } from "@mui/icons-material";
 
 const ShipmentCreate = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  // --- 1. MASTER DATA ---
   const [warehouses, setWarehouses] = useState([]);
   const [allSalesOrders, setAllSalesOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [batches, setBatches] = useState([]);
   const [locations, setLocations] = useState([]);
 
-  // Selected SO Details
   const [selectedSODetails, setSelectedSODetails] = useState(null);
 
-  // Form State
   const [formData, setFormData] = useState({
-    warehouseId: "", // Sẽ tự động fill dựa trên Location của Item trong SO
+    warehouseId: "",
     salesOrderId: "",
     carrier: "",
     trackingCode: "",
@@ -37,7 +34,6 @@ const ShipmentCreate = () => {
     notes: "",
   });
 
-  // Table Items
   const [items, setItems] = useState([
     {
       tempId: Date.now(),
@@ -51,7 +47,6 @@ const ShipmentCreate = () => {
 
   const [errors, setErrors] = useState({});
 
-  // --- 2. LOAD DATA ---
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -71,18 +66,17 @@ const ShipmentCreate = () => {
         setLocations(extract(resLoc));
         setAllSalesOrders(extract(resSO));
       } catch (e) {
-        console.error("Error loading master data:", e);
+        console.error(e);
       }
     };
     loadData();
   }, []);
 
-  // --- 3. HANDLE SALES ORDER SELECTION & AUTO-FILL WAREHOUSE ---
   useEffect(() => {
     const fetchSODetails = async () => {
       if (!formData.salesOrderId) {
         setSelectedSODetails(null);
-        setFormData((prev) => ({ ...prev, warehouseId: "" })); // Reset warehouse if no SO
+        setFormData((prev) => ({ ...prev, warehouseId: "" }));
         return;
       }
 
@@ -104,8 +98,6 @@ const ShipmentCreate = () => {
           ]);
           setErrors({});
 
-          // --- AUTO DETECT WAREHOUSE ---
-          // Logic: Lấy locationId của item đầu tiên trong SO -> Tìm Location trong master data -> Lấy warehouseId
           if (data.items && data.items.length > 0) {
             const firstItemWithLocation = data.items.find((i) => i.locationId);
             if (firstItemWithLocation) {
@@ -113,73 +105,75 @@ const ShipmentCreate = () => {
                 (l) => l.id === firstItemWithLocation.locationId
               );
               if (foundLoc && foundLoc.warehouseId) {
-                setFormData((prev) => ({ ...prev, warehouseId: foundLoc.warehouseId }));
+                setFormData((prev) => ({
+                  ...prev,
+                  warehouseId: foundLoc.warehouseId,
+                }));
               }
             }
           }
         }
       } catch (error) {
-        console.error("Error details:", error);
+        console.error(error);
       }
     };
 
     if (locations.length > 0) {
-      // Chỉ chạy khi master data locations đã load xong
       fetchSODetails();
     }
   }, [formData.salesOrderId, locations]);
-
-  // --- 4. HANDLERS ---
 
   const handleFormChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleRowChange = (tempId, field, value) => {
-    setItems((prevItems) =>
-      prevItems.map((item) => {
-        if (item.tempId !== tempId) return item;
+  const handleRowChange = useCallback(
+    (tempId, field, value) => {
+      setItems((prevItems) =>
+        prevItems.map((item) => {
+          if (item.tempId !== tempId) return item;
 
-        // LOGIC: Select SO Item -> AUTO FILL EVERYTHING
-        if (field === "salesOrderItemId") {
-          const soItem = selectedSODetails?.items?.find((i) => i.id === value);
-          if (!soItem) return item;
+          if (field === "salesOrderItemId") {
+            const soItem = selectedSODetails?.items?.find((i) => i.id === value);
+            if (!soItem) return item;
 
-          const remaining = soItem.qty - (soItem.qtyFulfilled || 0);
+            const remaining = soItem.qty - (soItem.qtyFulfilled || 0);
 
-          // Clear error
-          const newErrors = { ...errors };
-          delete newErrors[`items.${tempId}.qty`];
-          setErrors(newErrors);
+            setErrors((prev) => {
+              const newErrors = { ...prev };
+              delete newErrors[`items.${tempId}.qty`];
+              return newErrors;
+            });
 
-          return {
-            ...item,
-            salesOrderItemId: value,
-            productId: soItem.productId, // Auto-fill Product
-            productBatchId: soItem.productBatchId, // Auto-fill Batch (Directly from SO)
-            maxQty: remaining,
-            qty: remaining > 0 ? remaining : 0, // Auto-fill Qty
-          };
-        }
+            return {
+              ...item,
+              salesOrderItemId: value,
+              productId: soItem.productId,
+              productBatchId: soItem.productBatchId,
+              maxQty: remaining,
+              qty: remaining > 0 ? remaining : 0,
+            };
+          }
 
-        // VALIDATE QTY
-        if (field === "qty") {
-          const val = Number(value);
-          const isError = val > item.maxQty;
-          setErrors((prev) => ({
-            ...prev,
-            [`items.${tempId}.qty`]: isError
-              ? `Max available: ${item.maxQty}`
-              : val <= 0
-              ? "Must > 0"
-              : null,
-          }));
-        }
+          if (field === "qty") {
+            const val = Number(value);
+            const isError = val > item.maxQty;
+            setErrors((prev) => ({
+              ...prev,
+              [`items.${tempId}.qty`]: isError
+                ? `Max available: ${item.maxQty}`
+                : val <= 0
+                ? "Must > 0"
+                : null,
+            }));
+          }
 
-        return { ...item, [field]: value };
-      })
-    );
-  };
+          return { ...item, [field]: value };
+        })
+      );
+    },
+    [selectedSODetails]
+  );
 
   const handleAddItem = () => {
     if (!formData.salesOrderId) return;
@@ -240,7 +234,6 @@ const ShipmentCreate = () => {
     }
   };
 
-  // --- 5. COLUMNS ---
   const columns = useMemo(
     () => [
       { id: "stt", label: "No", search: false },
@@ -275,9 +268,8 @@ const ShipmentCreate = () => {
       },
       {
         id: "productBatchId",
-        label: "Batch (Auto-Filled)",
+        label: "Batch",
         render: (value) => {
-          // Find batch info to display Name instead of ID
           const batchInfo = batches.find((b) => b.id === value);
           const displayLabel = batchInfo ? batchInfo.batchNo : value || "Auto-fill";
 
@@ -294,7 +286,7 @@ const ShipmentCreate = () => {
       },
       {
         id: "qty",
-        label: "Qty",
+        label: "Quantity",
         render: (value, row) => (
           <FormInput
             type="number"
@@ -303,15 +295,14 @@ const ShipmentCreate = () => {
             size="small"
             error={!!errors[`items.${row.tempId}.qty`]}
             helperText={errors[`items.${row.tempId}.qty`]}
-            sx={{ maxWidth: 100 }}
+            sx={{ maxWidth: 150 }}
           />
         ),
       },
     ],
-    [selectedSODetails, products, batches, errors]
+    [selectedSODetails, products, batches, errors, handleRowChange]
   );
 
-  // Options
   const salesOrderOptions = useMemo(
     () =>
       allSalesOrders.map((so) => ({
@@ -336,7 +327,6 @@ const ShipmentCreate = () => {
       </Box>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        {/* SECTION 1: GENERAL INFO */}
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6" mb={2} color="primary">
             1. Select Order
@@ -369,7 +359,6 @@ const ShipmentCreate = () => {
                 required
                 options={warehouseOptions}
                 value={formData.warehouseId}
-                // Disabled because it is auto-filled from SO Item location
                 disabled={true}
                 placeholder="Auto-detected from SO Items..."
                 sx={{ bgcolor: "#f5f5f5" }}
@@ -379,7 +368,6 @@ const ShipmentCreate = () => {
 
           <Divider sx={{ my: 2 }} />
 
-          {/* Metadata */}
           <Box
             sx={{
               display: "flex",
@@ -423,7 +411,6 @@ const ShipmentCreate = () => {
           </Box>
         </Paper>
 
-        {/* SECTION 2: ITEMS */}
         <Paper sx={{ p: 3 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
             <Typography variant="h6" color="primary">
