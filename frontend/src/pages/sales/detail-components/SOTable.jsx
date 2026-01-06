@@ -12,18 +12,18 @@ import {
   Chip,
 } from '@mui/material';
 import ArticleIcon from '@mui/icons-material/Article';
-import ReceiveDialog from './ReceiveDialog';
+import FulfillDialog from './FulfillDialog';
 import { useState } from 'react';
 
-export default function POTable({
+export default function SOTable({
   items = [],
-  onPOUpdated,
-  canReceive = true,
+  onSOUpdated,
+  canFulfill = true,
 }) {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
-  const handleOpenReceive = (item) => {
+  const handleOpenFulfill = (item) => {
     setSelectedItem(item);
     setOpenDialog(true);
   };
@@ -33,8 +33,8 @@ export default function POTable({
     setSelectedItem(null);
   };
 
-  const handleReceiveSuccess = (updatedPO) => {
-    onPOUpdated(updatedPO);
+  const handleFulfillSuccess = (updatedSO) => {
+    onSOUpdated(updatedSO);
   };
 
   if (!items || items.length === 0) {
@@ -101,7 +101,7 @@ export default function POTable({
                   'Product Code',
                   'Product Name',
                   'Order Quantity',
-                  'Received Quantity',
+                  'Fulfilled Quantity',
                   'Remaining',
                   'Status',
                   'Unit Price',
@@ -128,8 +128,8 @@ export default function POTable({
             </TableHead>
             <TableBody>
               {items.map((item, index) => {
-                const remaining = item.qtyOrdered - item.qtyReceived;
-                const fullyReceived = remaining <= 0;
+                const remaining = item.qty - item.qtyFulfilled;
+                const fullyFulfilled = remaining <= 0;
                 return (
                   <TableRow
                     key={item.id}
@@ -180,7 +180,7 @@ export default function POTable({
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {Number(item.qtyOrdered).toLocaleString('vi-VN')}
+                      {Number(item.qty).toLocaleString('vi-VN')}
                     </TableCell>
                     <TableCell
                       sx={{
@@ -189,7 +189,7 @@ export default function POTable({
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {Number(item.qtyReceived).toLocaleString('vi-VN')}
+                      {Number(item.qtyFulfilled).toLocaleString('vi-VN')}
                     </TableCell>
                     <TableCell
                       sx={{
@@ -201,8 +201,8 @@ export default function POTable({
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={fullyReceived ? 'Full' : 'Not Full'}
-                        color={fullyReceived ? 'success' : 'warning'}
+                        label={fullyFulfilled ? 'Full' : 'Not Full'}
+                        color={fullyFulfilled ? 'success' : 'warning'}
                         size="small"
                       />
                     </TableCell>
@@ -240,10 +240,10 @@ export default function POTable({
                         variant="contained"
                         color="success"
                         size="small"
-                        onClick={() => handleOpenReceive(item)}
-                        disabled={fullyReceived || !canReceive}
+                        onClick={() => handleOpenFulfill(item)}
+                        disabled={fullyFulfilled || !canFulfill}
                       >
-                        {fullyReceived ? 'Fully Received' : 'Receive'}
+                        {fullyFulfilled ? 'Fully Fulfilled' : 'Fulfill'}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -254,13 +254,13 @@ export default function POTable({
         </TableContainer>
       </Card>
       {selectedItem && (
-        <ReceiveDialog
+        <FulfillDialog
           open={openDialog}
           onClose={handleCloseDialog}
           item={{
             ...selectedItem,
           }}
-          onSuccess={handleReceiveSuccess}
+          onSuccess={handleFulfillSuccess}
         />
       )}
     </>

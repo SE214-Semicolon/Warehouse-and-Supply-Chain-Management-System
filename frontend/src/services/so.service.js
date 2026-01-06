@@ -44,6 +44,7 @@ const SOService = {
   getById: async (id) => {
     try {
       const response = await api.get(`${API_URI}/${id}`);
+      console.log(response);
       return response.data;
     } catch (error) {
       console.error('Error fetching sales order by ID:', error);
@@ -63,10 +64,20 @@ const SOService = {
 
   fulfill: async (id, data) => {
     try {
-      const response = await api.patch(`${API_URI}/${id}/fulfill`, data);
+      const response = await api.post(`${API_URI}/${id}/fulfill`, data);
       return response.data;
     } catch (error) {
       console.error('Error fulfilling sales order:', error);
+      handleError(error);
+    }
+  },
+
+  cancel: async (id) => {
+    try {
+      const response = await api.post(`${API_URI}/${id}/cancel`);
+      return response.data;
+    } catch (error) {
+      console.error('Error canceling sales order:', error);
       handleError(error);
     }
   },

@@ -6,25 +6,22 @@ import {
   Button,
   Dialog,
   DialogTitle,
-  DialogContent,
   DialogActions,
-  TextField,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import { formatDate } from '../../../utils/formatDate';
-import POService from '../../../services/po.service';
+import SOService from '../../../services/so.service';
 import { showToast } from '../../../utils/toast';
 import { useNavigate } from 'react-router-dom';
 
-export default function PODetailHeader({
-  poNo,
+export default function SOHeader({
+  soNo,
   createdAt,
-  poId,
+  soId,
   onCancelSuccess,
   canCancel = false,
 }) {
   const [openDialog, setOpenDialog] = useState(false);
-  const [cancelReason, setCancelReason] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -34,29 +31,23 @@ export default function PODetailHeader({
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setCancelReason('');
   };
 
   const handleCancelPO = async () => {
-    if (!cancelReason.trim()) {
-      showToast.error('Please provide a reason for cancellation');
-      return;
-    }
-
     try {
       setLoading(true);
-      await POService.cancel(poId, { reason: cancelReason });
+      await SOService.cancel(soId);
       handleCloseDialog();
 
       if (onCancelSuccess) {
         onCancelSuccess();
       }
 
-      showToast.success('PO cancelled successfully');
-      navigate('/procurement');
+      showToast.success('SO cancelled successfully');
+      navigate('/sales');
     } catch (msg) {
-      console.error('Error cancelling PO:', msg);
-      showToast.error(msg || 'Failed to cancel PO');
+      console.error('Error cancelling SO:', msg);
+      showToast.error(msg || 'Failed to cancel SO');
     } finally {
       setLoading(false);
     }
@@ -89,7 +80,7 @@ export default function PODetailHeader({
                 color: 'text.primary',
               }}
             >
-              {poNo}
+              {soNo}
             </Typography>
             <Typography
               variant="body1"
@@ -134,38 +125,19 @@ export default function PODetailHeader({
                 transition: 'background-color 0.3s ease',
               }}
             >
-              Cancel PO
+              Cancel SO
             </Button>
           </Box>
         </Box>
       </Card>
 
-      {/* Cancel Dialog */}
       <Dialog
         open={openDialog}
         onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Cancel Purchase Order</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Are you sure you want to cancel PO <strong>{poNo}</strong>? Please
-            provide a reason:
-          </Typography>
-          <TextField
-            autoFocus
-            multiline
-            rows={4}
-            fullWidth
-            label="Cancellation Reason"
-            value={cancelReason}
-            onChange={(e) => setCancelReason(e.target.value)}
-            placeholder="Enter reason for cancellation..."
-            variant="outlined"
-            required
-          />
-        </DialogContent>
+        <DialogTitle>Cancel Sales Order</DialogTitle>
         <DialogActions sx={{ padding: 2 }}>
           <Button onClick={handleCloseDialog} color="inherit">
             Close
@@ -174,7 +146,7 @@ export default function PODetailHeader({
             onClick={handleCancelPO}
             variant="contained"
             color="error"
-            disabled={loading || !cancelReason.trim()}
+            disabled={loading}
           >
             {loading ? 'Cancelling...' : 'Confirm Cancel'}
           </Button>

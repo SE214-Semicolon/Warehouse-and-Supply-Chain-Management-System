@@ -3,13 +3,7 @@ import InfoCard from '@/components/InfoCard';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import { formatDate } from '../../../utils/formatDate';
 
-export default function BasicInfoSection({
-  status,
-  updatedAt,
-  placedAt,
-  supplier,
-  expectedArrival,
-}) {
+export default function SOInfo({ status, updatedAt, placedAt, customer }) {
   const getStatusChip = (status, color) => {
     const colorStyles = {
       success: {
@@ -49,27 +43,26 @@ export default function BasicInfoSection({
 
   const getStatusInfo = (status) => {
     switch (status) {
-      case 'ordered':
-        return { label: 'Ordered', color: 'success' };
-      case 'draft':
-        return { label: 'Draft', color: 'info' };
-      case 'partial':
-        return { label: 'Partial', color: 'warning' };
-      case 'received':
-        return { label: 'Recieved', color: 'success' };
+      case 'approved':
+        return { label: 'Approved', color: 'success' };
+      case 'pending':
+        return { label: 'Pending', color: 'info' };
+      case 'processing':
+        return { label: 'Processing', color: 'warning' };
+      case 'shipped':
+        return { label: 'Shipped', color: 'success' };
       case 'cancelled':
-        return { label: 'Canceled', color: 'error' };
+        return { label: 'Cancelled', color: 'error' };
       default:
         return { label: status, color: 'warning' };
     }
   };
 
   const fields = [
-    { label: 'Supplier', value: supplier.name },
-    { label: 'Supplier code', value: supplier.code },
+    { label: 'Customer', value: customer.name },
+    { label: 'Customer code', value: customer.code },
     { label: 'Status', value: status, isChip: true },
     { label: 'Order date', value: formatDate(placedAt) },
-    { label: 'Expected arrival', value: formatDate(expectedArrival) },
     { label: 'Last updated', value: formatDate(updatedAt) },
   ];
 

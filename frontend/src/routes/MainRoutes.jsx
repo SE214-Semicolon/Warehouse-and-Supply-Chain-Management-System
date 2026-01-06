@@ -24,6 +24,7 @@ import Alert from '@/pages/alert';
 import DemandPlanning from '@/pages/demand-planning';
 import Sales from '@/pages/sales';
 import CustomerDetail from '@/pages/sales/CustomerDetail';
+import SODetail from '../pages/sales/SODetail';
 
 export default function MainRoutes() {
   return (
@@ -54,6 +55,7 @@ export default function MainRoutes() {
           <Route path="/demand-planning" element={<DemandPlanning />} />
           <Route path="/sales" element={<Sales />} />
           <Route path="/customer/detail" element={<CustomerDetail />} />
+          <Route path="/sales-order/detail" element={<SODetail />} />
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
