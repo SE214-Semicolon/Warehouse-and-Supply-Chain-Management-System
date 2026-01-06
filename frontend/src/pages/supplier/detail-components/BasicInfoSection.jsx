@@ -8,19 +8,15 @@ export default function BasicInfoSection({ data }) {
 
   useEffect(() => {
     setFields([
-      { label: 'Địa chỉ', value: data.address },
-      { label: 'Điện thoại', value: data.contactInfo.phone },
-      { label: 'Email', value: data.contactInfo.email },
-      { label: 'Người liên hệ', value: data.contactInfo.contactPerson },
-      // { label: 'Website', value: data.website, isLink: true },
-      // { label: 'Mã số thuế', value: data.taxCode },
-      // { label: 'Ngành hàng', value: data.category },
-      // { label: 'Ngày hợp tác', value: data.cooperationDate },
+      { label: 'Address', value: data?.address },
+      { label: 'Phone', value: data?.contactInfo?.phone },
+      { label: 'Email', value: data?.contactInfo?.email },
+      { label: 'Contact person', value: data?.contactInfo?.contactPerson },
     ]);
   }, [data]);
 
   return (
-    <InfoCard title="Thông tin cơ bản" icon={ApartmentIcon} iconColor="blue">
+    <InfoCard title="Information" icon={ApartmentIcon} iconColor="blue">
       <Box
         sx={{
           '& > div': {

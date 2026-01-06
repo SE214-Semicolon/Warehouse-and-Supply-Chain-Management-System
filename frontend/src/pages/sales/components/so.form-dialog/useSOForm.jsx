@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import SupplierService from '@/services/supplier.service';
+import CustomerService from '@/services/customer.service';
 import ProductService from '@/services/product.service';
 
 const emptyItem = {
@@ -7,37 +7,35 @@ const emptyItem = {
   productName: '',
   sku: '',
   unit: '',
-  qtyOrdered: 1,
+  qty: 1,
   unitPrice: 0,
   total: 0,
 };
 
-export const usePOForm = ({ open, isEdit, selectedRow }) => {
-  const [suppliers, setSuppliers] = useState([]);
+export const useSOForm = ({ open, isEdit, selectedRow }) => {
+  const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState({ suppliers: true, products: true });
+  const [loading, setLoading] = useState({ customers: true, products: true });
 
   const [formValues, setFormValues] = useState({
-    supplierId: '',
-    expectedArrival: '',
+    customerId: '',
     notes: '',
     items: [],
   });
 
   const [errors, setErrors] = useState({
-    supplierId: '',
-    expectedArrival: '',
+    customerId: '',
     items: [],
   });
 
   useEffect(() => {
     if (!open) return;
 
-    setLoading({ suppliers: true, products: true });
+    setLoading({ customers: true, products: true });
 
-    SupplierService.getAll()
-      .then((res) => setSuppliers(res.data?.data || res.data || []))
-      .finally(() => setLoading((p) => ({ ...p, suppliers: false })));
+    CustomerService.getAll()
+      .then((res) => setCustomers(res.data?.data || res.data || []))
+      .finally(() => setLoading((p) => ({ ...p, customers: false })));
 
     ProductService.getAll()
       .then((res) => setProducts(res.data?.data || res.data || []))
@@ -45,8 +43,7 @@ export const usePOForm = ({ open, isEdit, selectedRow }) => {
 
     if (isEdit && selectedRow) {
       setFormValues({
-        supplierId: selectedRow.supplierId || '',
-        expectedArrival: selectedRow.expectedArrival?.slice(0, 10) || '',
+        customerId: selectedRow.customerId || '',
         notes: selectedRow.notes || '',
         items:
           selectedRow.items?.map((i) => ({
@@ -54,21 +51,20 @@ export const usePOForm = ({ open, isEdit, selectedRow }) => {
             productName: i.productName || '',
             sku: i.sku || '',
             unit: i.unit || '',
-            qtyOrdered: i.qtyOrdered || 1,
+            qty: i.qty || 1,
             unitPrice: i.unitPrice || 0,
-            total: (i.qtyOrdered || 1) * (i.unitPrice || 0),
+            total: i.qty * i.unitPrice,
           })) || [],
       });
     } else {
       setFormValues({
-        supplierId: '',
-        expectedArrival: '',
+        customerId: '',
         notes: '',
         items: [],
       });
     }
 
-    setErrors({ supplierId: '', expectedArrival: '', items: [] });
+    setErrors({ customerId: '', items: [] });
   }, [open, isEdit, selectedRow]);
 
   const addItem = () => {
@@ -95,11 +91,11 @@ export const usePOForm = ({ open, isEdit, selectedRow }) => {
       const items = [...prev.items];
       const oldItem = items[index];
 
-      if ('qtyOrdered' in updates) {
-        const val = updates.qtyOrdered;
-        if (val === '' || val === null) updates.qtyOrdered = 1;
+      if ('qty' in updates) {
+        const val = updates.qty;
+        if (val === '' || val === null) updates.qty = 1;
         else if (Number(val) < 1) return prev;
-        else updates.qtyOrdered = Number(val);
+        else updates.qty = Number(val);
       }
       if ('unitPrice' in updates) {
         const val = updates.unitPrice;
@@ -112,7 +108,7 @@ export const usePOForm = ({ open, isEdit, selectedRow }) => {
         ...oldItem,
         ...updates,
         total:
-          (updates.qtyOrdered ?? oldItem.qtyOrdered ?? 1) *
+          (updates.qty ?? oldItem.qty ?? 1) *
           (updates.unitPrice ?? oldItem.unitPrice ?? 0),
       };
 
@@ -126,36 +122,25 @@ export const usePOForm = ({ open, isEdit, selectedRow }) => {
     });
   };
 
-  const setSupplier = (supplierId) => {
-    setFormValues((prev) => ({ ...prev, supplierId }));
-    if (supplierId) setErrors((prev) => ({ ...prev, supplierId: '' }));
+  const setCustomer = (customerId) => {
+    setFormValues((prev) => ({ ...prev, customerId }));
+    if (customerId) setErrors((prev) => ({ ...prev, customerId: '' }));
   };
 
   const validate = () => {
-    const newErrors = { supplierId: '', expectedArrival: '', items: [] };
+    const newErrors = { customerId: '', items: [] };
     let ok = true;
 
-    if (!formValues.supplierId) {
-      newErrors.supplierId = 'Select a supplier';
+    if (!formValues.customerId) {
+      newErrors.customerId = 'Select a customer';
       ok = false;
-    }
-
-    if (formValues.expectedArrival) {
-      const picked = new Date(formValues.expectedArrival);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (picked < today) {
-        newErrors.expectedArrival =
-          'Expected arrival date cannot be in the past';
-        ok = false;
-      }
     }
 
     formValues.items.forEach((item, i) => {
       if (!item.productId) {
         newErrors.items[i] = 'Select a product';
         ok = false;
-      } else if (!item.qtyOrdered || item.qtyOrdered < 1) {
+      } else if (!item.qty || item.qty < 1) {
         newErrors.items[i] = 'Quantity must be at least 1';
         ok = false;
       } else {
@@ -168,18 +153,17 @@ export const usePOForm = ({ open, isEdit, selectedRow }) => {
   };
 
   const getPayload = () => ({
-    supplierId: formValues.supplierId,
-    expectedArrival: formValues.expectedArrival || null,
-    notes: formValues.notes,
+    customerId: formValues.customerId,
+    notes: formValues.notes.trim(),
     items: formValues.items.map((i) => ({
       productId: i.productId,
-      qtyOrdered: Number(i.qtyOrdered),
+      qty: Number(i.qty),
       unitPrice: Number(i.unitPrice),
     })),
   });
 
   return {
-    suppliers,
+    customers,
     products,
     loading,
     formValues,
@@ -187,7 +171,7 @@ export const usePOForm = ({ open, isEdit, selectedRow }) => {
     addItem,
     removeItem,
     updateItem,
-    setSupplier,
+    setCustomer,
     setFormValues,
     validate,
     getPayload,

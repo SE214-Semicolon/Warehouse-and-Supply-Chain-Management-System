@@ -1,12 +1,12 @@
-import { formatDate } from '../../../utils/formatDate';
+import { formatDate } from '../../../../utils/formatDate';
 
 export const columns = [
   { id: 'stt', label: 'No' },
-  { id: 'poNo', label: 'PO Code', search: true },
+  { id: 'soNo', label: 'SO Code', search: true },
   {
-    id: 'supplier.name',
-    label: 'Supplier',
-    render: (value) => value || '—',
+    id: 'customer.name',
+    label: 'Customer',
+    render: (value) => value || '',
     search: true,
     align: 'left',
   },
@@ -22,20 +22,15 @@ export const columns = [
     render: (value) => (value ? formatDate(value) : '—'),
   },
   {
-    id: 'expectedArrival',
-    label: 'Expected arrival',
-    render: (value) => (value ? formatDate(value) : '—'),
-  },
-  {
     id: 'status',
     label: 'Status',
     render: (value) => {
       const color =
         {
-          draft: 'gray',
-          ordered: 'blue',
-          partial: 'orange',
-          received: 'green',
+          pending: 'gray',
+          approved: 'blue',
+          processing: 'orange',
+          shipped: 'green',
           cancelled: 'red',
         }[value] || 'gray';
 

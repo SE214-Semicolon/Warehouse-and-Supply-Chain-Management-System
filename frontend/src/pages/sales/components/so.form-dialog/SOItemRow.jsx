@@ -8,7 +8,7 @@ import {
 } from '@mui/material';
 import { Delete } from '@mui/icons-material';
 
-export default function POItemRow({
+export default function SOItemRow({
   item,
   products,
   loadingProducts,

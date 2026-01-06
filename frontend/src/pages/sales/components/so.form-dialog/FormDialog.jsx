@@ -14,15 +14,11 @@ import {
   TextField,
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
-import POItemRow from './POItemRow';
-import { usePOForm } from './usePOForm';
+import SOItemRow from './SOItemRow';
+import { useSOForm } from './useSOForm';
 import { Autocomplete, TextField as MuiTextField } from '@mui/material';
-import POService from '../../../services/po.service';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import dayjs from 'dayjs';
-import 'dayjs/locale/vi';
-dayjs.locale('vi');
-import { showToast } from '../../../utils/toast';
+import SOService from '../../../../services/so.service';
+import { showToast } from '../../../../utils/toast';
 
 export default function FormDialog({
   open,
@@ -32,10 +28,10 @@ export default function FormDialog({
   onSuccess,
 }) {
   const isEdit = mode === 'edit';
-  const isDraft = isEdit ? selectedRow?.status === 'draft' : true;
+  const isDraft = isEdit ? selectedRow?.status === 'pending' : true;
 
   const {
-    suppliers,
+    customers,
     products,
     formValues,
     errors,
@@ -43,11 +39,11 @@ export default function FormDialog({
     addItem,
     removeItem,
     updateItem,
-    setSupplier,
+    setCustomer,
     validate,
     getPayload,
     setFormValues,
-  } = usePOForm({ open, isEdit, selectedRow });
+  } = useSOForm({ open, isEdit, selectedRow });
 
   const totalAmount = formValues.items.reduce(
     (sum, item) => sum + (item.total || 0),
@@ -61,14 +57,14 @@ export default function FormDialog({
       const payload = getPayload();
       let res;
       if (isEdit) {
-        res = await POService.update(selectedRow.id, payload);
+        res = await SOService.update(selectedRow.id, payload);
       } else {
-        res = await POService.createDraft(payload);
+        res = await SOService.create(payload);
       }
       onSuccess?.(res.data || res.data?.data);
       onClose();
     } catch (msg) {
-      showToast.error(msg || 'Fail to save draft!');
+      showToast.error(msg || 'Fail to save!');
     }
   };
 
@@ -79,24 +75,24 @@ export default function FormDialog({
       let po;
       if (isEdit) {
         const payload = getPayload();
-        await POService.update(selectedRow.id, payload);
-        po = await POService.submitOrder(selectedRow.id);
+        await SOService.update(selectedRow.id, payload);
+        po = await SOService.submitOrder(selectedRow.id);
       } else {
         const payload = getPayload();
-        const draftRes = await POService.createDraft(payload);
+        const draftRes = await SOService.create(payload);
         const newId = draftRes.id || draftRes.data?.id;
-        po = await POService.submitOrder(newId);
+        po = await SOService.submitOrder(newId);
       }
 
       onSuccess?.(po.data || po.data?.data);
       onClose();
     } catch (msg) {
-      showToast.error(msg || 'Fail to submit order!');
+      showToast.error(msg || 'Fail to submit!');
     }
   };
 
-  const selectedSupplier =
-    suppliers.find((s) => s.id === formValues.supplierId) || null;
+  const selectedCustomer =
+    customers.find((s) => s.id === formValues.customerId) || null;
 
   return (
     <Dialog
@@ -107,7 +103,7 @@ export default function FormDialog({
       key={isEdit ? selectedRow?.id : 'add'}
     >
       <DialogTitle sx={{ fontWeight: 700, color: '#7F408E' }}>
-        {isEdit ? 'Edit Purchase Order' : 'New Purchase Order'}
+        {isEdit ? 'Edit Sales Order' : 'New Sales Order'}
       </DialogTitle>
 
       <DialogContent dividers>
@@ -115,10 +111,10 @@ export default function FormDialog({
           <Grid size={{ xs: 12, md: 6 }}>
             <Autocomplete
               disabled={!isDraft}
-              options={suppliers}
-              loading={loading.suppliers}
-              value={selectedSupplier}
-              onChange={(_, newValue) => setSupplier(newValue?.id || '')}
+              options={customers}
+              loading={loading.customers}
+              value={selectedCustomer}
+              onChange={(_, newValue) => setCustomer(newValue?.id || '')}
               getOptionLabel={(option) =>
                 option ? `${option.name} (${option.code || '—'})` : ''
               }
@@ -138,39 +134,11 @@ export default function FormDialog({
               renderInput={(params) => (
                 <MuiTextField
                   {...params}
-                  label="Supplier *"
-                  error={!!errors.supplierId}
-                  helperText={errors.supplierId || ' '}
+                  label="Customer *"
+                  error={!!errors.customerId}
+                  helperText={errors.customerId || ' '}
                 />
               )}
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <DatePicker
-              label="Expected Arrival Date"
-              format="DD/MM/YYYY"
-              value={
-                formValues.expectedArrival
-                  ? dayjs(formValues.expectedArrival)
-                  : null
-              }
-              onChange={(newValue) => {
-                setFormValues((prev) => ({
-                  ...prev,
-                  expectedArrival: newValue
-                    ? newValue.format('YYYY-MM-DD')
-                    : '',
-                }));
-              }}
-              disabled={!isDraft}
-              slotProps={{
-                textField: {
-                  fullWidth: true,
-                  error: !!errors.expectedArrival,
-                  helperText: errors.expectedArrival || ' ',
-                },
-              }}
             />
           </Grid>
 
@@ -194,7 +162,7 @@ export default function FormDialog({
                 </TableHead>
                 <TableBody>
                   {formValues.items.map((item, index) => (
-                    <POItemRow
+                    <SOItemRow
                       key={index}
                       index={index}
                       item={item}
@@ -213,10 +181,14 @@ export default function FormDialog({
                         })
                       }
                       onQtyChange={(value) =>
-                        updateItem(index, { qtyOrdered: value })
+                        updateItem(index, {
+                          qty: value,
+                        })
                       }
                       onPriceChange={(value) =>
-                        updateItem(index, { unitPrice: value })
+                        updateItem(index, {
+                          unitPrice: value,
+                        })
                       }
                       onRemove={(index) => removeItem(index)}
                     />
@@ -275,7 +247,7 @@ export default function FormDialog({
               onClick={handleSaveDraft}
               disabled={formValues.items.length === 0 && !isEdit}
             >
-              {isEdit ? 'Update Draft' : 'Save as Draft'}
+              {isEdit ? 'Update Order' : 'Order'}
             </Button>
 
             <Button
@@ -284,7 +256,7 @@ export default function FormDialog({
               onClick={handleSubmitOrder}
               disabled={formValues.items.length === 0 && !isEdit}
             >
-              Order
+              Submit
             </Button>
           </>
         )}
