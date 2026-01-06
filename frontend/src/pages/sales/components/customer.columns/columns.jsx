@@ -1,22 +1,24 @@
+import { formatDate } from '../../../../utils/formatDate';
+
 export const columns = [
   { id: 'stt', label: 'No' },
-  { id: 'code', label: 'Code' },
-  { id: 'name', label: 'Name' },
+  { id: 'code', label: 'Code', align: 'left' },
+  { id: 'name', label: 'Name', align: 'left' },
   {
     id: 'contactInfo.phone',
     label: 'Phone',
-    render: (value) => value || '—',
+    render: (value) => value || '',
   },
   {
     id: 'contactInfo.email',
     label: 'Email',
-    render: (value) => value || '—',
+    render: (value) => value || '',
+    align: 'left',
   },
-  { id: 'address', label: 'Addess' },
+  { id: 'address', label: 'Addess', align: 'left' },
   {
     id: 'createdAt',
     label: 'Created at',
-    render: (value) =>
-      value ? new Date(value).toLocaleDateString('vi-VN') : '—',
+    render: (value) => (value ? formatDate(value) : '—'),
   },
 ];

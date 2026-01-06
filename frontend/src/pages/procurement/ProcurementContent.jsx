@@ -129,7 +129,11 @@ export default function ProcurementContent({ menuId }) {
           mt: 2,
         }}
       >
-        <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+        <SearchBar
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          placeholder="Search..."
+        />
         <ActionButtons
           onAdd={handleAdd}
           //   onImport={handleImport}

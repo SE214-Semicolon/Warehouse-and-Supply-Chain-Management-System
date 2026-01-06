@@ -47,7 +47,7 @@ export default function SupplierHeader({ supplier, onSuccess }) {
               marginTop: 1,
             }}
           >
-            Mã nhà cung cấp:
+            Supplier code:
             <Box
               component="span"
               sx={{
@@ -86,7 +86,7 @@ export default function SupplierHeader({ supplier, onSuccess }) {
               transition: 'background-color 0.3s ease',
             }}
           >
-            Chỉnh sửa
+            Edit
           </Button>
           <FormDialog
             open={openDialog}

@@ -1,4 +1,3 @@
-// src/pages/procurement/tabs/purchase-order/components/FormDialog.jsx
 import {
   Dialog,
   DialogContent,
@@ -15,12 +14,14 @@ import {
   TextField,
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
-import FormInput from '@/components/FormInput';
-// import DialogButtons from '@/components/DialogButtons';
 import POItemRow from './POItemRow';
 import { usePOForm } from './usePOForm';
 import { Autocomplete, TextField as MuiTextField } from '@mui/material';
 import POService from '../../../services/po.service';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
+import 'dayjs/locale/vi';
+dayjs.locale('vi');
 
 export default function FormDialog({
   open,
@@ -80,12 +81,10 @@ export default function FormDialog({
     try {
       let po;
       if (isEdit) {
-        // Nếu đang edit draft → cập nhật trước, rồi submit
         const payload = getPayload();
         await POService.update(selectedRow.id, payload);
         po = await POService.submitOrder(selectedRow.id);
       } else {
-        // Tạo mới → draft trước, rồi submit luôn
         const payload = getPayload();
         const draftRes = await POService.createDraft(payload);
         const newId = draftRes.id || draftRes.data?.id;
@@ -111,13 +110,14 @@ export default function FormDialog({
       key={isEdit ? selectedRow?.id : 'add'}
     >
       <DialogTitle sx={{ fontWeight: 700, color: '#7F408E' }}>
-        {isEdit ? 'Sửa Purchase Order' : 'Tạo Purchase Order mới'}
+        {isEdit ? 'Edit Purchase Order' : 'New Purchase Order'}
       </DialogTitle>
 
       <DialogContent dividers>
         <Grid container spacing={3} sx={{ mt: 1 }}>
           <Grid size={{ xs: 12, md: 6 }}>
             <Autocomplete
+              disabled={!isDraft}
               options={suppliers}
               loading={loading.suppliers}
               value={selectedSupplier}
@@ -141,7 +141,7 @@ export default function FormDialog({
               renderInput={(params) => (
                 <MuiTextField
                   {...params}
-                  label="Nhà cung cấp *"
+                  label="Supplier *"
                   error={!!errors.supplierId}
                   helperText={errors.supplierId || ' '}
                 />
@@ -150,98 +150,105 @@ export default function FormDialog({
           </Grid>
 
           <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              label="Ngày giao hàng dự kiến"
-              type="date"
-              value={formValues.expectedArrival || ''}
-              onChange={(e) =>
+            <DatePicker
+              label="Expected Arrival Date"
+              format="DD/MM/YYYY"
+              value={
+                formValues.expectedArrival
+                  ? dayjs(formValues.expectedArrival)
+                  : null
+              }
+              onChange={(newValue) => {
                 setFormValues((prev) => ({
                   ...prev,
-                  expectedArrival: e.target.value,
-                }))
-              }
-              InputLabelProps={{ shrink: true }}
-              error={!!errors.expectedArrival}
-              helperText={errors.expectedArrival || ' '}
-              fullWidth
+                  expectedArrival: newValue
+                    ? newValue.format('YYYY-MM-DD')
+                    : '',
+                }));
+              }}
+              disabled={!isDraft}
               slotProps={{
-                inputLabel: { shrink: true },
+                textField: {
+                  fullWidth: true,
+                  error: !!errors.expectedArrival,
+                  helperText: errors.expectedArrival || ' ',
+                },
               }}
             />
           </Grid>
 
-          <Grid size={{ xs: 12 }}>
-            <Typography variant="h6" gutterBottom>
-              Danh sách sản phẩm
-            </Typography>
-
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell width="35%">Sản phẩm *</TableCell>
-                  <TableCell width="12%">Mã SP</TableCell>
-                  <TableCell width="12%">SL *</TableCell>
-                  <TableCell width="10%">ĐV</TableCell>
-                  <TableCell width="15%">Đơn giá *</TableCell>
-                  <TableCell width="16%">Thành tiền</TableCell>
-                  <TableCell width="5%"></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {formValues.items.map((item, index) => (
-                  <POItemRow
-                    key={index}
-                    index={index}
-                    item={item}
-                    products={products}
-                    loadingProducts={loading.products}
-                    error={errors.items[index]}
-                    disabled={!isDraft}
-                    onProductSelect={(product) =>
-                      updateItem(index, {
-                        productId: product?.id,
-                        productName: product?.name,
-                        sku: product?.sku || product?.code || '',
-                        unit: product?.unit || 'Cái',
-                        unitPrice:
-                          product?.purchasePrice || product?.price || 0,
-                      })
-                    }
-                    onQtyChange={(value) =>
-                      updateItem(index, { qtyOrdered: value })
-                    }
-                    onPriceChange={(value) =>
-                      updateItem(index, { unitPrice: value })
-                    }
-                    onRemove={(index) => removeItem(index)}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-
-            {isDraft && (
-              <Button
-                startIcon={<Add />}
-                onClick={addItem}
-                variant="outlined"
-                sx={{ mt: 2 }}
-              >
-                Thêm sản phẩm
-              </Button>
-            )}
-
-            <Box sx={{ mt: 3, textAlign: 'right', pr: 3 }}>
-              <Typography variant="h5" color="primary">
-                Tổng tiền:{' '}
-                <strong>{totalAmount.toLocaleString('vi-VN')} ₫</strong>
+          {!isEdit && (
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="h6" gutterBottom>
+                Product Items
               </Typography>
-            </Box>
-          </Grid>
 
-          {/* Ghi chú */}
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell width="35%">Product *</TableCell>
+                    <TableCell width="12%">Code</TableCell>
+                    <TableCell width="12%">Amount *</TableCell>
+                    <TableCell width="10%">Unit</TableCell>
+                    <TableCell width="15%">Unit Price *</TableCell>
+                    <TableCell width="16%">Total</TableCell>
+                    <TableCell width="5%"></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {formValues.items.map((item, index) => (
+                    <POItemRow
+                      key={index}
+                      index={index}
+                      item={item}
+                      products={products}
+                      loadingProducts={loading.products}
+                      error={errors.items[index]}
+                      disabled={!isDraft}
+                      onProductSelect={(product) =>
+                        updateItem(index, {
+                          productId: product?.id,
+                          productName: product?.name,
+                          sku: product?.sku || product?.code || '',
+                          unit: product?.unit || 'Cái',
+                          unitPrice:
+                            product?.purchasePrice || product?.price || 0,
+                        })
+                      }
+                      onQtyChange={(value) =>
+                        updateItem(index, { qtyOrdered: value })
+                      }
+                      onPriceChange={(value) =>
+                        updateItem(index, { unitPrice: value })
+                      }
+                      onRemove={(index) => removeItem(index)}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+
+              {isDraft && (
+                <Button
+                  startIcon={<Add />}
+                  onClick={addItem}
+                  variant="outlined"
+                  sx={{ mt: 2 }}
+                >
+                  Add Product
+                </Button>
+              )}
+
+              <Box sx={{ mt: 3, textAlign: 'right', pr: 3 }}>
+                <Typography variant="h5" color="primary">
+                  Total: <strong>{totalAmount.toLocaleString('vi-VN')}</strong>
+                </Typography>
+              </Box>
+            </Grid>
+          )}
+
           <Grid size={{ xs: 12 }}>
             <TextField
-              label="Ghi chú"
+              label="Note"
               multiline
               rows={4}
               value={formValues.notes || ''}
@@ -250,15 +257,18 @@ export default function FormDialog({
               }
               fullWidth
               variant="outlined"
+              disabled={!isDraft}
             />
           </Grid>
         </Grid>
       </DialogContent>
 
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2, gap: 2 }}>
-        <Button onClick={onClose} variant="outlined">
-          Hủy
-        </Button>
+        {isDraft && isEdit && (
+          <Button onClick={onClose} variant="outlined">
+            Hủy
+          </Button>
+        )}
 
         {isDraft && (
           <>
@@ -266,8 +276,9 @@ export default function FormDialog({
               variant="contained"
               color="inherit"
               onClick={handleSaveDraft}
+              disabled={formValues.items.length === 0}
             >
-              {isEdit ? 'Cập nhật nháp' : 'Lưu nháp'}
+              {isEdit ? 'Update Draft' : 'Save as Draft'}
             </Button>
 
             <Button
@@ -276,7 +287,7 @@ export default function FormDialog({
               onClick={handleSubmitOrder}
               disabled={formValues.items.length === 0}
             >
-              {isEdit ? 'Đặt hàng lại' : 'Đặt hàng'}
+              Order
             </Button>
           </>
         )}
