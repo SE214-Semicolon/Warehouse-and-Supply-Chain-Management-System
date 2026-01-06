@@ -895,8 +895,12 @@ describe('SalesOrderService', () => {
         ],
       };
 
-      soRepo.findById.mockResolvedValueOnce(approvedSo);
-      soRepo.findItemsByIds.mockResolvedValueOnce([soItemWithoutReservation]);
+      soRepo.findById
+        .mockResolvedValueOnce(approvedSo)
+        .mockResolvedValueOnce(approvedSo);
+      soRepo.findItemsByIds
+        .mockResolvedValueOnce([soItemWithoutReservation])
+        .mockResolvedValueOnce([soItemWithoutReservation]);
 
       await expect(service.fulfillSalesOrder('so-uuid-1', fulfillDto)).rejects.toThrow(
         BadRequestException,
