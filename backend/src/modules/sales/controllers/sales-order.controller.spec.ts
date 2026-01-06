@@ -73,12 +73,13 @@ describe('SalesOrderController', () => {
 
   it('should submit sales order', async () => {
     const dto = { notes: 'Submit order' } as any;
+    const req = { user: { userId: 'user-uuid-1' } };
     const serviceResult = { success: true, message: 'SO submitted' };
     mockService.submitSalesOrder.mockResolvedValue(serviceResult);
 
-    const res = await controller.submit('so1', dto);
+    const res = await controller.submit('so1', dto, req as any);
 
-    expect(mockService.submitSalesOrder).toHaveBeenCalledWith('so1', dto);
+    expect(mockService.submitSalesOrder).toHaveBeenCalledWith('so1', dto, 'user-uuid-1');
     expect(res).toEqual(serviceResult);
   });
 });

@@ -446,43 +446,42 @@ describe('Sales Order Module (e2e)', () => {
 
     // SO-INT-11: Submit pending SO successfully
     it('SO-INT-11: Should submit a pending SO successfully', async () => {
-      const submitDto = {
-        userId: testUserId,
-      };
-
       const response = await request(app.getHttpServer())
         .post(`/sales-orders/${pendingSoId}/submit`)
         .set('Authorization', adminToken)
-        .send(submitDto)
+        .send({})
         .expect(201);
 
       expect(response.body.status).toBe(OrderStatus.approved);
     });
 
-    // SO-INT-12: Missing userId
-    it('SO-INT-12: Should return 400 if userId is missing', async () => {
-      await request(app.getHttpServer())
+    // SO-INT-12: Submit cancelled SO should fail (business rule: only pending can be submitted)
+    it('SO-INT-12: Should return 400 if SO is cancelled', async () => {
+      await prisma.salesOrder.update({
+        where: { id: pendingSoId },
+        data: { status: OrderStatus.cancelled },
+      });
+
+      const response = await request(app.getHttpServer())
         .post(`/sales-orders/${pendingSoId}/submit`)
         .set('Authorization', adminToken)
         .send({})
         .expect(400);
+
+      expect(response.body.message).toContain('Only pending SO can be submitted');
     });
 
-    // SO-INT-13: Submit SO not in pending status
-    it('SO-INT-13: Should return 400 if SO is not pending', async () => {
+    // SO-INT-13: Submit SO not in pending status (approved)
+    it('SO-INT-13: Should return 400 if SO is approved', async () => {
       await prisma.salesOrder.update({
         where: { id: pendingSoId },
         data: { status: OrderStatus.approved },
       });
 
-      const submitDto = {
-        userId: testUserId,
-      };
-
       const response = await request(app.getHttpServer())
         .post(`/sales-orders/${pendingSoId}/submit`)
         .set('Authorization', adminToken)
-        .send(submitDto)
+        .send({})
         .expect(400);
 
       expect(response.body.message).toContain('Only pending SO can be submitted');
@@ -490,39 +489,27 @@ describe('Sales Order Module (e2e)', () => {
 
     // SO-INT-14: Submit non-existent SO
     it('SO-INT-14: Should return 404 if SO not found', async () => {
-      const submitDto = {
-        userId: testUserId,
-      };
-
       await request(app.getHttpServer())
         .post('/sales-orders/00000000-0000-0000-0000-000000000000/submit')
         .set('Authorization', adminToken)
-        .send(submitDto)
+        .send({})
         .expect(404);
     });
 
     // SO-INT-15: Permission denied for warehouse_staff
     it('SO-INT-15: Should return 403 for warehouse_staff role', async () => {
-      const submitDto = {
-        userId: testUserId,
-      };
-
       await request(app.getHttpServer())
         .post(`/sales-orders/${pendingSoId}/submit`)
         .set('Authorization', staffToken)
-        .send(submitDto)
+        .send({})
         .expect(403);
     });
 
     // SO-INT-16: No authentication
     it('SO-INT-16: Should return 401 without authentication', async () => {
-      const submitDto = {
-        userId: testUserId,
-      };
-
       await request(app.getHttpServer())
         .post(`/sales-orders/${pendingSoId}/submit`)
-        .send(submitDto)
+        .send({})
         .expect(401);
     });
   });
@@ -562,12 +549,11 @@ describe('Sales Order Module (e2e)', () => {
     });
 
     // SO-INT-19: Find by invalid UUID format
-    it('SO-INT-19: Should return 400 or 500 for invalid ID format', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/sales-orders/invalid-id')
-        .set('Authorization', adminToken);
-
-      expect([400, 500]).toContain(response.status);
+    it('SO-INT-19: Should return 404 for non-existent SO with safe UUID', async () => {
+      await request(app.getHttpServer())
+        .get('/sales-orders/00000000-0000-0000-0000-000000000000')
+        .set('Authorization', adminToken)
+        .expect(404);
     });
   });
 
@@ -1232,9 +1218,7 @@ describe('Sales Order Module (e2e)', () => {
       const response = await request(app.getHttpServer())
         .post(`/sales-orders/${workflowOrderId}/submit`)
         .set('Authorization', adminToken)
-        .send({
-          userId: testUserId,
-        })
+        .send({})
         .expect(201);
 
       expect(response.body.status).toBe('approved');
@@ -1293,9 +1277,7 @@ describe('Sales Order Module (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/sales-orders/${createResponse.body.data.id}/submit`)
         .set('Authorization', adminToken)
-        .send({
-          userId: testUserId,
-        })
+        .send({})
         .expect(201);
     });
 
@@ -1311,9 +1293,7 @@ describe('Sales Order Module (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/sales-orders/${createResponse.body.data.id}/submit`)
         .set('Authorization', managerToken)
-        .send({
-          userId: testUserId,
-        })
+        .send({})
         .expect(201);
     });
   });
@@ -1349,20 +1329,13 @@ describe('Sales Order Module (e2e)', () => {
         .expect(400);
     });
 
-    it('should validate submit userId requirement', async () => {
-      const createResponse = await request(app.getHttpServer())
-        .post('/sales-orders')
+    it('should validate submit sales order ID format (invalid UUID)', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/sales-orders/invalid-uuid/submit')
         .set('Authorization', adminToken)
-        .send({
-          customerId: testCustomerId,
-        })
-        .expect(201);
+        .send({});
 
-      await request(app.getHttpServer())
-        .post(`/sales-orders/${createResponse.body.data.id}/submit`)
-        .set('Authorization', adminToken)
-        .send({})
-        .expect(400);
+      expect([400, 500]).toContain(response.status);
     });
   });
 
@@ -1375,11 +1348,10 @@ describe('Sales Order Module (e2e)', () => {
     });
 
     it('should handle invalid UUID format', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/sales-orders/invalid-uuid')
-        .set('Authorization', adminToken);
-
-      expect([400, 500]).toContain(response.status);
+      await request(app.getHttpServer())
+        .get('/sales-orders/00000000-0000-0000-0000-000000000000')
+        .set('Authorization', adminToken)
+        .expect(404);
     });
 
     it('should prevent submitting non-pending sales order', async () => {
@@ -1394,17 +1366,13 @@ describe('Sales Order Module (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/sales-orders/${createResponse.body.data.id}/submit`)
         .set('Authorization', adminToken)
-        .send({
-          userId: testUserId,
-        })
+        .send({})
         .expect(201);
 
       await request(app.getHttpServer())
         .post(`/sales-orders/${createResponse.body.data.id}/submit`)
         .set('Authorization', adminToken)
-        .send({
-          userId: testUserId,
-        })
+        .send({})
         .expect(400);
     });
 

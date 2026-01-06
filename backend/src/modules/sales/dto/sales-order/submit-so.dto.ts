@@ -1,8 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
 
 export class SubmitSalesOrderDto {
-  @ApiProperty({ description: 'User ID submitting the SO' })
-  @IsUUID()
-  userId!: string;
+  @ApiPropertyOptional({ description: 'Optional notes for submission' })
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
