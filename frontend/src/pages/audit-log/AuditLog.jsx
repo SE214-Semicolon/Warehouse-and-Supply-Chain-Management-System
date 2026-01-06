@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -19,10 +19,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  InputAdornment,
   Skeleton,
 } from '@mui/material';
-import { Search, Eye, RotateCcw, ClipboardList, Filter } from 'lucide-react';
+import { Search, Eye, RotateCcw, ClipboardList } from 'lucide-react';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AuditService } from '../../services/audit.service';
 import ReportHeader from '../reports/components/header/ReportHeader';
@@ -43,7 +42,7 @@ export default function AuditLog() {
     limit: 10,
   });
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
       const res = await AuditService.getLogs(filters);
@@ -54,11 +53,11 @@ export default function AuditLog() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   useEffect(() => {
     fetchLogs();
-  }, [filters.page, filters.limit]);
+  }, [fetchLogs]);
 
   const handleReset = () => {
     setFilters({
