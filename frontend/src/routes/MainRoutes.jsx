@@ -47,7 +47,7 @@ export default function MainRoutes() {
           <Route path="/supplier/detail" element={<SupplierDetail />} />
           <Route path="/purchase-order/detail" element={<PODetail />} />
           <Route path="/procurement" element={<Procurement />} />
-          <Route path="/shipment" element={<ShipmentList />} />
+          <Route path="/shipments" element={<ShipmentList />} />
           <Route path="/shipments/create" element={<ShipmentCreate />} />
           <Route path="/shipments/track" element={<ShipmentTracking />} />
           <Route path="/shipments/:id" element={<ShipmentDetail />} />

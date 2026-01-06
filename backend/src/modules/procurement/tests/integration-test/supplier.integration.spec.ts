@@ -329,8 +329,6 @@ describe('Supplier Module (e2e)', () => {
       expect(response.body.data).toBeDefined();
       expect(Array.isArray(response.body.data)).toBe(true);
       expect(response.body.total).toBeGreaterThan(0);
-      expect(response.body.page).toBe(1);
-      expect(response.body.pageSize).toBe(20);
     });
 
     // SUP-INT-11: Filter by name
@@ -383,27 +381,28 @@ describe('Supplier Module (e2e)', () => {
       expect(hasMatch).toBe(true);
     });
 
-    // SUP-INT-15: Pagination page 1
-    it('SUP-INT-15: Should return suppliers for page 1', async () => {
+    // SUP-INT-15: Ignore pagination params (pagination disabled)
+    it('SUP-INT-15: Should ignore pagination params and return all suppliers', async () => {
       const response = await request(app.getHttpServer())
         .get('/suppliers?page=1&pageSize=2')
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response.body.data.length).toBeLessThanOrEqual(2);
-      expect(response.body.page).toBe(1);
-      expect(response.body.pageSize).toBe(2);
+      expect(response.body.data).toBeDefined();
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.total).toBeGreaterThan(0);
     });
 
-    // SUP-INT-16: Pagination page 2
-    it('SUP-INT-16: Should return suppliers for page 2', async () => {
+    // SUP-INT-16: Ignore pagination params (pagination disabled)
+    it('SUP-INT-16: Should ignore pagination params and return all suppliers', async () => {
       const response = await request(app.getHttpServer())
         .get('/suppliers?page=2&pageSize=2')
         .set('Authorization', adminToken)
         .expect(200);
 
-      expect(response.body.page).toBe(2);
-      expect(response.body.pageSize).toBe(2);
+      expect(response.body.data).toBeDefined();
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.total).toBeGreaterThan(0);
     });
 
     // SUP-INT-17: Sort by name asc

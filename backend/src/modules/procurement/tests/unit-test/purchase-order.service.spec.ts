@@ -12,6 +12,7 @@ describe('Purchase Order Service', () => {
   let service: PurchaseOrderService;
   let poRepo: jest.Mocked<PurchaseOrderRepository>;
   let inventorySvc: jest.Mocked<InventoryService>;
+  let prisma: jest.Mocked<PrismaService>;
 
   const mockPurchaseOrder: any = {
     id: 'po-uuid-1',
@@ -36,6 +37,12 @@ describe('Purchase Order Service', () => {
         unitPrice: 50000,
         lineTotal: 500000,
         remark: 'Test item',
+        product: {
+          id: 'product-uuid-1',
+          code: 'PROD-001',
+          name: 'Product A',
+          description: 'Test Product',
+        },
       },
     ],
     supplier: {
@@ -94,6 +101,38 @@ describe('Purchase Order Service', () => {
       logOperation: jest.fn().mockResolvedValue(undefined),
     };
 
+    // Mock default batch for existing tests
+    const mockDefaultBatch = {
+      id: 'batch-uuid-1',
+      batchNo: 'BATCH-DEFAULT-001',
+      productId: 'product-uuid-1',
+      quantity: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const mockDefaultLocation = {
+      id: 'location-uuid-1',
+      code: 'DEFAULT',
+      name: 'Default Location',
+      warehouseId: 'warehouse-uuid-1',
+      capacity: null,
+      type: null,
+      properties: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const mockPrisma = {
+      location: {
+        findFirst: jest.fn().mockResolvedValue(mockDefaultLocation),
+      },
+      productBatch: {
+        findUnique: jest.fn().mockResolvedValue(mockDefaultBatch),
+        create: jest.fn().mockResolvedValue(mockDefaultBatch),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PurchaseOrderService,
@@ -107,12 +146,7 @@ describe('Purchase Order Service', () => {
         },
         {
           provide: PrismaService,
-          useValue: {
-            productBatch: {
-              findUnique: jest.fn().mockResolvedValue(null),
-              create: jest.fn().mockResolvedValue({ id: 'pb-auto-1', batchNo: 'BATCH-AUTO-1' }),
-            },
-          },
+          useValue: mockPrisma,
         },
         {
           provide: AuditMiddleware,
@@ -124,6 +158,38 @@ describe('Purchase Order Service', () => {
     service = module.get<PurchaseOrderService>(PurchaseOrderService);
     poRepo = module.get(PurchaseOrderRepository);
     inventorySvc = module.get(InventoryService);
+    prisma = module.get(PrismaService);
+  });
+
+  afterEach(() => {
+    // Reset all mocks to default values after each test
+    jest.clearAllMocks();
+
+    // Reset Prisma mocks to default values
+    const mockDefaultBatch = {
+      id: 'batch-uuid-1',
+      batchNo: 'BATCH-DEFAULT-001',
+      productId: 'product-uuid-1',
+      quantity: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const mockDefaultLocation = {
+      id: 'location-uuid-1',
+      code: 'DEFAULT',
+      name: 'Default Location',
+      warehouseId: 'warehouse-uuid-1',
+      capacity: null,
+      type: null,
+      properties: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    (prisma.location.findFirst as jest.Mock).mockResolvedValue(mockDefaultLocation);
+    (prisma.productBatch.findUnique as jest.Mock).mockResolvedValue(mockDefaultBatch);
+    (prisma.productBatch.create as jest.Mock).mockResolvedValue(mockDefaultBatch);
   });
 
   it('should be defined', () => {
@@ -360,7 +426,7 @@ describe('Purchase Order Service', () => {
     it('should submit a draft PO successfully', async () => {
       const submitDto = {};
 
-      const orderedPo = { ...mockPurchaseOrder, status: PoStatus.ordered };
+      const orderedPo = { ...mockPurchaseOrder, status: PoStatus.ordered, placedAt: new Date() };
       poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(orderedPo);
       poRepo.submit.mockResolvedValue(orderedPo);
 
@@ -368,6 +434,7 @@ describe('Purchase Order Service', () => {
 
       expect(result.success).toBe(true);
       expect(result.data.status).toBe(PoStatus.ordered);
+      expect(result.data.placedAt).toBeDefined();
       expect(result.message).toBe('Purchase order submitted successfully');
       expect(poRepo.submit).toHaveBeenCalledWith('po-uuid-1');
     });
@@ -375,7 +442,7 @@ describe('Purchase Order Service', () => {
     // PO-TC12: Missing userId (tested by DTO)
     it('should accept missing submittedById (handled by controller layer)', async () => {
       const submitDto = {};
-      const orderedPo = { ...mockPurchaseOrder, status: PoStatus.ordered };
+      const orderedPo = { ...mockPurchaseOrder, status: PoStatus.ordered, placedAt: new Date() };
       poRepo.findById.mockResolvedValueOnce(mockPurchaseOrder).mockResolvedValueOnce(orderedPo);
       poRepo.submit.mockResolvedValue(orderedPo);
 
@@ -383,6 +450,7 @@ describe('Purchase Order Service', () => {
 
       expect(result.success).toBe(true);
       expect(result.data.status).toBe(PoStatus.ordered);
+      expect(result.data.placedAt).toBeDefined();
       expect(poRepo.submit).toHaveBeenCalledWith('po-uuid-1');
     });
 
@@ -863,11 +931,224 @@ describe('Purchase Order Service', () => {
         idempotencyKey: 'key-001',
       });
     });
+
+    // PO-TC39: Auto-allocate locationId when missing
+    it('should auto-allocate locationId when not provided', async () => {
+      const receiveDtoWithoutLocation = {
+        items: [
+          {
+            poItemId: 'po-item-uuid-1',
+            qtyToReceive: 5,
+            productBatchId: 'batch-uuid-1',
+            createdById: 'user-uuid-1',
+            idempotencyKey: 'key-auto-loc',
+          },
+        ],
+      };
+
+      const orderedPo = { ...mockPurchaseOrder, status: PoStatus.ordered, poNo: 'PO-2025-001' };
+      const partialPo = { ...mockPurchaseOrder, status: PoStatus.partial };
+
+      const mockDefaultLocation = {
+        id: 'default-location-uuid-1',
+        code: 'DEFAULT',
+        name: 'Default Location',
+        warehouseId: 'warehouse-uuid-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      poRepo.findById
+        .mockResolvedValueOnce(orderedPo as any)
+        .mockResolvedValueOnce(partialPo as any);
+      poRepo.findItemsByIds.mockResolvedValue([mockPurchaseOrder.items![0]] as any);
+      poRepo.receiveItems.mockResolvedValue(partialPo as any);
+
+      // Mock Prisma location queries
+      (prisma.location.findFirst as jest.Mock)
+        .mockResolvedValueOnce(mockDefaultLocation) // First call: find DEFAULT location
+        .mockResolvedValueOnce(null); // Second call: find batch (not found, will create)
+
+      (prisma.productBatch.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.productBatch.create as jest.Mock).mockResolvedValue({
+        id: 'batch-uuid-1',
+        batchNo: 'BATCH-PO-PO-2025-001-PO-ITEM',
+        productId: 'product-uuid-1',
+        quantity: 0,
+      });
+
+      inventorySvc.receiveInventory.mockResolvedValue({
+        success: true,
+        idempotent: false,
+        movement: mockMovement,
+      });
+
+      const result = await service.receivePurchaseOrder('po-uuid-1', receiveDtoWithoutLocation);
+
+      expect(result.status).toBe(PoStatus.partial);
+      expect(prisma.location.findFirst).toHaveBeenCalled();
+      expect(inventorySvc.receiveInventory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          locationId: 'default-location-uuid-1',
+        }),
+      );
+    });
+
+    // PO-TC40: Auto-create ProductBatch when productBatchId missing
+    it('should auto-create ProductBatch when productBatchId not provided', async () => {
+      const receiveDtoWithoutBatch = {
+        items: [
+          {
+            poItemId: 'po-item-uuid-1',
+            qtyToReceive: 5,
+            locationId: 'location-uuid-1',
+            createdById: 'user-uuid-1',
+            idempotencyKey: 'key-auto-batch',
+          },
+        ],
+      };
+
+      const orderedPo = { ...mockPurchaseOrder, status: PoStatus.ordered, poNo: 'PO-2025-001' };
+      const partialPo = { ...mockPurchaseOrder, status: PoStatus.partial };
+
+      const mockCreatedBatch = {
+        id: expect.any(String),
+        batchNo: 'BATCH-PO-PO-2025-001-PO-ITEM',
+        productId: 'product-uuid-1',
+        quantity: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      poRepo.findById
+        .mockResolvedValueOnce(orderedPo as any)
+        .mockResolvedValueOnce(partialPo as any);
+      poRepo.findItemsByIds.mockResolvedValue([mockPurchaseOrder.items![0]] as any);
+      poRepo.receiveItems.mockResolvedValue(partialPo as any);
+
+      (prisma.productBatch.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.productBatch.create as jest.Mock).mockResolvedValue(mockCreatedBatch);
+
+      inventorySvc.receiveInventory.mockResolvedValue({
+        success: true,
+        idempotent: false,
+        movement: mockMovement,
+      });
+
+      const result = await service.receivePurchaseOrder('po-uuid-1', receiveDtoWithoutBatch);
+
+      expect(result.status).toBe(PoStatus.partial);
+      expect(prisma.productBatch.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            productId: 'product-uuid-1',
+            batchNo: expect.stringContaining('BATCH-PO-PO-2025-001'),
+          }),
+        }),
+      );
+      expect(inventorySvc.receiveInventory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          productBatchId: expect.any(String),
+        }),
+      );
+    });
+
+    // PO-TC41: Auto-allocate both locationId and productBatchId when both missing
+    it('should auto-allocate both locationId and productBatchId when both are missing', async () => {
+      const receiveDtoWithoutBoth = {
+        items: [
+          {
+            poItemId: 'po-item-uuid-1',
+            qtyToReceive: 5,
+            createdById: 'user-uuid-1',
+            idempotencyKey: 'key-auto-both',
+          },
+        ],
+      };
+
+      const orderedPo = { ...mockPurchaseOrder, status: PoStatus.ordered, poNo: 'PO-2025-001' };
+      const partialPo = { ...mockPurchaseOrder, status: PoStatus.partial };
+
+      const mockDefaultLocation = {
+        id: 'default-location-uuid-1',
+        code: 'DEFAULT',
+        name: 'Default Location',
+        warehouseId: 'warehouse-uuid-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const mockCreatedBatch = {
+        id: expect.any(String),
+        batchNo: 'BATCH-PO-PO-2025-001-PO-ITEM',
+        productId: 'product-uuid-1',
+        quantity: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      poRepo.findById
+        .mockResolvedValueOnce(orderedPo as any)
+        .mockResolvedValueOnce(partialPo as any);
+      poRepo.findItemsByIds.mockResolvedValue([mockPurchaseOrder.items![0]] as any);
+      poRepo.receiveItems.mockResolvedValue(partialPo as any);
+
+      (prisma.location.findFirst as jest.Mock).mockResolvedValue(mockDefaultLocation);
+      (prisma.productBatch.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.productBatch.create as jest.Mock).mockResolvedValue(mockCreatedBatch);
+
+      inventorySvc.receiveInventory.mockResolvedValue({
+        success: true,
+        idempotent: false,
+        movement: mockMovement,
+      });
+
+      const result = await service.receivePurchaseOrder('po-uuid-1', receiveDtoWithoutBoth);
+
+      expect(result.status).toBe(PoStatus.partial);
+      expect(prisma.location.findFirst).toHaveBeenCalled();
+      expect(prisma.productBatch.create).toHaveBeenCalled();
+      expect(inventorySvc.receiveInventory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          locationId: 'default-location-uuid-1',
+          productBatchId: expect.any(String),
+        }),
+      );
+    });
+
+    // PO-TC42: Throw error when no location found in system
+    it('should throw BadRequestException when no location found for auto-allocation', async () => {
+      const receiveDtoWithoutLocation = {
+        items: [
+          {
+            poItemId: 'po-item-uuid-1',
+            qtyToReceive: 5,
+            productBatchId: 'batch-uuid-1',
+            createdById: 'user-uuid-1',
+            idempotencyKey: 'key-no-loc',
+          },
+        ],
+      };
+
+      const orderedPo = { ...mockPurchaseOrder, status: PoStatus.ordered };
+      poRepo.findById.mockResolvedValue(orderedPo as any);
+      poRepo.findItemsByIds.mockResolvedValue([mockPurchaseOrder.items![0]] as any);
+
+      // Mock no location found
+      (prisma.location.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        service.receivePurchaseOrder('po-uuid-1', receiveDtoWithoutLocation),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.receivePurchaseOrder('po-uuid-1', receiveDtoWithoutLocation),
+      ).rejects.toThrow('No location found in system');
+    });
   });
 
   describe('list', () => {
-    // PO-TC39: Get all with default pagination
-    it('should return all POs with default pagination', async () => {
+    // PO-TC39: Get all POs (pagination disabled)
+    it('should return all POs without pagination', async () => {
       const query = {};
 
       poRepo.list.mockResolvedValue({
@@ -880,8 +1161,6 @@ describe('Purchase Order Service', () => {
       expect(result.success).toBe(true);
       expect(result.data).toEqual([mockPurchaseOrder]);
       expect(result.total).toBe(1);
-      expect(result.page).toBe(1);
-      expect(result.pageSize).toBe(20);
       expect(result.message).toBe('Purchase orders retrieved successfully');
     });
 
@@ -1058,8 +1337,8 @@ describe('Purchase Order Service', () => {
       );
     });
 
-    // PO-TC46: Pagination
-    it('should handle pagination correctly', async () => {
+    // PO-TC46: Pagination disabled - returns all records
+    it('should return all POs regardless of page/pageSize params', async () => {
       const query = {
         page: 2,
         pageSize: 10,
@@ -1067,20 +1346,24 @@ describe('Purchase Order Service', () => {
 
       poRepo.list.mockResolvedValue({
         data: [mockPurchaseOrder as any],
-        total: 25,
+        total: 1,
       });
 
       const result = await service.list(query);
 
       expect(result.success).toBe(true);
-      expect(result.page).toBe(2);
-      expect(result.pageSize).toBe(10);
-      expect(result.total).toBe(25);
+      expect(result.total).toBe(1);
       expect(result.message).toBe('Purchase orders retrieved successfully');
       expect(poRepo.list).toHaveBeenCalledWith(
         expect.objectContaining({
-          skip: 10,
-          take: 10,
+          where: expect.any(Object),
+          orderBy: expect.any(Array),
+        }),
+      );
+      expect(poRepo.list).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: expect.anything(),
+          take: expect.anything(),
         }),
       );
     });

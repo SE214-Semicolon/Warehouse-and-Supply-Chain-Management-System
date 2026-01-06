@@ -40,6 +40,7 @@ const Shipment = () => {
     const lowerTerm = searchTerm.toLowerCase();
     return data.filter(
       (row) =>
+        (row.shipmentNo && row.shipmentNo.toLowerCase().includes(lowerTerm)) ||
         (row.trackingCode && row.trackingCode.toLowerCase().includes(lowerTerm)) ||
         (row.carrier && row.carrier.toLowerCase().includes(lowerTerm))
     );
@@ -72,14 +73,15 @@ const Shipment = () => {
         <SearchBar
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
-          placeholder="Search Tracking Code, Carrier..."
-          sx={{ width: 300, bgcolor: "white" }}
+          placeholder="Search shipment no, tracking code, carrier..."
+          sx={{ width: 350, bgcolor: "white" }}
         />
         <Box sx={{ display: "flex", gap: 2 }}>
           <Button
             variant="outlined"
             startIcon={<LocalShippingIcon />}
             onClick={() => navigate("/shipments/track")}
+            sx={{ textTransform: "none" }}
           >
             Track Order
           </Button>
@@ -87,7 +89,7 @@ const Shipment = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => navigate("/shipments/create")}
-            sx={{ bgcolor: "#3E468A" }}
+            sx={{ bgcolor: "#3E468A", textTransform: "none" }}
           >
             New Shipment
           </Button>
@@ -103,9 +105,9 @@ const Shipment = () => {
           <DataTable
             columns={shipmentColumns}
             data={filteredData}
-            onView={(row) => navigate(`/shipments/${row.id}`)}
             onEdit={(row) => navigate(`/shipments/${row.id}`)}
-            onDelete={handleDelete}
+            onDelete={(row) => handleDelete(row.id)}
+            hideDelete={(row) => row.status === "cancelled"}
           />
         )}
       </Box>
@@ -115,7 +117,6 @@ const Shipment = () => {
         onClose={() => setOpenDeleteDialog(false)}
         onConfirm={confirmDelete}
         title="Delete Shipment"
-        content={`Are you sure you want to delete shipment ${selectedRow?.trackingCode}?`}
       />
     </Box>
   );

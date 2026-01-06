@@ -221,13 +221,46 @@ export class PurchaseOrderService {
       }
     }
 
-    // 3) REFACTORED: Ensure ProductBatch exists before receiving inventory
-    //    If batch doesn't exist, create it first (critical for data integrity)
+    // 3) REFACTORED: Auto-allocation logic for locationId and productBatchId
+    //    - If locationId is missing: Find default location (first location or 'Default' location)
+    //    - If productBatchId is missing: Auto-create ProductBatch with format BATCH-PO-{PO_NO}-{ITEM_ID}
     //    Then call Inventory receive for each line (Inventory supports idempotencyKey)
     //    -> If Inventory returns idempotent=true, do NOT increment qtyReceived again
     const increments: { poItemId: string; qtyInc: number }[] = [];
     for (const r of dto.items) {
-      // STEP 3A: Ensure ProductBatch exists (create if needed)
+      // STEP 3A: Auto-allocate locationId if missing
+      let locationId = r.locationId;
+      if (!locationId) {
+        this.logger.log(`LocationId not provided for item ${r.poItemId}, finding default location`);
+        // Try to find location with code 'DEFAULT' or name 'Default' first
+        let defaultLocation = await this.prisma.location.findFirst({
+          where: {
+            OR: [
+              { code: { equals: 'DEFAULT', mode: 'insensitive' } },
+              { name: { equals: 'Default', mode: 'insensitive' } },
+            ],
+          },
+          orderBy: { createdAt: 'asc' },
+        });
+
+        // If not found, get the first location in the system
+        if (!defaultLocation) {
+          defaultLocation = await this.prisma.location.findFirst({
+            orderBy: { createdAt: 'asc' },
+          });
+        }
+
+        if (!defaultLocation) {
+          throw new BadRequestException(
+            'No location found in system. Please create a location first or provide locationId.',
+          );
+        }
+
+        locationId = defaultLocation.id;
+        this.logger.log(`Auto-allocated locationId: ${locationId} (${defaultLocation.code})`);
+      }
+
+      // STEP 3B: Auto-allocate productBatchId if missing
       const poItem = existing.find((e) => e.id === r.poItemId)!;
       const productId = poItem.productId;
 
@@ -236,38 +269,82 @@ export class PurchaseOrderService {
         throw new BadRequestException(`PO item ${r.poItemId} is missing productId`);
       }
 
-      // Check if batch exists, if not create it
-      let batch = await this.prisma.productBatch.findUnique({
-        where: { id: r.productBatchId },
-      });
+      let productBatchId = r.productBatchId;
+      let batch = productBatchId
+        ? await this.prisma.productBatch.findUnique({
+            where: { id: productBatchId },
+          })
+        : null;
 
+      // If productBatchId not provided or batch doesn't exist, create new batch
       if (!batch) {
-        this.logger.log(
-          `ProductBatch ${r.productBatchId} not found, creating new batch for product ${productId}`,
-        );
-        try {
-          batch = await this.prisma.productBatch.create({
-            data: {
-              id: r.productBatchId, // Use the provided batchId
-              productId: productId,
-              batchNo: `BATCH-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`, // Auto-generate batch number
-              quantity: 0, // Will be updated by inventory receive
-              // manufactureDate and expiryDate can be added later if needed
-            },
-          });
-          this.logger.log(`Created new ProductBatch: ${batch.id} (${batch.batchNo})`);
-        } catch (error) {
-          this.logger.error(`Failed to create ProductBatch ${r.productBatchId}:`, error);
-          throw new BadRequestException(
-            `Failed to create product batch: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        if (!productBatchId) {
+          // Auto-generate batchNo: BATCH-PO-{PO_NO}-{ITEM_ID}
+          const batchNo = `BATCH-PO-${poBefore.poNo}-${r.poItemId.substring(0, 8).toUpperCase()}`;
+          productBatchId = randomUUID();
+
+          this.logger.log(
+            `ProductBatchId not provided for item ${r.poItemId}, creating new batch: ${batchNo}`,
           );
+          try {
+            batch = await this.prisma.productBatch.create({
+              data: {
+                id: productBatchId,
+                productId: productId,
+                batchNo: batchNo,
+                quantity: 0, // Will be updated by inventory receive
+                // manufactureDate and expiryDate can be added later if needed
+              },
+            });
+            if (!batch) {
+              throw new BadRequestException('Failed to create product batch: create returned null');
+            }
+            this.logger.log(`Created new ProductBatch: ${batch.id} (${batch.batchNo})`);
+          } catch (error) {
+            this.logger.error(`Failed to create ProductBatch:`, error);
+            throw new BadRequestException(
+              `Failed to create product batch: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            );
+          }
+        } else {
+          // productBatchId provided but batch doesn't exist
+          this.logger.log(
+            `ProductBatch ${productBatchId} not found, creating new batch for product ${productId}`,
+          );
+          try {
+            batch = await this.prisma.productBatch.create({
+              data: {
+                id: productBatchId,
+                productId: productId,
+                batchNo: `BATCH-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+                quantity: 0, // Will be updated by inventory receive
+                // manufactureDate and expiryDate can be added later if needed
+              },
+            });
+            if (!batch) {
+              throw new BadRequestException('Failed to create product batch: create returned null');
+            }
+            this.logger.log(`Created new ProductBatch: ${batch.id} (${batch.batchNo})`);
+          } catch (error) {
+            this.logger.error(`Failed to create ProductBatch ${productBatchId}:`, error);
+            throw new BadRequestException(
+              `Failed to create product batch: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            );
+          }
         }
       }
 
-      // STEP 3B: Receive inventory (batch now guaranteed to exist)
+      // STEP 3C: Receive inventory (batch and location now guaranteed to exist)
+      // At this point, locationId and productBatchId are guaranteed to be defined
+      if (!locationId || !productBatchId) {
+        throw new BadRequestException(
+          'Internal error: locationId or productBatchId is missing after auto-allocation',
+        );
+      }
+
       const payload: ReceiveInventoryDto = {
-        productBatchId: r.productBatchId,
-        locationId: r.locationId,
+        productBatchId: productBatchId,
+        locationId: locationId,
         quantity: r.qtyToReceive,
         createdById: r.createdById,
         idempotencyKey: r.idempotencyKey,
@@ -342,10 +419,6 @@ export class PurchaseOrderService {
    * Total: 50 test cases for OrderService
    */
   async list(query: QueryPurchaseOrderDto): Promise<PurchaseOrderListResponseDto> {
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 20;
-    const skip = (page - 1) * pageSize;
-
     const where: Prisma.PurchaseOrderWhereInput = {};
     if (query.poNo) where.poNo = { contains: query.poNo, mode: 'insensitive' };
     if (query.status) where.status = query.status;
@@ -370,13 +443,12 @@ export class PurchaseOrderService {
       } as Prisma.PurchaseOrderOrderByWithRelationInput);
     }
 
-    const { data, total } = await this.poRepo.list({ skip, take: pageSize, where, orderBy });
+    // Disable pagination - return all records
+    const { data, total } = await this.poRepo.list({ where, orderBy });
     return {
       success: true,
       data,
       total,
-      page,
-      pageSize,
       message: 'Purchase orders retrieved successfully',
     };
   }

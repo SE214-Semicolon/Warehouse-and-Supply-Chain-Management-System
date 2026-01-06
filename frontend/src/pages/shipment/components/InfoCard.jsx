@@ -21,16 +21,33 @@ const InfoCard = ({
         },
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "center",
+        alignItems: "flex-start",
         gap: 2,
         mb: 1,
       }}
     >
-      <Typography variant="body2" color="text.secondary" fontWeight={600}>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        fontWeight={600}
+        sx={{
+          minWidth: "fit-content",
+          maxWidth: "40%",
+        }}
+      >
         {label}
       </Typography>
 
-      <Typography variant="body1" fontWeight={400} sx={{ textAlign: "right" }}>
+      <Typography
+        variant="body1"
+        fontWeight={400}
+        sx={{
+          textAlign: "right",
+          wordBreak: "break-word",
+          overflowWrap: "break-word",
+          flex: 1,
+        }}
+      >
         {value ?? "-"}
       </Typography>
     </Box>
@@ -76,6 +93,7 @@ const InfoCard = ({
             backgroundClip: "text",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
+            wordBreak: "break-word",
           }}
         >
           {title}

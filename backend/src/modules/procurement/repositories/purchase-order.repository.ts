@@ -9,7 +9,10 @@ export class PurchaseOrderRepository {
   async findById(id: string) {
     return this.prisma.purchaseOrder.findUnique({
       where: { id },
-      include: { items: true, supplier: true },
+      include: {
+        items: { include: { product: true } },
+        supplier: true,
+      },
     });
   }
 
@@ -57,7 +60,10 @@ export class PurchaseOrderRepository {
   async submit(poId: string) {
     return this.prisma.purchaseOrder.update({
       where: { id: poId },
-      data: { status: PoStatus.ordered },
+      data: {
+        status: PoStatus.ordered,
+        placedAt: new Date(), // Set placedAt when order is submitted
+      },
     });
   }
 
@@ -113,17 +119,14 @@ export class PurchaseOrderRepository {
     where?: Prisma.PurchaseOrderWhereInput;
     orderBy?: Prisma.PurchaseOrderOrderByWithRelationInput[];
   }) {
-    const { skip, take, where, orderBy } = params;
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.purchaseOrder.findMany({
-        skip,
-        take,
-        where,
-        orderBy,
-        include: { supplier: true },
-      }),
-      this.prisma.purchaseOrder.count({ where }),
-    ]);
+    const { where, orderBy } = params;
+    // Disable pagination - return all records
+    const data = await this.prisma.purchaseOrder.findMany({
+      where,
+      orderBy,
+      include: { supplier: true },
+    });
+    const total = data.length;
     return { data, total };
   }
 

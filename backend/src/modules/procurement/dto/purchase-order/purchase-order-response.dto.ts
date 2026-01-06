@@ -22,12 +22,6 @@ export class PurchaseOrderListResponseDto {
   @ApiProperty({ example: 50 })
   total: number;
 
-  @ApiProperty({ example: 1 })
-  page: number;
-
-  @ApiProperty({ example: 20 })
-  pageSize: number;
-
   @ApiProperty({ example: 'Purchase orders retrieved successfully' })
   message: string;
 }
