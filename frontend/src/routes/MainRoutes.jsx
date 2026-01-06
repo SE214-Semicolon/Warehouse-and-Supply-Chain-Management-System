@@ -15,7 +15,7 @@ import Inventory from '@/pages/inventory';
 import SupplierDetail from '@/pages/supplier/SupplierDetail';
 import PODetail from '@/pages/purchase-order/PODetail';
 import Procurement from '@/pages/procurement';
-import ShipmentList from '@/pages/shipment'; 
+import ShipmentList from '@/pages/shipment';
 import ShipmentCreate from '@/pages/shipment/ShipmentCreate';
 import ShipmentDetail from '@/pages/shipment/ShipmentDetail';
 import ShipmentTracking from '@/pages/shipment/ShipmentTracking';
@@ -23,6 +23,7 @@ import Report from '@/pages/reports';
 import Alert from '@/pages/alert';
 import DemandPlanning from '@/pages/demand-planning';
 import Sales from '@/pages/sales';
+import CustomerDetail from '@/pages/sales/CustomerDetail';
 
 export default function MainRoutes() {
   return (
@@ -35,7 +36,10 @@ export default function MainRoutes() {
           <Route path="/warehouse/products/:id" element={<ProductDetail />} />
           <Route path="/warehouse/batches/:id" element={<BatchDetail />} />
           <Route path="/warehouse/locations/:id" element={<LocationDetail />} />
-          <Route path="/warehouse/warehouses/:id" element={<WarehouseDetail />} />
+          <Route
+            path="/warehouse/warehouses/:id"
+            element={<WarehouseDetail />}
+          />
           <Route path="/inventory" element={<Inventory />} />
           {/* <Route path="/supplier" element={<Supplier />} /> */}
           <Route path="/supplier/detail" element={<SupplierDetail />} />
@@ -49,6 +53,7 @@ export default function MainRoutes() {
           <Route path="/alerts" element={<Alert />} />
           <Route path="/demand-planning" element={<DemandPlanning />} />
           <Route path="/sales" element={<Sales />} />
+          <Route path="/customer/detail" element={<CustomerDetail />} />
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
