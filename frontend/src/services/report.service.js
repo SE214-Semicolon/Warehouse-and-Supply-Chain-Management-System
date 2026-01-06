@@ -58,9 +58,15 @@ const InventoryReportService = {
     }
   },
 
-  getValuation: async () => {
+  getValuation: async ({ page = 1, limit = 20 } = {}) => {
     try {
-      const response = await api.get(API_URI + '/inventory/valuation');
+      const params = new URLSearchParams();
+      params.append('page', page);
+      params.append('limit', limit);
+
+      const response = await api.get(
+        `${API_URI}/inventory/valuation?${params.toString()}`
+      );
       return response;
     } catch (error) {
       console.error('Err valuation:', error);

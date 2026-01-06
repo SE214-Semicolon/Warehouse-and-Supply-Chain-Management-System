@@ -2,6 +2,7 @@ import LowStockReport from './tabs/low-stock';
 import ExpiryReport from './tabs/expiry';
 import StockLevelReport from './tabs/stock-level';
 import MovementReport from './tabs/movement';
+import ValuationReport from './tabs/valuation';
 
 export const menuItems = [
   {
@@ -27,5 +28,6 @@ export const menuItems = [
   {
     id: 'valuation',
     label: 'Valuation',
+    ReportComponent: ValuationReport,
   },
 ];
