@@ -80,25 +80,18 @@ export class CustomerService {
   async findAll(query: QueryCustomerDto): Promise<CustomerListResponseDto> {
     this.logger.log(`Finding customers with query: ${JSON.stringify(query)}`);
 
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 20;
-    const skip = (page - 1) * pageSize;
-
     const where = buildCustomerWhere(query);
     const orderBy = parseSort(query.sort);
 
-    const [data, total] = await Promise.all([
-      this.repo.findMany({ skip, take: pageSize, where, orderBy }),
-      this.repo.count(where),
-    ]);
+    // Disable pagination - return all records
+    const data = await this.repo.findMany({ where, orderBy });
+    const total = data.length;
 
     this.logger.log(`Found ${total} customers`);
     return {
       success: true,
       data,
       total,
-      page,
-      pageSize,
     };
   }
 

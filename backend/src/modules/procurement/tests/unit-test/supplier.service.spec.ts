@@ -178,23 +178,26 @@ describe('SupplierService', () => {
   });
 
   describe('findAll', () => {
-    // SUP-TC11: Get all with default pagination
-    it('should return all suppliers with default pagination', async () => {
+    // SUP-TC11: Get all suppliers (pagination disabled)
+    it('should return all suppliers without pagination', async () => {
       const query = {};
 
       repo.findMany.mockResolvedValue([mockSupplier]);
-      repo.count.mockResolvedValue(1);
 
       const result = await service.findAll(query);
 
       expect(result.data).toEqual([mockSupplier]);
       expect(result.total).toBe(1);
-      expect(result.page).toBe(1);
-      expect(result.pageSize).toBe(20);
       expect(repo.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          skip: 0,
-          take: 20,
+          where: expect.any(Object),
+          orderBy: expect.any(Array),
+        }),
+      );
+      expect(repo.findMany).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: expect.anything(),
+          take: expect.anything(),
         }),
       );
     });
@@ -302,49 +305,29 @@ describe('SupplierService', () => {
       );
     });
 
-    // SUP-TC16: Pagination page 1
-    it('should return suppliers for page 1', async () => {
+    // SUP-TC16: Pagination disabled - returns all records
+    it('should return all suppliers regardless of page/pageSize params', async () => {
       const query = {
         page: 1,
         pageSize: 10,
       };
 
       repo.findMany.mockResolvedValue([mockSupplier]);
-      repo.count.mockResolvedValue(25);
 
       const result = await service.findAll(query);
 
       expect(result.data).toEqual([mockSupplier]);
-      expect(result.page).toBe(1);
-      expect(result.pageSize).toBe(10);
-      expect(result.total).toBe(25);
+      expect(result.total).toBe(1);
       expect(repo.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          skip: 0,
-          take: 10,
+          where: expect.any(Object),
+          orderBy: expect.any(Array),
         }),
       );
-    });
-
-    // SUP-TC17: Pagination page 2
-    it('should return suppliers for page 2', async () => {
-      const query = {
-        page: 2,
-        pageSize: 10,
-      };
-
-      repo.findMany.mockResolvedValue([mockSupplier]);
-      repo.count.mockResolvedValue(25);
-
-      const result = await service.findAll(query);
-
-      expect(result.data).toEqual([mockSupplier]);
-      expect(result.page).toBe(2);
-      expect(result.pageSize).toBe(10);
-      expect(repo.findMany).toHaveBeenCalledWith(
+      expect(repo.findMany).not.toHaveBeenCalledWith(
         expect.objectContaining({
-          skip: 10,
-          take: 10,
+          skip: expect.anything(),
+          take: expect.anything(),
         }),
       );
     });

@@ -21,12 +21,6 @@ export class CustomerListResponseDto {
 
   @ApiProperty()
   total: number;
-
-  @ApiProperty()
-  page: number;
-
-  @ApiProperty()
-  pageSize: number;
 }
 
 export class CustomerDeleteResponseDto {

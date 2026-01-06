@@ -33,6 +33,12 @@ describe('SalesOrderService', () => {
         qtyFulfilled: 0,
         unitPrice: 50000,
         lineTotal: 500000,
+        product: {
+          id: 'product-uuid-1',
+          code: 'PROD-001',
+          name: 'Product A',
+          description: 'Test Product',
+        },
       },
     ],
     customer: {
@@ -312,12 +318,14 @@ describe('SalesOrderService', () => {
         inventory: {} as any,
         movement: {} as any,
       });
-      soRepo.submit.mockResolvedValue(approvedSO);
-      soRepo.findById.mockResolvedValueOnce(approvedSO);
+      const approvedSOWithPlacedAt = { ...approvedSO, placedAt: new Date() };
+      soRepo.submit.mockResolvedValue(approvedSOWithPlacedAt);
+      soRepo.findById.mockResolvedValueOnce(approvedSOWithPlacedAt);
 
       const result = await service.submitSalesOrder('so-uuid-1', submitDto, userId);
 
       expect(result.status).toBe(OrderStatus.approved);
+      expect(result.placedAt).toBeDefined();
       expect(soRepo.submit).toHaveBeenCalledWith('so-uuid-1');
       expect(inventorySvc.reserveInventory).toHaveBeenCalled();
     });
@@ -357,8 +365,9 @@ describe('SalesOrderService', () => {
         inventory: {} as any,
         movement: {} as any,
       });
-      soRepo.submit.mockResolvedValue(approvedSO);
-      soRepo.findById.mockResolvedValueOnce(approvedSO);
+      const approvedSOWithPlacedAt = { ...approvedSO, placedAt: new Date() };
+      soRepo.submit.mockResolvedValue(approvedSOWithPlacedAt);
+      soRepo.findById.mockResolvedValueOnce(approvedSOWithPlacedAt);
 
       const result = await service.submitSalesOrder('so-uuid-1', submitDto, userId);
 
@@ -462,8 +471,8 @@ describe('SalesOrderService', () => {
   });
 
   describe('list', () => {
-    // SO-TC20: Get all with default pagination
-    it('should return all SOs with default pagination', async () => {
+    // SO-TC20: Get all SOs (pagination disabled)
+    it('should return all SOs without pagination', async () => {
       const query = {};
       soRepo.list.mockResolvedValue({
         data: [mockSalesOrder],
@@ -474,8 +483,6 @@ describe('SalesOrderService', () => {
 
       expect(result.data).toEqual([mockSalesOrder]);
       expect(result.total).toBe(1);
-      expect(result.page).toBe(1);
-      expect(result.pageSize).toBe(20);
     });
 
     // SO-TC21: Filter by soNo
@@ -534,19 +541,30 @@ describe('SalesOrderService', () => {
       );
     });
 
-    // SO-TC27: Pagination page 1
-    it('should return SOs for page 1', async () => {
+    // SO-TC27: Pagination disabled - returns all records
+    it('should return all SOs regardless of page/pageSize params', async () => {
       const query = { page: 1, pageSize: 10 };
       soRepo.list.mockResolvedValue({
         data: [mockSalesOrder],
-        total: 25,
+        total: 1,
       });
 
       const result = await service.list(query);
 
-      expect(result.page).toBe(1);
-      expect(result.pageSize).toBe(10);
-      expect(soRepo.list).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 10 }));
+      expect(result.data).toEqual([mockSalesOrder]);
+      expect(result.total).toBe(1);
+      expect(soRepo.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.any(Object),
+          orderBy: expect.any(Array),
+        }),
+      );
+      expect(soRepo.list).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: expect.anything(),
+          take: expect.anything(),
+        }),
+      );
     });
 
     // SO-TC29: Sort by placedAt asc

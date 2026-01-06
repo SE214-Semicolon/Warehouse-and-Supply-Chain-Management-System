@@ -366,10 +366,6 @@ export class SalesOrderService {
    * - SO-TC32: SQL injection test (200, handled by Prisma)
    */
   async list(query: QuerySalesOrderDto): Promise<SalesOrderListResponseDto> {
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 20;
-    const skip = (page - 1) * pageSize;
-
     const where: Prisma.SalesOrderWhereInput = {};
     if (query.soNo) where.soNo = { contains: query.soNo, mode: 'insensitive' };
     if (query.status) where.status = query.status;
@@ -394,13 +390,12 @@ export class SalesOrderService {
       } as Prisma.SalesOrderOrderByWithRelationInput);
     }
 
-    const { data, total } = await this.soRepo.list({ skip, take: pageSize, where, orderBy });
+    // Disable pagination - return all records
+    const { data, total } = await this.soRepo.list({ where, orderBy });
     return {
       success: true,
       data,
       total,
-      page,
-      pageSize,
       message: 'Sales orders retrieved successfully',
     };
   }
