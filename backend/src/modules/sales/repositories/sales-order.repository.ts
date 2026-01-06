@@ -9,7 +9,10 @@ export class SalesOrderRepository {
   async findById(id: string) {
     return this.prisma.salesOrder.findUnique({
       where: { id },
-      include: { items: true, customer: true },
+      include: {
+        items: { include: { product: true } },
+        customer: true,
+      },
     });
   }
 
@@ -56,7 +59,10 @@ export class SalesOrderRepository {
   async submit(soId: string) {
     return this.prisma.salesOrder.update({
       where: { id: soId },
-      data: { status: OrderStatus.approved },
+      data: {
+        status: OrderStatus.approved,
+        placedAt: new Date(), // Set placedAt when order is submitted
+      },
     });
   }
 
@@ -72,17 +78,14 @@ export class SalesOrderRepository {
     where?: Prisma.SalesOrderWhereInput;
     orderBy?: Prisma.SalesOrderOrderByWithRelationInput[];
   }) {
-    const { skip, take, where, orderBy } = params;
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.salesOrder.findMany({
-        skip,
-        take,
-        where,
-        orderBy,
-        include: { customer: true },
-      }),
-      this.prisma.salesOrder.count({ where }),
-    ]);
+    const { where, orderBy } = params;
+    // Disable pagination - return all records
+    const data = await this.prisma.salesOrder.findMany({
+      where,
+      orderBy,
+      include: { customer: true },
+    });
+    const total = data.length;
     return { data, total };
   }
 
