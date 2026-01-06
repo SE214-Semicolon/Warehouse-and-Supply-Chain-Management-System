@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { formatDate } from "@/utils/formatDate";
 import { Chip, Typography, Stack, Tooltip, Box } from "@mui/material";
 
