@@ -307,7 +307,11 @@ describe('SalesOrderService', () => {
         availableQty: 100,
         reservedQty: 0,
       });
-      inventorySvc.reserveInventory.mockResolvedValue({ success: true });
+      inventorySvc.reserveInventory.mockResolvedValue({
+        success: true,
+        inventory: {} as any,
+        movement: {} as any,
+      });
       soRepo.submit.mockResolvedValue(approvedSO);
       soRepo.findById.mockResolvedValueOnce(approvedSO);
 
@@ -350,7 +354,11 @@ describe('SalesOrderService', () => {
       inventorySvc.getAvailableInventoryForFEFO = jest
         .fn()
         .mockResolvedValue(mockFEFOInventory);
-      inventorySvc.reserveInventory.mockResolvedValue({ success: true });
+      inventorySvc.reserveInventory.mockResolvedValue({
+        success: true,
+        inventory: {} as any,
+        movement: {} as any,
+      });
       soRepo.submit.mockResolvedValue(approvedSO);
       soRepo.findById.mockResolvedValueOnce(approvedSO);
 
