@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { showToast } from '@/utils/toast';
 import POService from '../../../services/po.service';
+import UserService from '../../../services/user.service';
 
 export default function ReceiveDialog({ open, onClose, item, onSuccess }) {
   const remaining = item.qtyOrdered - item.qtyReceived;
@@ -27,8 +28,10 @@ export default function ReceiveDialog({ open, onClose, item, onSuccess }) {
       );
       return;
     }
-
     setLoading(true);
+
+    const user = await UserService.getCurrentUser();
+    console.log('user: ', user);
 
     const payload = {
       items: [
@@ -36,6 +39,7 @@ export default function ReceiveDialog({ open, onClose, item, onSuccess }) {
           poItemId: item.id,
           qtyToReceive,
           idempotencyKey: crypto.randomUUID(),
+          createdById: user.userId,
         },
       ],
       note: note.trim() || null,
@@ -61,8 +65,7 @@ export default function ReceiveDialog({ open, onClose, item, onSuccess }) {
       <DialogContent dividers>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           <Typography>
-            Product code:{' '}
-            <strong>{item?.product?.code || item.productId}</strong>
+            Product SKU: <strong>{item?.product?.sku || item.productId}</strong>
           </Typography>
           <Typography>
             Ordered: <strong>{item.qtyOrdered}</strong> | Received:{' '}
