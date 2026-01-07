@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 import Layout from '@layouts/Layout';
-import Dashboard from '@pages/dashboard';
+// import Dashboard from '@pages/dashboard';
 import Login from '@pages/auth/login';
 import Signup from '@pages/auth/signup';
 import NotFound from '@pages/notfound';
@@ -34,7 +34,7 @@ export default function MainRoutes() {
       <Routes>
         {/* Route cha có Layout */}
         <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
+          {/* <Route path="/" element={<Dashboard />} /> */}
           <Route path="/warehouse" element={<Warehouse />} />
           <Route path="/warehouse/products/:id" element={<ProductDetail />} />
           <Route path="/warehouse/batches/:id" element={<BatchDetail />} />

@@ -52,7 +52,7 @@ export default function SignUp() {
       password: formData.password,
     })
       .then(() => {
-        navigate('/');
+        navigate('/warehouse');
       })
       .catch((error) => {
         setErrors({ general: error.message || 'Sign up failed' });
