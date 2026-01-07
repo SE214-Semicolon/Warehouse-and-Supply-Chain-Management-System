@@ -89,7 +89,7 @@ export default function Header({ height = 60 }) {
             cursor: 'pointer',
             lineHeight: 1,
           }}
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/warehouse')}
         >
           WSCMS
         </Typography>

@@ -14,7 +14,6 @@ const Sidebar = ({ width = 264, headerHeight = 60 }) => {
   const navigate = useNavigate();
 
   const menuItems = [
-    { text: 'Dashboard', path: '/' },
     { text: 'Warehouse', path: '/warehouse' },
     { text: 'Procurement', path: '/procurement' },
     { text: 'Sales', path: '/sales' },
