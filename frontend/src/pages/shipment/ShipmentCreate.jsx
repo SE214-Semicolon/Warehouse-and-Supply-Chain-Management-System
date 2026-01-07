@@ -11,7 +11,6 @@ import SOService from "@/services/so.service";
 
 import FormInput from "@/components/FormInput";
 import DataTable from "@/components/DataTable";
-import { HeightOutlined } from "@mui/icons-material";
 
 const ShipmentCreate = () => {
   const navigate = useNavigate();
@@ -22,7 +21,6 @@ const ShipmentCreate = () => {
   const [products, setProducts] = useState([]);
   const [batches, setBatches] = useState([]);
   const [locations, setLocations] = useState([]);
-
   const [selectedSODetails, setSelectedSODetails] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -51,7 +49,6 @@ const ShipmentCreate = () => {
     const loadData = async () => {
       try {
         const extract = (res) => res?.data?.data || res?.data || res || [];
-
         const [resWh, resProd, resBatch, resLoc, resSO] = await Promise.all([
           WarehouseService.getAll(),
           ProductService.getAll(),
@@ -124,6 +121,13 @@ const ShipmentCreate = () => {
   }, [formData.salesOrderId, locations]);
 
   const handleFormChange = (field, value) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const newErr = { ...prev };
+        delete newErr[field];
+        return newErr;
+      });
+    }
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -142,6 +146,7 @@ const ShipmentCreate = () => {
             setErrors((prev) => {
               const newErrors = { ...prev };
               delete newErrors[`items.${tempId}.qty`];
+              delete newErrors[`items.${tempId}.salesOrderItemId`];
               return newErrors;
             });
 
@@ -158,10 +163,11 @@ const ShipmentCreate = () => {
           if (field === "qty") {
             const val = Number(value);
             const isError = val > item.maxQty;
+
             setErrors((prev) => ({
               ...prev,
               [`items.${tempId}.qty`]: isError
-                ? `Max available: ${item.maxQty}`
+                ? `Max remaining: ${item.maxQty}`
                 : val <= 0
                 ? "Must > 0"
                 : null,
@@ -193,7 +199,57 @@ const ShipmentCreate = () => {
   const handleDeleteItem = (row) => {
     if (items.length > 1) {
       setItems(items.filter((i) => i.tempId !== row.tempId));
+      setErrors((prev) => {
+        const newErr = { ...prev };
+        delete newErr[`items.${row.tempId}.qty`];
+        delete newErr[`items.${row.tempId}.salesOrderItemId`];
+        return newErr;
+      });
     }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    let isValid = true;
+
+    if (!formData.carrier?.trim()) {
+      newErrors.carrier = "Carrier is required";
+      isValid = false;
+    }
+    if (!formData.trackingCode?.trim()) {
+      newErrors.trackingCode = "Tracking Code is required";
+      isValid = false;
+    }
+    if (!formData.estimatedDelivery) {
+      newErrors.estimatedDelivery = "Estimated Delivery is required";
+      isValid = false;
+    }
+
+    const selectedIds = items.map((i) => i.salesOrderItemId).filter((id) => id);
+
+    items.forEach((item) => {
+      if (!item.salesOrderItemId) {
+        newErrors[`items.${item.tempId}.salesOrderItemId`] = "Required";
+        isValid = false;
+      } else {
+        const count = selectedIds.filter((id) => id === item.salesOrderItemId).length;
+        if (count > 1) {
+          newErrors[`items.${item.tempId}.salesOrderItemId`] = "Duplicate Item!";
+          isValid = false;
+        }
+      }
+
+      if (item.qty <= 0) {
+        newErrors[`items.${item.tempId}.qty`] = "Must > 0";
+        isValid = false;
+      } else if (item.qty > item.maxQty) {
+        newErrors[`items.${item.tempId}.qty`] = `Max remaining: ${item.maxQty}`;
+        isValid = false;
+      }
+    });
+
+    setErrors(newErrors);
+    return isValid;
   };
 
   const handleSubmit = async () => {
@@ -202,13 +258,7 @@ const ShipmentCreate = () => {
       return;
     }
 
-    const hasError = items.some(
-      (i) => !i.productBatchId || i.qty <= 0 || i.qty > i.maxQty
-    );
-    if (hasError) {
-      alert("Please check item errors.");
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
     try {
@@ -234,21 +284,49 @@ const ShipmentCreate = () => {
     }
   };
 
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const getOtherSelectedIds = (currentTempId) => {
+      return items
+        .filter((i) => i.tempId !== currentTempId && i.salesOrderItemId)
+        .map((i) => i.salesOrderItemId);
+    };
+
+    const commonInputSx = {
+      "& .MuiOutlinedInput-root": { height: "40px", alignItems: "center" },
+      "& .MuiInputBase-input": {
+        height: "40px",
+        padding: "0 14px",
+        boxSizing: "border-box",
+        display: "flex",
+        alignItems: "center",
+      },
+    };
+
+    return [
       { id: "stt", label: "No", search: false },
       {
         id: "salesOrderItemId",
         label: "Select Item to Ship",
         render: (value, row) => {
+          const otherSelectedIds = getOtherSelectedIds(row.tempId);
+
+          const isDuplicateRealtime = value && otherSelectedIds.includes(value);
+          const submitError = errors[`items.${row.tempId}.salesOrderItemId`];
+          const hasError = isDuplicateRealtime || !!submitError;
+          const errorMessage = isDuplicateRealtime ? "Duplicate Item!" : submitError;
+
           const options =
             selectedSODetails?.items?.map((i) => {
               const pName = products.find((p) => p.id === i.productId)?.name || "Unknown";
               const remaining = i.qty - (i.qtyFulfilled || 0);
+              const isSelectedElsewhere = otherSelectedIds.includes(i.id);
+
               return {
-                label: `${pName} (Ordered: ${i.qty}, Rem: ${remaining})`,
+                label: isSelectedElsewhere
+                  ? `${pName} (Selected)`
+                  : `${pName} (Ord: ${i.qty}, Rem: ${remaining})`,
                 value: i.id,
-                disabled: remaining <= 0,
+                disabled: remaining <= 0 || isSelectedElsewhere,
               };
             }) || [];
 
@@ -261,7 +339,9 @@ const ShipmentCreate = () => {
               placeholder={!selectedSODetails ? "Select SO First" : "Select Product..."}
               disabled={!selectedSODetails}
               size="small"
-              sx={{ minWidth: 250 }}
+              sx={{ minWidth: 250, ...commonInputSx }}
+              error={hasError}
+              helperText={errorMessage}
             />
           );
         },
@@ -271,15 +351,14 @@ const ShipmentCreate = () => {
         label: "Batch",
         render: (value) => {
           const batchInfo = batches.find((b) => b.id === value);
-          const displayLabel = batchInfo ? batchInfo.batchNo : value || "Auto-fill";
-
+          const displayLabel = batchInfo ? batchInfo.batchNo : value || "";
           return (
             <FormInput
               value={displayLabel}
               disabled={true}
-              placeholder="Auto-fill from SO"
+              placeholder="Auto-fill"
               size="small"
-              sx={{ minWidth: 150, bgcolor: "#f5f5f5" }}
+              sx={{ minWidth: 150, bgcolor: "#f5f5f5", ...commonInputSx }}
             />
           );
         },
@@ -295,13 +374,12 @@ const ShipmentCreate = () => {
             size="small"
             error={!!errors[`items.${row.tempId}.qty`]}
             helperText={errors[`items.${row.tempId}.qty`]}
-            sx={{ maxWidth: 150 }}
+            sx={{ maxWidth: 150, ...commonInputSx }}
           />
         ),
       },
-    ],
-    [selectedSODetails, products, batches, errors, handleRowChange]
-  );
+    ];
+  }, [selectedSODetails, products, batches, errors, handleRowChange, items]);
 
   const salesOrderOptions = useMemo(
     () =>
@@ -329,7 +407,7 @@ const ShipmentCreate = () => {
       <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6" mb={2} color="primary">
-            1. Select Order
+            1. Select Order & Info
           </Typography>
 
           <Box
@@ -360,7 +438,7 @@ const ShipmentCreate = () => {
                 options={warehouseOptions}
                 value={formData.warehouseId}
                 disabled={true}
-                placeholder="Auto-detected from SO Items..."
+                placeholder="Auto-detected..."
                 sx={{ bgcolor: "#f5f5f5" }}
               />
             </Box>
@@ -379,23 +457,32 @@ const ShipmentCreate = () => {
             <Box sx={{ flex: 1 }}>
               <FormInput
                 label="Carrier"
+                required
                 value={formData.carrier}
                 onChange={(v) => handleFormChange("carrier", v)}
+                error={!!errors.carrier}
+                helperText={errors.carrier}
               />
             </Box>
             <Box sx={{ flex: 1 }}>
               <FormInput
                 label="Tracking Code"
+                required
                 value={formData.trackingCode}
                 onChange={(v) => handleFormChange("trackingCode", v)}
+                error={!!errors.trackingCode}
+                helperText={errors.trackingCode}
               />
             </Box>
             <Box sx={{ flex: 1 }}>
               <FormInput
                 type="datetime"
                 label="Est. Delivery"
+                required
                 value={formData.estimatedDelivery}
                 onChange={(v) => handleFormChange("estimatedDelivery", v)}
+                error={!!errors.estimatedDelivery}
+                helperText={errors.estimatedDelivery}
               />
             </Box>
           </Box>

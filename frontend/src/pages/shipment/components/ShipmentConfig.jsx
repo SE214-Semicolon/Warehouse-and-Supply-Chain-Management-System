@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { formatDate } from "@/utils/formatDate";
-import { Chip, Typography, Stack, Tooltip, Box } from "@mui/material";
+import { Chip, Typography, Box } from "@mui/material";
 
 const RenderWrapText = ({ value, align = "left", color = "text.primary" }) => (
   <Typography
