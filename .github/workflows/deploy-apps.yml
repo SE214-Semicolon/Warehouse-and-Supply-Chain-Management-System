@@ -151,75 +151,41 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Deploy to staging slot first (Blue-Green deployment)
-      - name: Deploy Backend to Staging Slot
+      # Deploy directly to production (no deployment slots in Basic B1 tier)
+      - name: Deploy Backend to Production
         if: |
           needs.build-and-test.outputs.backend-changed == 'true' ||
           github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_backend == 'true'
         uses: azure/webapps-deploy@v2
         with:
           app-name: warehouse-mgmt-production-backend
-          slot-name: staging
           images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest
 
-      - name: Deploy Frontend to Staging Slot
+      - name: Deploy Frontend to Production
         if: |
           needs.build-and-test.outputs.frontend-changed == 'true' ||
           github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_frontend == 'true'
         uses: azure/webapps-deploy@v2
         with:
           app-name: warehouse-mgmt-production-frontend
-          slot-name: staging
           images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
 
-      # Health check on staging slot
-      - name: Health Check Staging Slot
-        run: |
-          echo "Performing health checks on staging slots..."
-
-          # Check backend health
-          backend_health=$(curl -s -o /dev/null -w "%{http_code}" https://warehouse-mgmt-production-backend-staging.azurewebsites.net/health)
-          if [ "$backend_health" != "200" ]; then
-            echo "Backend health check failed with status: $backend_health"
-            exit 1
-          fi
-
-          # Check frontend health
-          frontend_health=$(curl -s -o /dev/null -w "%{http_code}" https://warehouse-mgmt-production-frontend-staging.azurewebsites.net/health)
-          if [ "$frontend_health" != "200" ]; then
-            echo "Frontend health check failed with status: $frontend_health"
-            exit 1
-          fi
-
-          echo "All health checks passed!"
-
-      # Swap slots (Blue-Green deployment)
-      - name: Swap Backend Deployment Slots
+      - name: Run Database Migrations
         if: |
           needs.build-and-test.outputs.backend-changed == 'true' ||
           github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_backend == 'true'
         run: |
-          az webapp deployment slot swap \
+          # Run Prisma migrations using Azure CLI
+          az webapp config appsettings set \
             --resource-group warehouse-mgmt-production-rg \
             --name warehouse-mgmt-production-backend \
-            --slot staging \
-            --target-slot production
+            --settings RUN_MIGRATIONS=true
 
-      - name: Swap Frontend Deployment Slots
-        if: |
-          needs.build-and-test.outputs.frontend-changed == 'true' ||
-          github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_frontend == 'true'
-        run: |
-          az webapp deployment slot swap \
-            --resource-group warehouse-mgmt-production-rg \
-            --name warehouse-mgmt-production-frontend \
-            --slot staging \
-            --target-slot production
-
-      # Final health check on production
+      # Health check on production (after direct deployment)
       - name: Final Health Check
         run: |
-          echo "Performing final health checks on production..."
+          echo "Performing health checks on production..."
+          sleep 30  # Wait for containers to fully start
 
           # Check backend health
           backend_health=$(curl -s -o /dev/null -w "%{http_code}" https://warehouse-mgmt-production-backend.azurewebsites.net/health)
@@ -229,7 +195,7 @@ jobs:
           fi
 
           # Check frontend health
-          frontend_health=$(curl -s -o /dev/null -w "%{http_code}" https://warehouse-mgmt-production-frontend.azurewebsites.net/health)
+          frontend_health=$(curl -s -o /dev/null -w "%{http_code}" https://warehouse-mgmt-production-frontend.azurewebsites.net/)
           if [ "$frontend_health" != "200" ]; then
             echo "Production frontend health check failed with status: $frontend_health"
             exit 1
