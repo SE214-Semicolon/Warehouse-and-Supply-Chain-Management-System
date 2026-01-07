@@ -13,7 +13,7 @@ import {
   Button,
   TextField,
 } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { Add, Upload as UploadIcon } from '@mui/icons-material';
 import POItemRow from './POItemRow';
 import { usePOForm } from './usePOForm';
 import { Autocomplete, TextField as MuiTextField } from '@mui/material';
@@ -47,6 +47,7 @@ export default function FormDialog({
     validate,
     getPayload,
     setFormValues,
+    handleImportItems,
   } = usePOForm({ open, isEdit, selectedRow });
 
   const totalAmount = formValues.items.reduce(
@@ -225,14 +226,30 @@ export default function FormDialog({
               </Table>
 
               {isDraft && (
-                <Button
-                  startIcon={<Add />}
-                  onClick={addItem}
-                  variant="outlined"
-                  sx={{ mt: 2 }}
-                >
-                  Add Product
-                </Button>
+                <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                  <Button
+                    startIcon={<Add />}
+                    onClick={addItem}
+                    variant="outlined"
+                    sx={{ mt: 2 }}
+                  >
+                    Add Product
+                  </Button>
+                  <Button
+                    startIcon={<UploadIcon />}
+                    variant="outlined"
+                    component="label"
+                    disabled={loading.products}
+                  >
+                    Import Items (CSV)
+                    <input
+                      type="file"
+                      hidden
+                      accept=".csv"
+                      onChange={(e) => handleImportItems(e.target.files[0])}
+                    />
+                  </Button>
+                </Box>
               )}
 
               <Box sx={{ mt: 3, textAlign: 'right', pr: 3 }}>

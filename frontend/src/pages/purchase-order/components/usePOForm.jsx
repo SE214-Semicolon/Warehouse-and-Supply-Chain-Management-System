@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import SupplierService from '@/services/supplier.service';
 import ProductService from '@/services/product.service';
+import Papa from 'papaparse';
+import { showToast } from '@/utils/toast';
 
 const emptyItem = {
   productId: null,
@@ -178,6 +180,81 @@ export const usePOForm = ({ open, isEdit, selectedRow }) => {
     })),
   });
 
+  const handleImportItems = (file) => {
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const skippedRows = [];
+        const newItems = results.data
+          .map((row) => {
+            // Tìm product bằng code hoặc sku
+            const product = products.find(
+              (p) =>
+                p.code === row['Product Code'] ||
+                p.sku === row['Product Code'] ||
+                p.name === row['Product Name'] // optional nếu có cột name
+            );
+
+            if (!product) {
+              skippedRows.push(row['Product Code'] || row['Product Name']);
+              return null;
+            }
+
+            const qty = parseInt(row.Quantity, 10);
+            const price = parseFloat(row['Unit Price']);
+
+            if (isNaN(qty) || qty < 1 || isNaN(price) || price < 0) {
+              skippedRows.push(row['Product Code'] || row['Product Name']);
+              return null;
+            }
+
+            return {
+              productId: product.id,
+              productName: product.name,
+              sku: product.sku || '',
+              unit: product.unit || 'unit',
+              qtyOrdered: qty,
+              unitPrice: price,
+              total: qty * price,
+            };
+          })
+          .filter(Boolean); // Lọc bỏ null
+
+        if (newItems.length > 0) {
+          setFormValues((prev) => ({
+            ...prev,
+            items: [...prev.items, ...newItems],
+          }));
+          setErrors((prev) => ({
+            ...prev,
+            items: [...prev.items, ...newItems.map(() => '')],
+          }));
+          showToast.success(
+            `Đã import thành công ${newItems.length} sản phẩm!`
+          );
+        }
+
+        if (skippedRows.length > 0) {
+          showToast.warning(
+            `Bỏ qua ${skippedRows.length} dòng không hợp lệ: ${skippedRows.join(
+              ', '
+            )}`
+          );
+        }
+
+        if (newItems.length === 0 && skippedRows.length === 0) {
+          showToast.error('File CSV không có dữ liệu hợp lệ!');
+        }
+      },
+      error: (err) => {
+        showToast.error('Lỗi đọc file: ' + err.message);
+      },
+    });
+  };
+
   return {
     suppliers,
     products,
@@ -191,5 +268,6 @@ export const usePOForm = ({ open, isEdit, selectedRow }) => {
     setFormValues,
     validate,
     getPayload,
+    handleImportItems,
   };
 };
