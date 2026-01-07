@@ -26,10 +26,17 @@ export class SalesOrderController {
   }
 
   @Post(':id/submit')
-  @ApiOperation({ summary: 'Submit SO (pending -> approved)' })
+  @ApiOperation({
+    summary: 'Submit SO (pending -> approved)',
+    description: 'User ID được tự động lấy từ JWT token, không cần gửi trong body',
+  })
   @Roles(UserRole.admin, UserRole.manager, UserRole.logistics)
-  submit(@Param('id') id: string, @Body() dto: SubmitSalesOrderDto) {
-    return this.svc.submitSalesOrder(id, dto);
+  submit(
+    @Param('id') id: string,
+    @Body() dto: SubmitSalesOrderDto,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.svc.submitSalesOrder(id, dto, req.user.userId);
   }
 
   @Get(':id')

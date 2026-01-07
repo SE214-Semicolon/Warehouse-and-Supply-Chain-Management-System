@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsArray, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -13,15 +13,17 @@ export class ReceivePOItemDto {
   @Min(1)
   qtyToReceive!: number;
 
-  @ApiProperty({ description: 'ID vị trí kho nhận hàng' })
+  @ApiPropertyOptional({ description: 'ID vị trí kho nhận hàng (tự động tìm nếu không có)' })
+  @IsOptional()
   @IsString()
   @IsUUID()
-  locationId!: string;
+  locationId?: string;
 
-  @ApiProperty({ description: 'ID lô sản phẩm nhận' })
+  @ApiPropertyOptional({ description: 'ID lô sản phẩm nhận (tự động tạo nếu không có)' })
+  @IsOptional()
   @IsString()
   @IsUUID()
-  productBatchId!: string;
+  productBatchId?: string;
 
   @ApiProperty({ description: 'ID người thực hiện nhận hàng' })
   @IsString()

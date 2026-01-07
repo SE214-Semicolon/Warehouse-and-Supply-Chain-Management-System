@@ -1,36 +1,81 @@
 import { Box, Chip, Typography } from '@mui/material';
 import InfoCard from '@/components/InfoCard';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import { formatDate } from '../../../utils/formatDate';
 
 export default function BasicInfoSection({
   status,
-  statusColor,
   updatedAt,
   placedAt,
   supplier,
   expectedArrival,
 }) {
-  const statusColorMap = {
-    success: { bg: '#d1fae5', text: '#065f46' },
-    warning: { bg: '#fef3c7', text: '#92400e' },
-    error: { bg: '#fee2e2', text: '#991b1b' },
+  const getStatusChip = (status, color) => {
+    const colorStyles = {
+      success: {
+        backgroundColor: '#d1fae5',
+        color: '#065f46',
+      },
+      warning: {
+        backgroundColor: '#fef3c7',
+        color: '#92400e',
+      },
+      error: {
+        backgroundColor: '#fee2e2',
+        color: '#991b1b',
+      },
+      info: { backgroundColor: '#dbeafe', color: '#1e40af' },
+    };
+
+    const currentStyle = colorStyles[color] || colorStyles.success;
+
+    return (
+      <Chip
+        label={status}
+        size="small"
+        sx={{
+          paddingX: 1,
+          paddingY: 0.5,
+          fontSize: '0.825rem',
+          borderRadius: 9999,
+          fontWeight: 'medium',
+          backgroundColor: currentStyle.backgroundColor,
+          color: currentStyle.color,
+          height: 'auto',
+        }}
+      />
+    );
   };
 
-  const currentStatusStyle =
-    statusColorMap[statusColor] || statusColorMap.warning;
+  const getStatusInfo = (status) => {
+    switch (status) {
+      case 'ordered':
+        return { label: 'Ordered', color: 'success' };
+      case 'draft':
+        return { label: 'Draft', color: 'info' };
+      case 'partial':
+        return { label: 'Partial', color: 'warning' };
+      case 'received':
+        return { label: 'Recieved', color: 'success' };
+      case 'cancelled':
+        return { label: 'Canceled', color: 'error' };
+      default:
+        return { label: status, color: 'warning' };
+    }
+  };
 
   const fields = [
-    { label: 'Nhà cung cấp', value: supplier.name },
-    { label: 'Mã NCC', value: supplier.code },
-    { label: 'Trạng thái', value: status, isChip: true },
-    { label: 'Ngày đặt hàng', value: placedAt },
-    { label: 'Ngày giao hàng dự kiến', value: expectedArrival },
-    { label: 'Cập nhật lần cuối', value: updatedAt },
+    { label: 'Supplier', value: supplier.name },
+    { label: 'Supplier code', value: supplier.code },
+    { label: 'Status', value: status, isChip: true },
+    { label: 'Order date', value: formatDate(placedAt) },
+    { label: 'Expected arrival', value: formatDate(expectedArrival) },
+    { label: 'Last updated', value: formatDate(updatedAt) },
   ];
 
   return (
     <InfoCard
-      title="Thông tin giao hàng"
+      title="Shipping Information"
       icon={LocalShippingIcon}
       iconColor="blue"
     >
@@ -70,18 +115,10 @@ export default function BasicInfoSection({
               {field.label}:
             </Typography>
             {field.isChip ? (
-              <Chip
-                label={field.value}
-                size="medium"
-                sx={{
-                  backgroundColor: currentStatusStyle.bg,
-                  color: currentStatusStyle.text,
-                  fontSize: '1rem',
-                  fontWeight: 'medium',
-                  height: 'auto',
-                  borderRadius: '0px',
-                }}
-              />
+              getStatusChip(
+                getStatusInfo(field.value).label,
+                getStatusInfo(field.value).color
+              )
             ) : (
               <Typography
                 sx={{

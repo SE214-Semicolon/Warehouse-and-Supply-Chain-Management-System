@@ -22,12 +22,6 @@ export class SalesOrderListResponseDto {
   @ApiProperty({ example: 50 })
   total: number;
 
-  @ApiProperty({ example: 1 })
-  page: number;
-
-  @ApiProperty({ example: 20 })
-  pageSize: number;
-
   @ApiProperty({ example: 'Sales orders retrieved successfully' })
   message: string;
 }

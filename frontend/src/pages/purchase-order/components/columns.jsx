@@ -1,23 +1,30 @@
+import { formatDate } from '../../../utils/formatDate';
+
 export const columns = [
   { id: 'stt', label: 'No' },
-  { id: 'poNo', label: 'PO Code' },
+  { id: 'poNo', label: 'PO Code', search: true },
   {
     id: 'supplier.name',
     label: 'Supplier',
     render: (value) => value || '—',
+    search: true,
+    align: 'left',
   },
-  { id: 'totalAmount', label: 'Total' },
+  {
+    id: 'totalAmount',
+    label: 'Total',
+    render: (value) => Number(value).toLocaleString(),
+    align: 'right',
+  },
   {
     id: 'placedAt',
     label: 'Order date',
-    render: (value) =>
-      value ? new Date(value).toLocaleDateString('vi-VN') : '—',
+    render: (value) => (value ? formatDate(value) : '—'),
   },
   {
     id: 'expectedArrival',
     label: 'Expected arrival',
-    render: (value) =>
-      value ? new Date(value).toLocaleDateString('vi-VN') : '—',
+    render: (value) => (value ? formatDate(value) : '—'),
   },
   {
     id: 'status',

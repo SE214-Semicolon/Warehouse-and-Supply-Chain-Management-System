@@ -213,7 +213,7 @@ const Inventory = () => {
                 renderInput={(p) => (
                   <TextField
                     {...p}
-                    label="Search by Batch / Product Name"
+                    label="Search by batch"
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
                   />
                 )}

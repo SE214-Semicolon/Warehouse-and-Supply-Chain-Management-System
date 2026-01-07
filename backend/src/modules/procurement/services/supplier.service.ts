@@ -80,24 +80,17 @@ export class SupplierService {
    * - SUP-TC28: Pagination with excessive pageSize (400)
    */
   async findAll(query: QuerySupplierDto): Promise<SupplierListResponseDto> {
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 20;
-    const skip = (page - 1) * pageSize;
-
     const where = buildSupplierWhere(query);
     const orderBy = parseSort(query.sort);
 
-    const [data, total] = await Promise.all([
-      this.repo.findMany({ skip, take: pageSize, where, orderBy }),
-      this.repo.count(where),
-    ]);
+    // Disable pagination - return all records
+    const data = await this.repo.findMany({ where, orderBy });
+    const total = data.length;
 
     return {
       success: true,
       data,
       total,
-      page,
-      pageSize,
       message: 'Suppliers retrieved successfully',
     };
   }

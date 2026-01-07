@@ -136,7 +136,7 @@ export const usePOForm = ({ open, isEdit, selectedRow }) => {
     let ok = true;
 
     if (!formValues.supplierId) {
-      newErrors.supplierId = 'Vui lòng chọn nhà cung cấp';
+      newErrors.supplierId = 'Select a supplier';
       ok = false;
     }
 
@@ -145,17 +145,18 @@ export const usePOForm = ({ open, isEdit, selectedRow }) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (picked < today) {
-        newErrors.expectedArrival = 'Ngày giao không được ở quá khứ';
+        newErrors.expectedArrival =
+          'Expected arrival date cannot be in the past';
         ok = false;
       }
     }
 
     formValues.items.forEach((item, i) => {
       if (!item.productId) {
-        newErrors.items[i] = 'Vui lòng chọn sản phẩm';
+        newErrors.items[i] = 'Select a product';
         ok = false;
       } else if (!item.qtyOrdered || item.qtyOrdered < 1) {
-        newErrors.items[i] = 'Số lượng phải > 0';
+        newErrors.items[i] = 'Quantity must be at least 1';
         ok = false;
       } else {
         newErrors.items[i] = '';

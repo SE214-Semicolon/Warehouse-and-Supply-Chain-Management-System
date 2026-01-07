@@ -7,13 +7,17 @@ import SalesContent from './SalesContent';
 export default function Sales() {
   const [selectedMenuId, setSelectedMenuId] = useState(menuItems[0].id);
 
-  // const currentMenu = menuItems.find((item) => item.id === selectedMenuId);
+  const handleSelectMenu = (menuId) => {
+    setSelectedMenuId(menuId);
+    localStorage.setItem('selectedMenu', menuId);
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Toolbar
         menuItems={menuItems}
         selectedId={selectedMenuId}
-        onSelect={(id) => setSelectedMenuId(id)}
+        onSelect={(id) => handleSelectMenu(id)}
       />
 
       <SalesContent menuId={selectedMenuId} />

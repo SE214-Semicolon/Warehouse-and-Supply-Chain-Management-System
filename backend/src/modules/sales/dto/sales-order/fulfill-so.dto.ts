@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
   IsNumber,
@@ -15,13 +15,17 @@ class FulfillSOItemDto {
   @IsUUID()
   soItemId!: string;
 
-  @ApiProperty({ description: 'Product Batch ID' })
+  @ApiPropertyOptional({ description: 'Product Batch ID (optional if SO item has reservation)' })
+  @IsOptional()
+  @IsString()
   @IsUUID()
-  productBatchId!: string;
+  productBatchId?: string;
 
-  @ApiProperty({ description: 'Location ID to dispatch from' })
+  @ApiPropertyOptional({ description: 'Location ID to dispatch from (optional if SO item has reservation)' })
+  @IsOptional()
+  @IsString()
   @IsUUID()
-  locationId!: string;
+  locationId?: string;
 
   @ApiProperty({ description: 'Quantity to fulfill' })
   @IsNumber()

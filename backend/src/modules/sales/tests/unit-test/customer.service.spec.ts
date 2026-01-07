@@ -144,20 +144,17 @@ describe('CustomerService - Unit Tests', () => {
   });
 
   describe('findAll', () => {
-    // CUST-TC11: Get all with default pagination
-    it('should return customers with default pagination', async () => {
+    // CUST-TC11: Get all customers (pagination disabled)
+    it('should return all customers without pagination', async () => {
       const query = {};
 
       repo.findMany.mockResolvedValue([mockCustomer]);
-      repo.count.mockResolvedValue(1);
 
       const result = await service.findAll(query);
 
       expect(result.success).toBe(true);
       expect(result.data).toEqual([mockCustomer]);
       expect(result.total).toBe(1);
-      expect(result.page).toBe(1);
-      expect(result.pageSize).toBe(20);
     });
 
     // CUST-TC12: Filter by name
@@ -256,48 +253,29 @@ describe('CustomerService - Unit Tests', () => {
       );
     });
 
-    // CUST-TC16: Pagination page 1
-    it('should return customers for page 1', async () => {
+    // CUST-TC16: Pagination disabled - returns all records
+    it('should return all customers regardless of page/pageSize params', async () => {
       const query = {
         page: 1,
         pageSize: 10,
       };
 
       repo.findMany.mockResolvedValue([mockCustomer]);
-      repo.count.mockResolvedValue(25);
 
       const result = await service.findAll(query);
 
       expect(result.data).toEqual([mockCustomer]);
-      expect(result.page).toBe(1);
-      expect(result.pageSize).toBe(10);
-      expect(result.total).toBe(25);
+      expect(result.total).toBe(1);
       expect(repo.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          skip: 0,
-          take: 10,
+          where: expect.any(Object),
+          orderBy: expect.any(Array),
         }),
       );
-    });
-
-    // CUST-TC17: Pagination page 2
-    it('should return customers for page 2', async () => {
-      const query = {
-        page: 2,
-        pageSize: 10,
-      };
-
-      repo.findMany.mockResolvedValue([mockCustomer]);
-      repo.count.mockResolvedValue(25);
-
-      const result = await service.findAll(query);
-
-      expect(result.page).toBe(2);
-      expect(result.pageSize).toBe(10);
-      expect(repo.findMany).toHaveBeenCalledWith(
+      expect(repo.findMany).not.toHaveBeenCalledWith(
         expect.objectContaining({
-          skip: 10,
-          take: 10,
+          skip: expect.anything(),
+          take: expect.anything(),
         }),
       );
     });

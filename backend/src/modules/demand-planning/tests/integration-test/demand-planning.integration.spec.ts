@@ -472,19 +472,19 @@ describe('Demand Planning Module - E2E Integration Tests', () => {
     });
 
     it('should reject invalid product ID', async () => {
-      // Invalid UUID format causes 500 due to database constraint
+      // Test with non-existent but valid UUID format
       const response = await request(app.getHttpServer())
         .post('/demand-planning/forecasts')
         .set('Authorization', analystToken)
         .send({
-          productId: 'invalid-id',
+          productId: '00000000-0000-0000-0000-000000000000',
           forecastDate: new Date('2025-06-01'),
           forecastedQuantity: 100,
           algorithmUsed: 'MANUAL',
         });
 
-      // Expect 400, 404, or 500 - any error response is acceptable for invalid UUID
-      expect([400, 404, 500]).toContain(response.status);
+      // Expect 400 or 404 - product not found
+      expect([400, 404]).toContain(response.status);
     });
   });
 });

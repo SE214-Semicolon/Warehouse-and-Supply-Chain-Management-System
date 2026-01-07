@@ -9,20 +9,12 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Button,
   TextField,
   InputAdornment,
   Grid,
-  IconButton,
   Alert,
 } from '@mui/material';
-import {
-  Search,
-  AlertTriangle,
-  Package,
-  ShoppingCart,
-  Filter,
-} from 'lucide-react';
+import { Search, AlertTriangle, Package, Filter } from 'lucide-react';
 import { InventoryReportService } from '../../../../services/report.service';
 import StatsCard from '../../components/stats-card/StatsCard';
 import ReportHeader from '../../components/header/ReportHeader';
@@ -87,19 +79,6 @@ export default function LowStockReport() {
         showExport={true}
         onExport={() => console.log('Xuất Excel')}
         onRefresh={() => window.location.reload()}
-        extraActions={
-          <Button
-            variant="contained"
-            startIcon={<ShoppingCart size={18} />}
-            sx={{
-              borderRadius: 2.5,
-              bgcolor: '#2563eb',
-              textTransform: 'none',
-            }}
-          >
-            Quick order
-          </Button>
-        }
       />
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -164,10 +143,6 @@ export default function LowStockReport() {
               sx: { borderRadius: 2 },
             }}
           />
-          <Box sx={{ flexGrow: 1 }} />
-          <IconButton sx={{ border: '1px solid #e2e8f0', borderRadius: 2 }}>
-            <Filter size={18} />
-          </IconButton>
         </Box>
 
         <TableContainer>
@@ -208,7 +183,7 @@ export default function LowStockReport() {
                     sx={{ py: 8 }}
                   >
                     <Typography variant="body1" color="text.secondary">
-                      Không tìm thấy sản phẩm nào cần báo hàng.
+                      No records found.
                     </Typography>
                   </TableCell>
                 </TableRow>

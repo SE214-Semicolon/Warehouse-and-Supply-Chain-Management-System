@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Stack, Button } from '@mui/material';
-import { Download, RefreshCcw } from 'lucide-react';
+import { RefreshCcw } from 'lucide-react';
 
 const ReportHeader = ({
   title,
@@ -9,9 +9,7 @@ const ReportHeader = ({
   iconColor = '#fff',
   iconBgColor = '#2563eb',
   showRefresh = true,
-  showExport = true,
   onRefresh,
-  onExport,
   extraActions,
 }) => {
   return (
@@ -51,21 +49,6 @@ const ReportHeader = ({
 
       <Stack direction="row" spacing={1.5} alignItems="center">
         {extraActions}
-
-        {showExport && (
-          <Button
-            variant="outlined"
-            startIcon={<Download size={18} />}
-            onClick={onExport}
-            sx={{
-              borderRadius: 2.5,
-              textTransform: 'none',
-              minWidth: 140,
-            }}
-          >
-            Download
-          </Button>
-        )}
 
         {showRefresh && (
           <Button

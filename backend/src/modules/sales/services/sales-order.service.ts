@@ -104,22 +104,26 @@ export class SalesOrderService {
   }
 
   /**
-   * Submit Sales Order API (REFACTORED - Flexible Validation)
+   * Submit Sales Order API (REFACTORED - Auto-Allocation with FEFO)
    * Minimum test cases: 6
    * - SO-TC11: Submit pending SO successfully (200, status → approved)
-   * - SO-TC12: Missing userId (400, tested by DTO)
+   * - SO-TC12: Missing userId (400, now handled by JWT Guard)
    * - SO-TC13: Submit SO not in pending status (400)
    * - SO-TC14: Submit non-existent SO (404)
    * - SO-TC15: Permission denied role warehouse_staff (403, tested by guard)
    * - SO-TC16: No authentication (401, tested by guard)
    *
-   * NEW: Flexible inventory validation:
-   * - If item has productBatchId: Validate specific batch inventory
-   * - If item has NO productBatchId: Validate GLOBAL inventory (all batches/locations)
+   * NEW: Auto-Allocation with FEFO (First Expired First Out):
+   * - If item has productBatchId and locationId: Reserve specific batch
+   * - If item has NO productBatchId/locationId: Auto-allocate using FEFO algorithm
+   *   - Find batches with nearest expiry date first
+   *   - Allocate from multiple batches if needed
+   *   - Reserve allocated inventory
+   *   - Throw error if insufficient total inventory
    */
-  async submitSalesOrder(id: string, dto: SubmitSalesOrderDto) {
-    this.logger.log(`Submitting sales order: ${id}`);
-    if (!dto?.userId) {
+  async submitSalesOrder(id: string, dto: SubmitSalesOrderDto, userId: string) {
+    this.logger.log(`Submitting sales order: ${id} by user: ${userId}`);
+    if (!userId) {
       throw new BadRequestException('userId is required');
     }
     const so = await this.soRepo.findById(id);
@@ -128,8 +132,13 @@ export class SalesOrderService {
       throw new BadRequestException('Only pending SO can be submitted');
     }
 
-    // STEP 1: Validate inventory availability for all items
-    // Use flexible validation: batch-specific or global
+    // STEP 1: Validate inventory availability and prepare allocation plan
+    // Store allocation plan for items without batch/location
+    const allocationPlan: Map<
+      string,
+      Array<{ productBatchId: string; locationId: string; qty: number }>
+    > = new Map();
+
     for (const item of so.items || []) {
       if (item.productBatchId && item.locationId) {
         // Case A: User specified batch/location - validate specific batch
@@ -154,31 +163,70 @@ export class SalesOrderService {
           );
         }
       } else if (item.productId) {
-        // Case B: User did NOT specify batch - validate GLOBAL inventory
+        // Case B: User did NOT specify batch/location - Auto-allocate using FEFO
         this.logger.log(
-          `Validating global inventory for SO item ${item.id}: Product=${item.productId}`,
+          `Auto-allocating inventory for SO item ${item.id}: Product=${item.productId} using FEFO`,
         );
         try {
-          const globalInventory = await this.inventorySvc.getGlobalInventoryByProduct(
+          const availableInventories = await this.inventorySvc.getAvailableInventoryForFEFO(
             item.productId,
           );
-          // Formula: GlobalAvailable = SUM(availableQty) for all batches/locations
-          const totalAvailable = globalInventory.totalAvailableQty;
 
-          if (totalAvailable < item.qty) {
+          if (!availableInventories || availableInventories.length === 0) {
+            const globalInventory = await this.inventorySvc.getGlobalInventoryByProduct(
+              item.productId,
+            );
             const productName = globalInventory.productName || item.productId;
+            throw new BadRequestException(
+              `Sản phẩm "${productName}" không có hàng khả dụng trong kho.`,
+            );
+          }
+
+          // Apply FEFO algorithm: allocate from batches with nearest expiry first
+          let remainingQty = item.qty;
+          const allocations: Array<{ productBatchId: string; locationId: string; qty: number }> =
+            [];
+
+          for (const inv of availableInventories) {
+            if (remainingQty <= 0) break;
+
+            const qtyToAllocate = Math.min(remainingQty, inv.availableQty);
+            allocations.push({
+              productBatchId: inv.productBatchId,
+              locationId: inv.locationId,
+              qty: qtyToAllocate,
+            });
+
+            this.logger.log(
+              `FEFO Allocation: Batch=${inv.batchNo || inv.productBatchId}, Location=${inv.locationName || inv.locationId}, ` +
+                `Qty=${qtyToAllocate}, ExpiryDate=${inv.expiryDate?.toISOString() || 'N/A'}`,
+            );
+
+            remainingQty -= qtyToAllocate;
+          }
+
+          // Check if we have enough inventory
+          if (remainingQty > 0) {
+            const globalInventory = await this.inventorySvc.getGlobalInventoryByProduct(
+              item.productId,
+            );
+            const productName = globalInventory.productName || item.productId;
+            const totalAvailable = globalInventory.totalAvailableQty;
             throw new BadRequestException(
               `Sản phẩm "${productName}" không đủ hàng trong kho. ` +
                 `Tổng khả dụng: ${totalAvailable}, Yêu cầu: ${item.qty}`,
             );
           }
+
+          // Store allocation plan for this item
+          allocationPlan.set(item.id, allocations);
           this.logger.log(
-            `Global inventory check passed for product ${item.productId}: Available=${totalAvailable}, Required=${item.qty}`,
+            `FEFO allocation completed for item ${item.id}: ${allocations.length} batch(es) allocated`,
           );
         } catch (error) {
           if (error instanceof BadRequestException) throw error;
           throw new BadRequestException(
-            `Lỗi khi kiểm tra tổng tồn kho: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            `Lỗi khi phân bổ tồn kho tự động: ${error instanceof Error ? error.message : 'Unknown error'}`,
           );
         }
       } else {
@@ -189,18 +237,18 @@ export class SalesOrderService {
       }
     }
 
-    // STEP 2: Reserve inventory for items that have both productBatchId and locationId
-    // Note: Items without batch/location will be allocated during fulfillment
+    // STEP 2: Reserve inventory based on allocation plan
     // Note: If reservation succeeds but submit fails, retry will be idempotent
     for (const item of so.items || []) {
       if (item.productBatchId && item.locationId) {
+        // Case A: User specified batch/location - reserve directly
         try {
           await this.inventorySvc.reserveInventory({
             productBatchId: item.productBatchId,
             locationId: item.locationId,
             quantity: item.qty,
             orderId: so.id,
-            createdById: dto.userId,
+            createdById: userId,
             idempotencyKey: `SO-${so.id}-${item.id}`,
             note: `Reservation for Sales Order ${so.soNo}`,
           });
@@ -212,9 +260,45 @@ export class SalesOrderService {
           );
         }
       } else {
+        // Case B: Auto-allocated items - reserve according to allocation plan
+        const allocations = allocationPlan.get(item.id);
+        if (!allocations || allocations.length === 0) {
+          throw new BadRequestException(
+            `No allocation plan found for item ${item.id}. This should not happen.`,
+          );
+        }
+
         this.logger.log(
-          `SO item ${item.id} without batch/location will be allocated during fulfillment`,
+          `Reserving auto-allocated inventory for SO item ${item.id}: ${allocations.length} allocation(s)`,
         );
+
+        // Reserve each allocated batch
+        for (let i = 0; i < allocations.length; i++) {
+          const allocation = allocations[i];
+          try {
+            await this.inventorySvc.reserveInventory({
+              productBatchId: allocation.productBatchId,
+              locationId: allocation.locationId,
+              quantity: allocation.qty,
+              orderId: so.id,
+              createdById: userId,
+              idempotencyKey: `SO-${so.id}-${item.id}-${i}`,
+              note: `FEFO Auto-Allocation for Sales Order ${so.soNo} (part ${i + 1}/${allocations.length})`,
+            });
+            this.logger.log(
+              `Reserved ${allocation.qty} units from batch ${allocation.productBatchId} ` +
+                `at location ${allocation.locationId} for SO ${so.soNo}, item ${item.id}`,
+            );
+          } catch (error) {
+            this.logger.error(
+              `Failed to reserve auto-allocated inventory for SO ${so.soNo}, item ${item.id}:`,
+              error,
+            );
+            throw new BadRequestException(
+              `Failed to reserve auto-allocated inventory: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            );
+          }
+        }
       }
     }
 
@@ -282,10 +366,6 @@ export class SalesOrderService {
    * - SO-TC32: SQL injection test (200, handled by Prisma)
    */
   async list(query: QuerySalesOrderDto): Promise<SalesOrderListResponseDto> {
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 20;
-    const skip = (page - 1) * pageSize;
-
     const where: Prisma.SalesOrderWhereInput = {};
     if (query.soNo) where.soNo = { contains: query.soNo, mode: 'insensitive' };
     if (query.status) where.status = query.status;
@@ -310,13 +390,12 @@ export class SalesOrderService {
       } as Prisma.SalesOrderOrderByWithRelationInput);
     }
 
-    const { data, total } = await this.soRepo.list({ skip, take: pageSize, where, orderBy });
+    // Disable pagination - return all records
+    const { data, total } = await this.soRepo.list({ where, orderBy });
     return {
       success: true,
       data,
       total,
-      page,
-      pageSize,
       message: 'Sales orders retrieved successfully',
     };
   }
@@ -449,15 +528,19 @@ export class SalesOrderService {
 
     // Validate batch expiry dates for all items before fulfilling
     for (const r of dto.items) {
-      if (r.productBatchId) {
+      const soItem = existing.find((e) => e.id === r.soItemId)!;
+      // Use batch from DTO if provided, otherwise from SO item
+      const productBatchId = r.productBatchId || soItem.productBatchId;
+
+      if (productBatchId) {
         const batch = await this.prisma.productBatch.findUnique({
-          where: { id: r.productBatchId },
+          where: { id: productBatchId },
           select: { id: true, batchNo: true, expiryDate: true },
         });
 
         if (!batch) {
           throw new BadRequestException(
-            `ProductBatch ${r.productBatchId} not found for fulfillment`,
+            `ProductBatch ${productBatchId} not found for fulfillment`,
           );
         }
 
@@ -478,8 +561,19 @@ export class SalesOrderService {
     for (const r of dto.items) {
       const soItem = existing.find((e) => e.id === r.soItemId)!;
 
+      // Use batch/location from DTO if provided, otherwise fallback to SO item (reservation)
+      const productBatchId = r.productBatchId || soItem.productBatchId;
+      const locationId = r.locationId || soItem.locationId;
+
       // Determine if this item has a reservation (indicated by batch/location in SO item)
       const hasReservation = !!(soItem.productBatchId && soItem.locationId);
+
+      // If neither DTO nor SO item has batch/location, throw error
+      if (!productBatchId || !locationId) {
+        throw new BadRequestException(
+          `ProductBatchId and LocationId are required for fulfillment. Either provide them in the request or ensure the SO item has a reservation.`,
+        );
+      }
 
       if (hasReservation) {
         this.logger.log(
@@ -493,8 +587,8 @@ export class SalesOrderService {
       // If hasReservation=true: dispatch will decrement BOTH availableQty AND reservedQty
       // If hasReservation=false: dispatch will decrement ONLY availableQty
       const payload: DispatchInventoryDto = {
-        productBatchId: r.productBatchId,
-        locationId: r.locationId,
+        productBatchId: productBatchId,
+        locationId: locationId,
         quantity: r.qtyToFulfill,
         createdById: r.createdById,
         idempotencyKey: r.idempotencyKey,

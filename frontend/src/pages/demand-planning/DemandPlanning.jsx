@@ -107,22 +107,18 @@ const DemandPlanning = () => {
   }, [forecasts, searchTerm]);
 
   const handleRunAlgorithm = async (productId, payload) => {
-    try {
-      const res = await DemandPlanningService.runAlgorithm(productId, payload);
-      if (res && res.success) {
-        if (res.forecastsCreated === 0) {
-          setResultDialog({
-            open: true,
-            type: "warning",
-            title: "Insufficient Data Warning",
-            message: `Algorithm ran successfully but NO forecasts were created.\n\nReason: Average Daily Demand is ${res.avgDailyDemand}.\nThis usually happens when the product has no sales history in the selected time window.`,
-          });
-        } else {
-          fetchForecasts();
-        }
+    const res = await DemandPlanningService.runAlgorithm(productId, payload);
+    if (res && res.success) {
+      if (res.forecastsCreated === 0) {
+        setResultDialog({
+          open: true,
+          type: "warning",
+          title: "Insufficient Data Warning",
+          message: `Algorithm ran successfully but NO forecasts were created.\n\nReason: Average Daily Demand is ${res.avgDailyDemand}.\nThis usually happens when the product has no sales history in the selected time window.`,
+        });
+      } else {
+        fetchForecasts();
       }
-    } catch (error) {
-      console.error(error);
     }
   };
 
@@ -169,7 +165,7 @@ const DemandPlanning = () => {
     <Box sx={{ maxWidth: "1200px", mx: "auto", py: 3, px: 2 }}>
       <Box sx={{ mb: 4 }}>
         <Typography variant="h5" fontWeight="bold" color="primary">
-          Demand Forecasting
+          Demand Planning
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Manage predictions and run forecasting algorithms.

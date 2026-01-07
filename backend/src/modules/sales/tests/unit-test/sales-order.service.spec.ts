@@ -33,6 +33,12 @@ describe('SalesOrderService', () => {
         qtyFulfilled: 0,
         unitPrice: 50000,
         lineTotal: 500000,
+        product: {
+          id: 'product-uuid-1',
+          code: 'PROD-001',
+          name: 'Product A',
+          description: 'Test Product',
+        },
       },
     ],
     customer: {
@@ -280,27 +286,103 @@ describe('SalesOrderService', () => {
   });
 
   describe('submitSalesOrder', () => {
-    // SO-TC11: Submit pending SO successfully
-    it('should submit a pending SO successfully', async () => {
-      const submitDto = { userId: 'user-uuid-1' };
-      const approvedSO = { ...mockSalesOrder, status: OrderStatus.approved };
+    // SO-TC11: Submit pending SO successfully (with batch/location specified)
+    it('should submit a pending SO successfully with batch/location specified', async () => {
+      const submitDto = {};
+      const userId = 'user-uuid-1';
+      const mockSOWithBatch = {
+        ...mockSalesOrder,
+        items: [
+          {
+            id: 'so-item-uuid-1',
+            salesOrderId: 'so-uuid-1',
+            productId: 'product-uuid-1',
+            productBatchId: 'batch-uuid-1',
+            locationId: 'location-uuid-1',
+            qty: 10,
+            qtyFulfilled: 0,
+            unitPrice: 50000,
+            lineTotal: 500000,
+          },
+        ],
+      };
+      const approvedSO = { ...mockSOWithBatch, status: OrderStatus.approved };
 
-      soRepo.findById.mockResolvedValueOnce(mockSalesOrder);
-      soRepo.submit.mockResolvedValue(approvedSO);
-      soRepo.findById.mockResolvedValueOnce(approvedSO);
+      soRepo.findById.mockResolvedValueOnce(mockSOWithBatch);
+      inventorySvc.getInventoryByBatchAndLocation.mockResolvedValue({
+        availableQty: 100,
+        reservedQty: 0,
+      });
+      inventorySvc.reserveInventory.mockResolvedValue({
+        success: true,
+        inventory: {} as any,
+        movement: {} as any,
+      });
+      const approvedSOWithPlacedAt = { ...approvedSO, placedAt: new Date() };
+      soRepo.submit.mockResolvedValue(approvedSOWithPlacedAt);
+      soRepo.findById.mockResolvedValueOnce(approvedSOWithPlacedAt);
 
-      const result = await service.submitSalesOrder('so-uuid-1', submitDto);
+      const result = await service.submitSalesOrder('so-uuid-1', submitDto, userId);
 
       expect(result.status).toBe(OrderStatus.approved);
+      expect(result.placedAt).toBeDefined();
+      expect(soRepo.submit).toHaveBeenCalledWith('so-uuid-1');
+      expect(inventorySvc.reserveInventory).toHaveBeenCalled();
+    });
+
+    // SO-TC11b: Submit pending SO successfully with FEFO auto-allocation
+    it('should submit a pending SO successfully with FEFO auto-allocation', async () => {
+      const submitDto = {};
+      const userId = 'user-uuid-1';
+      const approvedSO = { ...mockSalesOrder, status: OrderStatus.approved };
+
+      // Mock FEFO inventory response
+      const mockFEFOInventory = [
+        {
+          productBatchId: 'batch-uuid-1',
+          locationId: 'location-uuid-1',
+          availableQty: 5,
+          reservedQty: 0,
+          expiryDate: new Date('2024-06-01'),
+          batchNo: 'BATCH-001',
+          locationName: 'Warehouse A',
+        },
+        {
+          productBatchId: 'batch-uuid-2',
+          locationId: 'location-uuid-1',
+          availableQty: 10,
+          reservedQty: 0,
+          expiryDate: new Date('2024-08-01'),
+          batchNo: 'BATCH-002',
+          locationName: 'Warehouse A',
+        },
+      ];
+
+      soRepo.findById.mockResolvedValueOnce(mockSalesOrder);
+      inventorySvc.getAvailableInventoryForFEFO = jest.fn().mockResolvedValue(mockFEFOInventory);
+      inventorySvc.reserveInventory.mockResolvedValue({
+        success: true,
+        inventory: {} as any,
+        movement: {} as any,
+      });
+      const approvedSOWithPlacedAt = { ...approvedSO, placedAt: new Date() };
+      soRepo.submit.mockResolvedValue(approvedSOWithPlacedAt);
+      soRepo.findById.mockResolvedValueOnce(approvedSOWithPlacedAt);
+
+      const result = await service.submitSalesOrder('so-uuid-1', submitDto, userId);
+
+      expect(result.status).toBe(OrderStatus.approved);
+      expect(inventorySvc.getAvailableInventoryForFEFO).toHaveBeenCalledWith('product-uuid-1');
+      expect(inventorySvc.reserveInventory).toHaveBeenCalledTimes(2); // Should reserve from 2 batches
       expect(soRepo.submit).toHaveBeenCalledWith('so-uuid-1');
     });
 
     // SO-TC12: Missing userId
     it('should throw BadRequestException if userId is missing', async () => {
-      await expect(service.submitSalesOrder('so-uuid-1', {} as any)).rejects.toThrow(
+      await expect(service.submitSalesOrder('so-uuid-1', {}, '')).rejects.toThrow(
         BadRequestException,
       );
-      await expect(service.submitSalesOrder('so-uuid-1', {} as any)).rejects.toThrow(
+      await expect(service.submitSalesOrder('so-uuid-1', {}, '')).rejects.toThrow(
         'userId is required',
       );
     });
@@ -310,24 +392,60 @@ describe('SalesOrderService', () => {
       const approvedSo = { ...mockSalesOrder, status: OrderStatus.approved };
       soRepo.findById.mockResolvedValue(approvedSo);
 
-      await expect(
-        service.submitSalesOrder('so-uuid-1', { userId: 'user-uuid-1' }),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.submitSalesOrder('so-uuid-1', { userId: 'user-uuid-1' }),
-      ).rejects.toThrow('Only pending SO can be submitted');
+      await expect(service.submitSalesOrder('so-uuid-1', {}, 'user-uuid-1')).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.submitSalesOrder('so-uuid-1', {}, 'user-uuid-1')).rejects.toThrow(
+        'Only pending SO can be submitted',
+      );
     });
 
     // SO-TC14: Submit non-existent SO
     it('should throw NotFoundException if SO not found', async () => {
       soRepo.findById.mockResolvedValue(null);
 
-      await expect(
-        service.submitSalesOrder('invalid-id', { userId: 'user-uuid-1' }),
-      ).rejects.toThrow(NotFoundException);
-      await expect(
-        service.submitSalesOrder('invalid-id', { userId: 'user-uuid-1' }),
-      ).rejects.toThrow('SO not found');
+      await expect(service.submitSalesOrder('invalid-id', {}, 'user-uuid-1')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.submitSalesOrder('invalid-id', {}, 'user-uuid-1')).rejects.toThrow(
+        'SO not found',
+      );
+    });
+
+    // SO-TC15: FEFO auto-allocation with insufficient inventory
+    it('should throw BadRequestException if FEFO auto-allocation finds insufficient inventory', async () => {
+      const submitDto = {};
+      const userId = 'user-uuid-1';
+
+      // Mock FEFO inventory with insufficient quantity
+      const mockFEFOInventory = [
+        {
+          productBatchId: 'batch-uuid-1',
+          locationId: 'location-uuid-1',
+          availableQty: 3, // Only 3 available, but need 10
+          reservedQty: 0,
+          expiryDate: new Date('2024-06-01'),
+          batchNo: 'BATCH-001',
+          locationName: 'Warehouse A',
+        },
+      ];
+
+      soRepo.findById.mockResolvedValue(mockSalesOrder); // Changed to mockResolvedValue (not Once)
+      inventorySvc.getAvailableInventoryForFEFO = jest.fn().mockResolvedValue(mockFEFOInventory);
+      inventorySvc.getGlobalInventoryByProduct.mockResolvedValue({
+        productId: 'product-uuid-1',
+        productName: 'Product A',
+        totalAvailableQty: 3,
+        totalReservedQty: 0,
+        batchCount: 1,
+      });
+
+      await expect(service.submitSalesOrder('so-uuid-1', submitDto, userId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.submitSalesOrder('so-uuid-1', submitDto, userId)).rejects.toThrow(
+        /không đủ hàng trong kho/,
+      );
     });
   });
 
@@ -353,8 +471,8 @@ describe('SalesOrderService', () => {
   });
 
   describe('list', () => {
-    // SO-TC20: Get all with default pagination
-    it('should return all SOs with default pagination', async () => {
+    // SO-TC20: Get all SOs (pagination disabled)
+    it('should return all SOs without pagination', async () => {
       const query = {};
       soRepo.list.mockResolvedValue({
         data: [mockSalesOrder],
@@ -365,8 +483,6 @@ describe('SalesOrderService', () => {
 
       expect(result.data).toEqual([mockSalesOrder]);
       expect(result.total).toBe(1);
-      expect(result.page).toBe(1);
-      expect(result.pageSize).toBe(20);
     });
 
     // SO-TC21: Filter by soNo
@@ -425,19 +541,30 @@ describe('SalesOrderService', () => {
       );
     });
 
-    // SO-TC27: Pagination page 1
-    it('should return SOs for page 1', async () => {
+    // SO-TC27: Pagination disabled - returns all records
+    it('should return all SOs regardless of page/pageSize params', async () => {
       const query = { page: 1, pageSize: 10 };
       soRepo.list.mockResolvedValue({
         data: [mockSalesOrder],
-        total: 25,
+        total: 1,
       });
 
       const result = await service.list(query);
 
-      expect(result.page).toBe(1);
-      expect(result.pageSize).toBe(10);
-      expect(soRepo.list).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 10 }));
+      expect(result.data).toEqual([mockSalesOrder]);
+      expect(result.total).toBe(1);
+      expect(soRepo.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.any(Object),
+          orderBy: expect.any(Array),
+        }),
+      );
+      expect(soRepo.list).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: expect.anything(),
+          take: expect.anything(),
+        }),
+      );
     });
 
     // SO-TC29: Sort by placedAt asc
@@ -688,6 +815,98 @@ describe('SalesOrderService', () => {
       );
       await expect(service.fulfillSalesOrder('invalid-id', fulfillDto)).rejects.toThrow(
         'SO not found',
+      );
+    });
+
+    // SO-TC57: Fulfill with optional productBatchId/locationId (fallback from SO item)
+    it('should use productBatchId and locationId from SO item when not provided in DTO', async () => {
+      const soItemWithReservation = {
+        ...mockSalesOrder.items[0],
+        productBatchId: 'batch-from-so-item',
+        locationId: 'location-from-so-item',
+      };
+      const approvedSo = {
+        ...mockSalesOrder,
+        status: OrderStatus.approved,
+        items: [soItemWithReservation],
+      };
+      const itemWithFulfillment = { ...soItemWithReservation, qtyFulfilled: 5 };
+      const processingSo = { ...approvedSo, status: OrderStatus.processing };
+
+      const fulfillDto = {
+        items: [
+          {
+            soItemId: 'so-item-uuid-1',
+            // productBatchId and locationId not provided - should use from SO item
+            qtyToFulfill: 5,
+            createdById: 'user-uuid-1',
+            idempotencyKey: 'idem-key-fallback',
+          },
+        ],
+      };
+
+      soRepo.findById.mockResolvedValueOnce(approvedSo);
+      soRepo.findItemsByIds.mockResolvedValueOnce([soItemWithReservation]);
+      (prisma.productBatch.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'batch-from-so-item',
+        batchNo: 'BATCH-001',
+        expiryDate: new Date('2026-12-31'),
+      } as any);
+      inventorySvc.dispatchInventory.mockResolvedValue(undefined as any);
+      soRepo.updateItemFulfilled.mockResolvedValue(itemWithFulfillment);
+      soRepo.findItemsByIds.mockResolvedValueOnce([itemWithFulfillment]);
+      soRepo.updateStatus.mockResolvedValue(processingSo);
+      soRepo.findById.mockResolvedValueOnce(processingSo);
+
+      const result = await service.fulfillSalesOrder('so-uuid-1', fulfillDto);
+
+      expect(result.status).toBe(OrderStatus.processing);
+      expect(inventorySvc.dispatchInventory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          productBatchId: 'batch-from-so-item',
+          locationId: 'location-from-so-item',
+        }),
+        expect.any(Object),
+      );
+    });
+
+    // SO-TC58: Fulfill without productBatchId/locationId and SO item also doesn't have them
+    it('should throw BadRequestException when neither DTO nor SO item has productBatchId/locationId', async () => {
+      const soItemWithoutReservation = {
+        ...mockSalesOrder.items[0],
+        productBatchId: null,
+        locationId: null,
+      };
+      const approvedSo = {
+        ...mockSalesOrder,
+        status: OrderStatus.approved,
+        items: [soItemWithoutReservation],
+      };
+
+      const fulfillDto = {
+        items: [
+          {
+            soItemId: 'so-item-uuid-1',
+            // productBatchId and locationId not provided
+            qtyToFulfill: 5,
+            createdById: 'user-uuid-1',
+            idempotencyKey: 'idem-key-error',
+          },
+        ],
+      };
+
+      soRepo.findById
+        .mockResolvedValueOnce(approvedSo)
+        .mockResolvedValueOnce(approvedSo);
+      soRepo.findItemsByIds
+        .mockResolvedValueOnce([soItemWithoutReservation])
+        .mockResolvedValueOnce([soItemWithoutReservation]);
+
+      await expect(service.fulfillSalesOrder('so-uuid-1', fulfillDto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.fulfillSalesOrder('so-uuid-1', fulfillDto)).rejects.toThrow(
+        'ProductBatchId and LocationId are required',
       );
     });
   });

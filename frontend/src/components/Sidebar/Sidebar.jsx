@@ -18,10 +18,12 @@ const Sidebar = ({ width = 264, headerHeight = 60 }) => {
     { text: 'Warehouse', path: '/warehouse' },
     { text: 'Procurement', path: '/procurement' },
     { text: 'Sales', path: '/sales' },
-    { text: 'Shipment', path: '/shipment' },
-    { text: 'Inventory', path: '/inventory'},
+    { text: 'Shipment', path: '/shipments' },
+    { text: 'Inventory', path: '/inventory' },
     { text: 'Reports', path: '/reports' },
-    { text: 'DemandPlanning', path: '/demand-planning' },
+    { text: 'Demand Planning', path: '/demand-planning' },
+    { text: 'Audit Logs', path: '/audit-logs' },
+    { text: 'Users', path: '/users' },
   ];
 
   return (

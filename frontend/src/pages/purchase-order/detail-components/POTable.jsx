@@ -8,163 +8,261 @@ import {
   Table,
   TableBody,
   TableCell,
+  Button,
+  Chip,
 } from '@mui/material';
 import ArticleIcon from '@mui/icons-material/Article';
+import ReceiveDialog from './ReceiveDialog';
+import { useState } from 'react';
 
-export default function POTable({ products }) {
+export default function POTable({
+  items = [],
+  onPOUpdated,
+  canReceive = true,
+}) {
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  const handleOpenReceive = (item) => {
+    setSelectedItem(item);
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedItem(null);
+  };
+
+  const handleReceiveSuccess = (updatedPO) => {
+    onPOUpdated(updatedPO);
+  };
+
+  if (!items || items.length === 0) {
+    return (
+      <Card
+        sx={{ borderRadius: '1rem', boxShadow: 2, p: 4, textAlign: 'center' }}
+      >
+        <Typography color="text.secondary">No order items.</Typography>
+      </Card>
+    );
+  }
+
   return (
-    <Card
-      sx={{
-        borderRadius: '1rem',
-        boxShadow: 2,
-        overflow: 'hidden',
-      }}
-    >
-      <Box
+    <>
+      <Card
         sx={{
-          paddingX: 3,
-          paddingY: 2,
-          borderBottom: 1,
-          borderColor: 'grey.200',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: 'white',
+          borderRadius: '1rem',
+          boxShadow: 2,
+          overflow: 'hidden',
         }}
       >
-        <Typography
-          variant="h6"
+        <Box
           sx={{
-            fontWeight: 'semibold',
-            color: 'text.primary',
+            paddingX: 3,
+            paddingY: 2,
+            borderBottom: 1,
+            borderColor: 'grey.200',
             display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
+            backgroundColor: 'white',
           }}
         >
-          <ArticleIcon
+          <Typography
+            variant="h6"
             sx={{
-              color: 'orange.600',
-              marginRight: 1.5,
-              width: 20,
-              height: 20,
-            }}
-          />
-          Chi tiết đơn hàng
-        </Typography>
-      </Box>
-      <TableContainer>
-        <Table size="medium">
-          <TableHead
-            sx={{
-              backgroundColor: 'grey.50',
+              fontWeight: 'semibold',
+              color: 'text.primary',
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
-            <TableRow>
-              {[
-                'STT',
-                'Mã sản phẩm',
-                'Tên sản phẩm',
-                'SL',
-                'Đơn giá',
-                'Thành tiền',
-              ].map((head, index) => (
-                <TableCell
-                  key={index}
-                  sx={{
-                    paddingX: 3,
-                    paddingY: 1.5,
-                    fontSize: '0.825rem',
-                    fontWeight: 'medium',
-                    color: 'grey.500',
-                    textTransform: 'uppercase',
-                    letterSpacing: 'wider',
-                    borderBottom: 'none',
-                  }}
-                >
-                  {head}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {products.map((product, index) => (
-              <TableRow
-                key={product.code}
-                hover
-                sx={{
-                  '&:hover': {
-                    backgroundColor: 'grey.50',
-                  },
-                }}
-              >
-                <TableCell
-                  sx={{
-                    paddingX: 3,
-                    paddingY: 2,
-                    whiteSpace: 'nowrap',
-                    fontSize: '0.875rem',
-                    fontWeight: 'medium',
-                  }}
-                >
-                  {index + 1}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    paddingX: 3,
-                    paddingY: 2,
-                    whiteSpace: 'nowrap',
-                    fontSize: '0.875rem',
-                    color: 'primary.main',
-                  }}
-                >
-                  {product.code}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    paddingX: 3,
-                    paddingY: 2,
-                    whiteSpace: 'nowrap',
-                    fontSize: '0.875rem',
-                    color: 'text.primary',
-                  }}
-                >
-                  {product.name}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    paddingX: 3,
-                    paddingY: 2,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {product.quantity}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    paddingX: 3,
-                    paddingY: 2,
-                    whiteSpace: 'nowrap',
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  {product.unitPrice}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    paddingX: 3,
-                    paddingY: 2,
-                    whiteSpace: 'nowrap',
-                    fontSize: '0.875rem',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  {product.total}
-                </TableCell>
+            <ArticleIcon
+              sx={{
+                color: 'orange.600',
+                marginRight: 1.5,
+                width: 20,
+                height: 20,
+              }}
+            />
+            Order Items
+          </Typography>
+        </Box>
+        <TableContainer>
+          <Table size="medium">
+            <TableHead
+              sx={{
+                backgroundColor: 'grey.50',
+              }}
+            >
+              <TableRow>
+                {[
+                  'No',
+                  'Product SKU',
+                  'Product Name',
+                  'Order Quantity',
+                  'Received Quantity',
+                  'Remaining',
+                  'Status',
+                  'Unit Price',
+                  'Total',
+                  'Action',
+                ].map((head, index) => (
+                  <TableCell
+                    key={index}
+                    sx={{
+                      paddingX: 3,
+                      paddingY: 1.5,
+                      fontSize: '0.825rem',
+                      fontWeight: 'medium',
+                      color: 'grey.500',
+                      textTransform: 'uppercase',
+                      letterSpacing: 'wider',
+                      borderBottom: 'none',
+                    }}
+                  >
+                    {head}
+                  </TableCell>
+                ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Card>
+            </TableHead>
+            <TableBody>
+              {items.map((item, index) => {
+                const remaining = item.qtyOrdered - item.qtyReceived;
+                const fullyReceived = remaining <= 0;
+                return (
+                  <TableRow
+                    key={item.id}
+                    hover
+                    sx={{
+                      '&:hover': {
+                        backgroundColor: 'grey.50',
+                      },
+                    }}
+                  >
+                    <TableCell
+                      sx={{
+                        paddingX: 3,
+                        paddingY: 2,
+                        whiteSpace: 'nowrap',
+                        fontSize: '0.875rem',
+                        fontWeight: 'medium',
+                      }}
+                    >
+                      {index + 1}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        paddingX: 3,
+                        paddingY: 2,
+                        whiteSpace: 'nowrap',
+                        fontSize: '0.875rem',
+                        color: 'primary.main',
+                      }}
+                    >
+                      {item?.product?.sku || item.productId}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        paddingX: 3,
+                        paddingY: 2,
+                        whiteSpace: 'nowrap',
+                        fontSize: '0.875rem',
+                        color: 'text.primary',
+                      }}
+                    >
+                      {item?.product?.name || 'N/A'}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        paddingX: 3,
+                        paddingY: 2,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {Number(item.qtyOrdered).toLocaleString('vi-VN')}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        paddingX: 3,
+                        paddingY: 2,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {Number(item.qtyReceived).toLocaleString('vi-VN')}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        fontWeight: 'medium',
+                        color: remaining > 0 ? 'error.main' : 'success.main',
+                      }}
+                    >
+                      {Number(remaining).toLocaleString('vi-VN')}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={fullyReceived ? 'Full' : 'Not Full'}
+                        color={fullyReceived ? 'success' : 'warning'}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        paddingX: 3,
+                        paddingY: 2,
+                        whiteSpace: 'nowrap',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      {Number(item.unitPrice).toLocaleString('vi-VN')}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        paddingX: 3,
+                        paddingY: 2,
+                        whiteSpace: 'nowrap',
+                        fontSize: '0.875rem',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      {Number(item.lineTotal).toLocaleString('vi-VN')}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        paddingX: 3,
+                        paddingY: 2,
+                        whiteSpace: 'nowrap',
+                        fontSize: '0.875rem',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="small"
+                        onClick={() => handleOpenReceive(item)}
+                        disabled={fullyReceived || !canReceive}
+                      >
+                        {fullyReceived ? 'Fully Received' : 'Receive'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
+      {selectedItem && (
+        <ReceiveDialog
+          open={openDialog}
+          onClose={handleCloseDialog}
+          item={{
+            ...selectedItem,
+          }}
+          onSuccess={handleReceiveSuccess}
+        />
+      )}
+    </>
   );
 }
